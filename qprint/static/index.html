@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Qprint · Proof navigation</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='10' fill='%235049b5'/%3E%3Ctext x='8' y='29' fill='white' font-size='29'%3EQ%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/static/vendor/katex/katex.min.css">
+  <link rel="stylesheet" href="/static/style.css">
+  <script defer src="/static/vendor/katex/katex.min.js"></script>
+  <script defer src="/static/vendor/katex/auto-render.min.js"></script>
+  <script type="module" src="/static/app.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <button id="toggle-sidebar" class="icon-button" aria-label="折叠目录" title="折叠目录">☰</button>
+    <a href="/" class="brand"><span class="brand-icon">Q</span>qprint<span class="brand-divider">/</span></a>
+    <span id="project-name">Workspace</span><span class="local-badge">LOCAL WORKSPACE</span>
+    <nav class="view-switch" aria-label="工作视图"><button id="reader-view" class="active">▤ 阅读</button><button id="graph-view">⌘ 知识图谱</button></nav>
+    <button id="reload" class="quiet" title="重新读取磁盘文件">↻ 刷新</button><button id="import-open" class="primary">＋ 导入资料</button>
+  </header>
+  <div class="workspace">
+    <aside id="sidebar" class="sidebar">
+      <div class="workspace-label">EXPLORER <span id="node-count"></span></div>
+      <label class="search-box"><span>⌕</span><input id="search" type="search" placeholder="搜索数学对象…" aria-label="搜索数学对象"><kbd>/</kbd></label>
+      <div id="tree" class="tree"></div>
+      <div class="sidebar-bottom"><div class="progress-label"><span>形式化进度</span><span id="progress-label"></span></div><div class="progress-track"><div id="progress-bar"></div></div><small>完成状态由作者标注</small><button id="diagnostics-open" class="quiet">项目诊断 <span id="diagnostic-count">0</span></button></div>
+    </aside>
+    <main id="reader" class="reader">
+      <div class="reading-column">
+        <div class="pane-toolbar"><div id="breadcrumb" class="breadcrumb">BLUEPRINT</div><div class="segmented"><button data-mode="rendered" class="active">阅读</button><button data-mode="tex">TeX</button><button data-mode="edit">Markdown</button></div><button id="toggle-code" class="icon-button" aria-label="折叠形式化代码" title="折叠形式化代码">◫</button></div>
+        <article id="content" class="content"><div class="empty-state"><span class="empty-symbol">Q</span><h1>让数学与证明相连</h1><p>正在读取你的知识库…</p></div></article>
+        <footer class="node-footer"><button id="previous" class="quiet" disabled>← 上一节点</button><span id="position">PROOF NAVIGATION</span><button id="next" class="quiet" disabled>下一节点 →</button></footer>
+      </div>
+      <aside id="formal" class="formal"><div class="formal-heading"><span>FORMALIZATION</span><span class="tiny-dot"></span></div><div id="formal-content"></div><div class="formal-note">源码导航 · 未执行证明检查</div></aside>
+    </main>
+    <main id="graph" class="graph hidden">
+      <div class="graph-toolbar"><div><span class="eyebrow">EXPLORE CONNECTIONS</span><h2>知识图谱 <span id="graph-count"></span></h2></div><div class="graph-controls"><select id="graph-layout" aria-label="图谱布局"><option value="force">力导向</option><option value="layered">分层依赖图</option></select><select id="graph-kind" aria-label="节点类型"><option value="">全部类型</option><option value="definition">定义</option><option value="lemma">引理</option><option value="theorem">定理</option><option value="proof">证明</option><option value="conjecture">猜想</option><option value="other">其他</option></select><select id="graph-status" aria-label="形式化状态"><option value="">全部状态</option><option value="complete">已完成</option><option value="in_progress">进行中</option><option value="not_started">未开始</option></select><label><input id="graph-local" type="checkbox"> 当前邻域</label><button id="graph-reset">定位当前节点</button></div></div>
+      <svg id="graph-svg" aria-label="数学知识图谱"></svg><div class="graph-legend"><span><i class="dot complete"></i>已完成</span><span><i class="dot in_progress"></i>进行中</span><span><i class="dot not_started"></i>未开始</span><span>实线：依赖 → 使用者　 ·　 虚线：思想来源</span></div>
+      <div class="graph-help">拖动节点 / 空白处平移 · 滚轮缩放 · 单击预览 · 双击打开</div><aside id="graph-preview" class="graph-preview hidden"></aside>
+    </main>
+  </div>
+  <dialog id="import-dialog"><form id="import-form"><div class="dialog-heading"><div><span class="eyebrow">BUILD YOUR LIBRARY</span><h2>导入研究资料</h2></div><button type="button" class="icon-button close-dialog" aria-label="关闭">×</button></div><p class="muted">下载到当前工作区，保留原始目录与来源信息。</p><label>资料类型<select name="kind" id="import-kind"><option value="code">形式化代码 · GitHub</option><option value="paper">论文 · arXiv</option></select></label><label id="source-label">仓库 URL<input name="source" required placeholder="https://github.com/owner/repository"></label><div id="code-options" class="form-row"><label>语言<select name="language"><option value="lean">Lean</option><option value="agda">Agda</option><option value="coq">Coq</option></select></label><label>分支 / tag / SHA<input name="ref" placeholder="默认分支"></label></div><label>目标子目录<input name="dest" required placeholder="Topology/my-project"></label><label id="paper-name" class="hidden">论文文件名<input name="name" placeholder="Lin20K3"></label><p class="hint">已存在的目标不会被覆盖。导入论文后，需在 blueprint 中编写节点绑定。</p><div id="import-result" role="status"></div><button id="import-submit" type="submit" class="primary full-width">开始下载</button></form></dialog>
+  <dialog id="diagnostics-dialog"><div class="dialog-heading"><h2>项目诊断</h2><button class="icon-button close-dialog" aria-label="关闭">×</button></div><div id="diagnostics-list"></div></dialog>
+  <div id="toast" role="status" class="toast hidden"></div>
+</body>
+</html>

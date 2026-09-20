@@ -1,0 +1,148 @@
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import asynccontextmanager
+from pathlib import Path
+import secrets
+from threading import Lock
+from urllib.parse import urlparse
+import uuid
+
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, Field
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+
+from .importers import import_code, import_paper
+from .paths import WorkspaceError
+from .workspace import ConflictError, Workspace
+
+
+class DocumentUpdate(BaseModel):
+    path: str
+    text: str = Field(max_length=5 * 1024 * 1024)
+    revision: str
+
+
+class ImportRequest(BaseModel):
+    kind: str
+    source: str = Field(max_length=2048)
+    dest: str = Field(max_length=512)
+    language: str = "lean"
+    name: str = ""
+    ref: str | None = None
+
+
+def create_app(root: Path) -> FastAPI:
+    workspace = Workspace(root)
+    token = secrets.token_urlsafe(32)
+    executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="qprint-import")
+    jobs, job_lock = {}, Lock()
+    static = Path(__file__).parent / "static"
+
+    @asynccontextmanager
+    async def lifespan(app):
+        yield
+        executor.shutdown(wait=False, cancel_futures=True)
+
+    app = FastAPI(title="Qprint", lifespan=lifespan, docs_url=None, redoc_url=None)
+    app.state.workspace = workspace
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost", "[::1]", "testserver"])
+
+    @app.middleware("http")
+    async def guard(request: Request, call_next):
+        if request.method not in {"GET", "HEAD", "OPTIONS"}:
+            origin = request.headers.get("origin")
+            if origin and origin != str(request.base_url).rstrip("/"):
+                return JSONResponse({"detail": "仅允许同源写入"}, status_code=403)
+            if not secrets.compare_digest(request.headers.get("x-qprint-token", ""), token):
+                return JSONResponse({"detail": "写入 token 无效，请刷新页面"}, status_code=403)
+            if int(request.headers.get("content-length", "0")) > 6 * 1024 * 1024:
+                return JSONResponse({"detail": "请求过大"}, status_code=413)
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["Referrer-Policy"] = "no-referrer"
+        response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'"
+        if request.url.path.startswith("/api/"):
+            response.headers["Cache-Control"] = "no-store"
+        return response
+
+    @app.exception_handler(WorkspaceError)
+    async def invalid(request, exc):
+        return JSONResponse({"detail": str(exc)}, status_code=409 if isinstance(exc, ConflictError) else 400)
+
+    @app.exception_handler(FileNotFoundError)
+    async def missing(request, exc):
+        return JSONResponse({"detail": "文件不存在"}, status_code=404)
+
+    @app.get("/api/project")
+    def project():
+        return {**workspace.project(), "token": token}
+
+    @app.get("/api/node")
+    def node(id: str):
+        try:
+            return workspace.detail(id)
+        except KeyError:
+            raise HTTPException(404, "节点不存在")
+
+    @app.get("/api/document")
+    def document(path: str):
+        return workspace.document(path)
+
+    @app.put("/api/document")
+    def save_document(update: DocumentUpdate):
+        return workspace.save_document(update.path, update.text, update.revision)
+
+    @app.get("/api/tex")
+    def tex_document(path: str):
+        with workspace.lock:
+            if path not in workspace.tex:
+                raise HTTPException(404, "TeX 文件不存在")
+            doc = workspace.tex[path]
+            return {"path": path, "source": doc.source, "sections": doc.sections}
+
+    @app.post("/api/reload")
+    def reload():
+        workspace.reload()
+        return workspace.project()
+
+    def run_import(job_id, payload):
+        with job_lock:
+            jobs[job_id]["status"] = "running"
+        try:
+            if payload.kind == "code":
+                result = import_code(workspace.root, payload.source, payload.language, payload.dest, payload.ref)
+            else:
+                result = import_paper(workspace.root, payload.source, payload.dest, payload.name)
+            workspace.reload()
+            with job_lock:
+                jobs[job_id].update(status="succeeded", result=result)
+        except Exception as exc:
+            with job_lock:
+                jobs[job_id].update(status="failed", error=str(exc))
+
+    @app.post("/api/import", status_code=202)
+    def start_import(payload: ImportRequest):
+        if payload.kind not in {"code", "paper"}:
+            raise WorkspaceError("导入类型必须是 code 或 paper")
+        job_id = uuid.uuid4().hex
+        with job_lock:
+            if sum(j["status"] in {"queued", "running"} for j in jobs.values()) >= 5:
+                raise HTTPException(429, "导入队列已满")
+            jobs[job_id] = {"id": job_id, "status": "queued", "result": None, "error": None}
+        executor.submit(run_import, job_id, payload)
+        return {"id": job_id, "status": "queued"}
+
+    @app.get("/api/jobs/{job_id}")
+    def job(job_id: str):
+        with job_lock:
+            if job_id not in jobs:
+                raise HTTPException(404, "导入任务不存在（重启后任务记录会清空）")
+            return dict(jobs[job_id])
+
+    @app.get("/")
+    def home():
+        return FileResponse(static / "index.html")
+
+    app.mount("/static", StaticFiles(directory=static), name="static")
+    return app

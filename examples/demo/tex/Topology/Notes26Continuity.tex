@@ -1,0 +1,76 @@
+\documentclass{article}
+\newcommand{\bpnode}[1]{}
+\newtheorem{definition}{Definition}
+\newtheorem{theorem}{Theorem}
+\newtheorem{proof}{Proof}
+\title{Continuous maps and their composition}
+\author{Qprint demonstration notes}
+\begin{document}
+\section{Continuous maps}
+\subsection{The identity map}
+\bpnode{identity}
+\begin{definition}
+Let $X$ be a set. The \emph{identity map} on $X$ is the function
+\[
+  \operatorname{id}_X : X \longrightarrow X, \qquad x \longmapsto x.
+\]
+It fixes every point of the underlying space.
+\end{definition}
+
+The same construction is available in Lean, Agda and Coq. No topological
+structure is needed to define this map.
+
+\bpnode{continuous-id}
+\begin{theorem}
+Let $X$ be a topological space. The identity map
+$\operatorname{id}_X : X \to X$ is continuous.
+\end{theorem}
+
+Indeed, for every open subset $U \subseteq X$, we have
+\[
+  \operatorname{id}_X^{-1}(U) = U.
+\]
+Since $U$ is open, the criterion for continuity is satisfied.
+
+\subsection{Composition}
+\bpnode{continuous-comp}
+\begin{theorem}
+Let $X$, $Y$ and $Z$ be topological spaces, and let
+$f : X \to Y$ and $g : Y \to Z$ be continuous maps.
+Then their composition
+\[
+  g \circ f : X \longrightarrow Z
+\]
+is continuous.
+\end{theorem}
+
+This closure property makes it possible to build complicated continuous
+maps from simpler ones. In the formal statement, continuity of both
+maps appears as an explicit hypothesis.
+
+\bpnode{composition-proof}
+\begin{proof}
+Take an open subset $W \subseteq Z$. By continuity of $g$,
+the preimage $g^{-1}(W)$ is open in $Y$.
+Continuity of $f$ then implies that $f^{-1}(g^{-1}(W))$ is open in $X$.
+Using the identity
+\[
+  (g \circ f)^{-1}(W) = f^{-1}(g^{-1}(W)),
+\]
+we conclude that $g \circ f$ is continuous.
+\end{proof}
+
+\section{A categorical perspective}
+\bpnode{top-category}
+\begin{theorem}
+Topological spaces and continuous maps form a category.
+\end{theorem}
+
+The preceding results supply the identity morphisms and closure under
+composition. The remaining laws follow from the corresponding laws
+for functions:
+\begin{itemize}
+\item Composition of functions is associative.
+\item The identity map is a left and right unit for composition.
+\end{itemize}
+\end{document}
