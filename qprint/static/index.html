@@ -35,7 +35,13 @@
     </main>
     <main id="graph" class="graph hidden">
       <div class="graph-toolbar"><div><span class="eyebrow">EXPLORE CONNECTIONS</span><h2>知识图谱 <span id="graph-count"></span></h2></div><div class="graph-controls"><select id="graph-layout" aria-label="图谱布局"><option value="force">力导向</option><option value="layered">分层依赖图</option></select><select id="graph-kind" aria-label="节点类型"><option value="">全部类型</option><option value="definition">定义</option><option value="lemma">引理</option><option value="theorem">定理</option><option value="proof">证明</option><option value="conjecture">猜想</option><option value="other">其他</option></select><select id="graph-status" aria-label="形式化状态"><option value="">全部状态</option><option value="complete">已完成</option><option value="in_progress">进行中</option><option value="not_started">未开始</option></select><label><input id="graph-local" type="checkbox"> 当前邻域</label><button id="graph-reset">定位当前节点</button></div></div>
-      <svg id="graph-svg" aria-label="数学知识图谱"></svg><div class="graph-legend"><span><i class="dot complete"></i>已完成</span><span><i class="dot in_progress"></i>进行中</span><span><i class="dot not_started"></i>未开始</span><span>实线：依赖 → 使用者　 ·　 虚线：思想来源</span></div>
+      <div class="graph-navigation">
+        <label>颗粒度 <select id="graph-level" aria-label="图谱颗粒度"><option value="node">Blueprint 节点</option><option value="file">Milestone · Markdown 文件</option><option value="project">项目</option></select></label>
+        <label>范围 <select id="graph-scope" aria-label="图谱范围"><option value="project">当前项目</option><option value="all">全范围</option></select></label>
+        <label>当前项目 <select id="graph-project" aria-label="当前项目"></select></label>
+        <span id="graph-context" role="status"></span>
+      </div>
+      <svg id="graph-svg" aria-label="数学知识图谱"></svg><div class="graph-legend"><span><i class="dot complete"></i>已完成</span><span><i class="dot in_progress"></i>进行中</span><span><i class="dot not_started"></i>未开始</span><span>实线：依赖/引用 → 使用者　 ·　 虚线：思想来源</span><span><i class="highlight-dot"></i>下钻高亮成员</span></div>
       <div class="graph-help">拖动节点 / 空白处平移 · 滚轮缩放 · 单击预览 · 双击打开</div><aside id="graph-preview" class="graph-preview hidden"></aside>
     </main>
   </div>

@@ -9,6 +9,7 @@ from markdown_it import MarkdownIt
 
 from .blueprint import WIKILINK, parse_markdown, resolve_link, revision
 from .formal import locate_code
+from .graph_index import build_graph_index
 from .paths import WorkspaceError, read_text, safe_path
 from .tex import TexDocument, render_tex
 
@@ -64,6 +65,7 @@ class Workspace:
                     else:
                         self.diagnostics.append({"severity": "error", "path": node.path, "line": node.line, "message": f"TeX 标签不存在或不唯一: {node.tex}"})
             self.order = sorted(self.locations, key=lambda key: (self.locations[key][0], next(a["start"] for a in self.tex[self.locations[key][0]].anchors if a["label"] == self.locations[key][1])))
+            self.graph_index = build_graph_index(self.documents, self.nodes)
 
     def project(self):
         with self.lock:
@@ -72,7 +74,7 @@ class Workspace:
                 located = [(key, next(a["start"] for a in doc.anchors if a["label"] == label)) for key, (p, label) in self.locations.items() if p == path]
                 sections = [{**section, "node_id": next((key for key, offset in sorted(located, key=lambda item: item[1]) if offset >= section["offset"]), None)} for section in doc.sections]
                 papers.append({"path": path, "sections": sections, "nodes": [key for key in self.order if self.locations[key][0] == path]})
-            return {"name": self.root.name, "nodes": [n.public() for n in self.nodes.values()], "edges": self.edges, "papers": papers, "diagnostics": self.diagnostics, "stats": {"nodes": len(self.nodes), "complete": sum(n.status == "complete" for n in self.nodes.values()), "edges": len(self.edges), "papers": len(self.tex)}}
+            return {"name": self.root.name, "nodes": [n.public() for n in self.nodes.values()], "edges": self.edges, "graph": self.graph_index, "papers": papers, "diagnostics": self.diagnostics, "stats": {"nodes": len(self.nodes), "complete": sum(n.status == "complete" for n in self.nodes.values()), "edges": len(self.edges), "papers": len(self.tex)}}
 
     def detail(self, node_id: str):
         with self.lock:

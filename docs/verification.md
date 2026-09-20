@@ -1,5 +1,36 @@
 # Qprint v1 验收记录
 
+[中文](verification.md) | [English](verification.en.md) · [文档目录](index.md)
+
+下列内容是各标注日期的实测记录，不表示本次双语文档整理重新执行了这些业务测试。v1 指首版产品，Python 包版本为 `0.1.0`。
+
+## 2026-09-20：blueprint 分级指南扩展
+
+依据 `blueprint分级指南.md` 实现图谱的节点 / Milestone / 项目颗粒度及全范围 / 当前项目范围。磁盘节点格式未增加分级字段，分组由索引 Markdown 和目录派生。
+
+自动验证：
+
+```powershell
+conda run -n qprint pytest -q --basetemp D:/Qprint_v2/.qprint/tests-granularity-final --tb=short
+node --test tests/graph_view.test.mjs
+node --check qprint/static/app.js
+node --check qprint/static/graph.js
+```
+
+结果：**53 项 Python 测试通过、6 项前端状态测试通过**。Python 仍有下文记录的两条第三方弃用提示。新增覆盖包括最近索引归属、无索引目录回退、同名文件、空索引、普通 Markdown / wikilink 引用、跨文件去重、项目边合并、保存后重建、循环、排除示例代码与外链、默认范围、强制全范围及两级下钻高亮。API 测试改为复制固定示例文件，避免把用户另行导入的仓库当作测试夹具。
+
+浏览器实测（示例工程）：
+
+* 从 Topology 节点进入图谱，默认当前项目：8 节点、10 边；切换全范围：10 节点、12 边。
+* 项目颗粒度：2 项目、1 条跨项目引用；范围锁定全范围。
+* 双击 Topology：进入全范围 Milestone 图谱，3 文件、2 边，其中 Topology 的 2 个文件高亮。
+* 双击 Notes26Continuity：进入 Topology 节点图谱，准确高亮该文件的 5 个节点，其他成员保持可见。
+* 手选 Algebra：2 节点；双击 Associativity 正常定位 Lean 第 6–8 行。
+* 1440 × 900 桌面和约 535 px 宽的小窗口检查通过；新增控件与画布分开排列，适配缩放后仍保留标签可读性。
+* 力导向和分层两种布局均验证下钻；浏览器没有 JavaScript error。
+
+以下为首版验收历史记录。
+
 日期：2026-09-18。环境：Windows、Conda `qprint`、Python 3.12.14。
 
 ## 自动测试

@@ -28,12 +28,15 @@ export class KnowledgeGraph {
   }
   stop(){cancelAnimationFrame(this.frame);clearTimeout(this.clickTimer);}
   render(project,selected,options){
-    this.stop();this.selected=selected;this.layout=options.layout;
-    const neighbors=new Set([selected]);for(const e of project.edges){if(e.source===selected)neighbors.add(e.target);if(e.target===selected)neighbors.add(e.source);}
+    this.stop();this.lastClick=null;this.drag=null;this.selected=selected;this.layout=options.layout;
+    this.highlightIds=new Set(options.highlightIds||[]);
+    const seeds=new Set([selected,...this.highlightIds]);const neighbors=new Set(seeds);for(const e of project.edges){if(seeds.has(e.source))neighbors.add(e.target);if(seeds.has(e.target))neighbors.add(e.source);}
     const filtered=project.nodes.filter(n=>(!options.kind||n.kind===options.kind)&&(!options.status||n.status===options.status)&&(!options.local||neighbors.has(n.id)));
     const count=filtered.length;this.points=filtered.map((n,i)=>({...n,x:Math.cos(i*2.399)*Math.sqrt(i+1)*65,y:Math.sin(i*2.399)*Math.sqrt(i+1)*65,vx:0,vy:0}));
     const byId=new Map(this.points.map(p=>[p.id,p]));this.edges=project.edges.filter(e=>byId.has(e.source)&&byId.has(e.target)).map(e=>({...e,a:byId.get(e.source),b:byId.get(e.target)}));
+    this.tick=0;
     if(this.layout==='layered')this.layer();
+    else for(let i=0;i<100;i++)this.advance();
     this.svg.replaceChildren();
     const defs=svgElement('defs');const marker=svgElement('marker',{id:'arrow',viewBox:'0 0 10 10',refX:9,refY:5,markerWidth:5,markerHeight:5,orient:'auto-start-reverse'});marker.append(svgElement('path',{d:'M 0 0 L 10 5 L 0 10 z',fill:'#79708d'}));defs.append(marker);this.svg.append(defs);
     this.group=svgElement('g');this.svg.append(this.group);
@@ -47,36 +50,60 @@ export class KnowledgeGraph {
       this.group.append(el);
     }
     if(!count){const t=svgElement('text',{x:'50%',y:'50%','text-anchor':'middle',fill:'#9790aa'});t.textContent='没有符合筛选条件的节点';this.svg.append(t);}
-    document.querySelector('#graph-count').textContent=`${count} nodes · ${this.edges.length} links`;
-    this.select(selected);this.draw();this.focus();this.tick=0;if(this.layout==='force')this.animate();
+    document.querySelector('#graph-count').textContent=`${count} ${options.unit||'nodes'} · ${this.edges.length} links`;
+    this.select(selected);this.draw();this.focus();if(this.layout==='force')this.animate();
   }
   layer(){
     // Condense strongly connected components so cycles do not inflate layer depth.
-    const adjacency=new Map(this.points.map(p=>[p.id,[]]));for(const e of this.edges.filter(e=>e.kind==='uses'))adjacency.get(e.source).push(e.target);
+    const adjacency=new Map(this.points.map(p=>[p.id,[]]));for(const e of this.edges.filter(e=>e.kind!=='inspired_by'))adjacency.get(e.source).push(e.target);
     let index=0;const indices=new Map(),low=new Map(),stack=[],active=new Set(),components=[];
     const visit=id=>{indices.set(id,index);low.set(id,index++);stack.push(id);active.add(id);for(const next of adjacency.get(id)){if(!indices.has(next)){visit(next);low.set(id,Math.min(low.get(id),low.get(next)));}else if(active.has(next))low.set(id,Math.min(low.get(id),indices.get(next)));}if(low.get(id)===indices.get(id)){const component=[];let item;do{item=stack.pop();active.delete(item);component.push(item);}while(item!==id);components.push(component);}};
     for(const p of this.points)if(!indices.has(p.id))visit(p.id);
     const componentOf=new Map();components.forEach((c,i)=>c.forEach(id=>componentOf.set(id,i)));
-    const parents=components.map(()=>new Set());for(const e of this.edges.filter(e=>e.kind==='uses')){const a=componentOf.get(e.source),b=componentOf.get(e.target);if(a!==b)parents[b].add(a);}
+    const parents=components.map(()=>new Set());for(const e of this.edges.filter(e=>e.kind!=='inspired_by')){const a=componentOf.get(e.source),b=componentOf.get(e.target);if(a!==b)parents[b].add(a);}
     const memo=new Map();const level=i=>{if(!memo.has(i))memo.set(i,parents[i].size?1+Math.max(...[...parents[i]].map(level)):0);return memo.get(i);};
     const layers=new Map();for(const p of this.points){const l=level(componentOf.get(p.id));if(!layers.has(l))layers.set(l,[]);layers.get(l).push(p);}
     for(const [l,items] of layers)items.forEach((p,i)=>{p.x=(i-(items.length-1)/2)*215;p.y=l*130;});
   }
   animate(){
     const step=()=>{
-      const alpha=Math.max(.02,1-this.tick/260);
+      this.advance();this.draw();if(this.tick<300)this.frame=requestAnimationFrame(step);
+    };this.frame=requestAnimationFrame(step);
+  }
+  advance(){
+      const alpha=Math.max(.02,1-this.tick++/260);
       // Exact forces for small libraries; sample repulsion for larger vaults.
       const stride=Math.max(1,Math.ceil(this.points.length/250));
       for(let i=0;i<this.points.length;i++){const a=this.points[i];for(let j=i+1;j<this.points.length;j+=stride){const b=this.points[j];let dx=a.x-b.x,dy=a.y-b.y;const d2=Math.max(200,dx*dx+dy*dy);const force=900*alpha/d2;a.vx+=dx*force;b.vx-=dx*force;a.vy+=dy*force;b.vy-=dy*force;}}
       for(const e of this.edges){const dx=e.b.x-e.a.x,dy=e.b.y-e.a.y;const length=Math.max(1,Math.hypot(dx,dy));const force=(length-155)*.016*alpha;e.a.vx+=dx/length*force;e.a.vy+=dy/length*force;e.b.vx-=dx/length*force;e.b.vy-=dy/length*force;}
       for(const p of this.points){if(this.drag?.point===p)continue;p.vx=(p.vx-p.x*.0008)*.8;p.vy=(p.vy-p.y*.0008)*.8;p.x+=Math.max(-9,Math.min(9,p.vx));p.y+=Math.max(-9,Math.min(9,p.vy));}
-      this.draw();if(++this.tick<300)this.frame=requestAnimationFrame(step);
-    };this.frame=requestAnimationFrame(step);
   }
   select(id){this.selected=id;const neighbors=new Set([id]);for(const e of this.edges){if(e.source===id)neighbors.add(e.target);if(e.target===id)neighbors.add(e.source);e.el.style.opacity=e.source===id||e.target===id?'.9':'.25';}
-    for(const p of this.points){p.el.classList.toggle('selected',p.id===id);p.el.style.opacity=!id||neighbors.has(p.id)?'1':'.4';p.el.querySelector('circle').setAttribute('stroke',p.id===id?'#e2d0ff':color[p.status]+'33');}
+    for(const p of this.points){const highlighted=this.highlightIds.has(p.id);p.el.classList.toggle('selected',p.id===id);p.el.classList.toggle('highlighted',highlighted);p.el.style.opacity=highlighted||neighbors.has(p.id)||(!id&&!this.highlightIds.size)?'1':'.4';p.el.querySelector('circle').setAttribute('stroke',highlighted?'#f1d591':p.id===id?'#e2d0ff':color[p.status]+'33');}
   }
   draw(){for(const p of this.points)p.el?.setAttribute('transform',`translate(${p.x},${p.y})`);for(const e of this.edges){if(e.a===e.b){e.el.setAttribute('d',`M ${e.a.x} ${e.a.y-8} C ${e.a.x+60} ${e.a.y-80},${e.a.x-60} ${e.a.y-80},${e.a.x-7} ${e.a.y-5}`);continue;}const dx=e.b.x-e.a.x,dy=e.b.y-e.a.y,d=Math.max(1,Math.hypot(dx,dy));e.el.setAttribute('d',`M ${e.a.x+dx/d*10} ${e.a.y+dy/d*10} L ${e.b.x-dx/d*14} ${e.b.y-dy/d*14}`);}}
-  focus(){const r=this.svg.getBoundingClientRect();if(!r.width||!this.points.length)return;const p=this.points.find(p=>p.id===this.selected);const xs=this.points.map(p=>p.x),ys=this.points.map(p=>p.y);const width=Math.max(...xs)-Math.min(...xs)+250,height=Math.max(...ys)-Math.min(...ys)+250;const k=Math.max(.2,Math.min(1.15,(r.width-100)/width,(r.height-200)/height));const x=p?.x??(Math.max(...xs)+Math.min(...xs))/2,y=p?.y??(Math.max(...ys)+Math.min(...ys))/2;this.transform={x:r.width/2-x*k,y:r.height/2+25-y*k,k};this.applyTransform();}
-  applyTransform(){this.group?.setAttribute('transform',`translate(${this.transform.x},${this.transform.y}) scale(${this.transform.k})`);}
+  focus(){
+    const r=this.svg.getBoundingClientRect();if(!r.width||!this.points.length)return;
+    const members=this.points.filter(p=>this.highlightIds.has(p.id));
+    const selected=this.points.find(p=>p.id===this.selected);
+    const xs=this.points.map(p=>p.x),ys=this.points.map(p=>p.y);
+    const x=selected?.x??(members.length?members.reduce((sum,p)=>sum+p.x,0)/members.length:(Math.max(...xs)+Math.min(...xs))/2);
+    const y=selected?.y??(members.length?members.reduce((sum,p)=>sum+p.y,0)/members.length:(Math.max(...ys)+Math.min(...ys))/2);
+    const width=2*Math.max(...xs.map(value=>Math.abs(value-x)))+180;
+    const height=2*Math.max(...ys.map(value=>Math.abs(value-y)))+100;
+    const k=Math.max(.1,Math.min(1.15,(r.width-40)/width,(r.height-30)/height));
+    this.transform={x:r.width/2-x*k,y:r.height/2-y*k,k};this.applyTransform();
+  }
+  applyTransform(){
+    const {x,y,k}=this.transform;
+    this.group?.setAttribute('transform',`translate(${x},${y}) scale(${k})`);
+    // Fitting an aggregate graph must not shrink member labels into illegibility.
+    const labelScale=Math.max(1,1/k);
+    for(const p of this.points){
+      const label=p.el?.querySelector('text');if(!label)continue;
+      label.style.fontSize=`${11*labelScale}px`;label.setAttribute('y',27*labelScale);
+      const hit=p.el.querySelector('rect'),width=Math.max(70,Math.min(240,p.title.length*6.6))*labelScale;
+      hit.setAttribute('x',-width/2);hit.setAttribute('y',-15*labelScale);hit.setAttribute('width',width);hit.setAttribute('height',48*labelScale);
+    }
+  }
 }

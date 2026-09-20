@@ -1,8 +1,19 @@
 # Qprint
 
+[中文](README.md) | [English](README.en.md)
+
 以 Markdown 为中心的数学知识图谱与 proof navigation IDE。TeX 论文、Lean / Agda / Coq 代码通过 blueprint 节点连接，资料保留为普通文件，可直接用 Obsidian 或其他编辑器管理。
 
-开发基线见 [docs/spec.md](docs/spec.md)，验证记录见 [docs/verification.md](docs/verification.md)。
+当前包版本为 `0.1.0`。文档描述当前实现；未来工作单独列在 TODO 中。
+
+| 文档 | 用途 |
+| --- | --- |
+| [PRODUCT.md](PRODUCT.md) | 产品目标、用户流程、功能边界 |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | 模块职责、数据流、技术决策 |
+| [TODO.md](TODO.md) | 已完成基线、后续工作与验收条件 |
+| [docs/index.md](docs/index.md) | 模块文档及中英文导航 |
+| [docs/spec.md](docs/spec.md) | 开发规格与验收契约 |
+| [docs/verification.md](docs/verification.md) | 已执行的验证及已知限制 |
 
 ## 快速启动
 
@@ -106,6 +117,16 @@ The next mathematical object begins here.
 
 点击“知识图谱”聚焦当前节点。单击节点查看描述，双击或 Enter 打开正文和源码，空格预览。支持拖动、平移、缩放、力导向/分层切换、类型/进度筛选、一跳邻域；箭头从依赖指向使用者，虚线表示思想来源。
 
+图谱支持三种**颗粒度**：Blueprint 节点（一级标题）、Milestone（Markdown 文件）、项目（索引文件所在目录或回退目录）。分级仅用于图谱聚合，不要求新增节点字段、搬动文件或建立额外项目配置。
+
+* 项目识别：目录内的 `<目录名>.md` 或 `index.md` 视为索引，同名文件优先。文件归属最近的有索引祖先目录，因而项目内仍可有任意子文件夹；没有这样的索引时，归属文件所在的最小目录。blueprint 根目录直接存放的文件归入“blueprint 根目录”。
+* Milestone 图谱将同一文件内所有指向另一文件的引用合并成一条边。支持正文或节点元数据中的 `[[路径#标题]]`、`[[路径]]`、带别名的 wikilink，以及 Markdown 相对链接 `[文本](../Other.md#标题)`。代码示例、行内代码、HTML 注释和外部网页链接不参与聚合。标题级 `uses` / `inspired_by` 的原有语义保持不变。
+* 项目图谱进一步合并跨项目的文件引用，包括索引 Markdown 中的项目依赖；同一项目内部的引用不产生项目自环。
+* **范围**可选“全范围”或“当前项目”，并可通过项目下拉框切换当前项目。节点级默认当前项目；项目级始终全范围，范围选择器自动禁用。
+* 双击项目进入全范围 Milestone 图谱，并用金色描边高亮该项目的所有文件。双击 Milestone 进入其项目的 Blueprint 节点图谱，高亮该文件的所有一级标题；再次双击 Blueprint 节点打开正文和代码。下钻时清除旧筛选，确保所有成员可见。
+
+索引仍是普通 Markdown：即使没有一级标题，也会出现在文件图谱；若含一级标题，仍按原有规则解析节点。对于名称任意、无法从文件名识别的索引，可使用上述命名约定，无需添加元数据。
+
 正文滚动到底后再向下滚动切换到下一节点，向上相反。同一篇论文内可用页脚按钮或 Alt+左右方向键导航。URL hash 可作为节点深链。Markdown 模式编辑整份文件，Ctrl+S 保存；外部文件变化会触发冲突提示，避免静默覆盖。
 
 ## 导入资料
@@ -125,6 +146,7 @@ conda run -n qprint python -m qprint import-paper 1603.04246 --dest Geometry --n
 
 ```powershell
 conda run -n qprint pytest -q
+node --test tests/graph_view.test.mjs
 conda run -n qprint python -m qprint check --workspace examples/demo
 ```
 

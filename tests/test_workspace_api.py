@@ -14,7 +14,17 @@ DEMO = Path(__file__).parents[1] / "examples" / "demo"
 
 @pytest.fixture
 def client(tmp_path):
-    shutil.copytree(DEMO, tmp_path, dirs_exist_ok=True)
+    # Copy the fixed navigation fixture, not arbitrary user-imported repositories.
+    for folder in ("blueprint", "tex", "lean", "agda", "coq"):
+        for relative in {
+            "blueprint": ["Algebra/Functions.md", "Topology/Maps.md", "Topology/Notes26Continuity.md"],
+            "tex": ["Topology/Notes26Continuity.tex"],
+            "lean": ["Topology/Maps.lean", "Topology/Continuity.lean"],
+            "agda": ["Topology/Maps.agda"], "coq": ["Topology/Maps.v"],
+        }[folder]:
+            target = tmp_path / folder / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(DEMO / folder / relative, target)
     with TestClient(create_app(tmp_path)) as client:
         client.headers["x-qprint-token"] = client.get("/api/project").json()["token"]
         yield client
@@ -24,6 +34,8 @@ def test_demo_links_three_languages_and_navigation(client):
     project = client.get("/api/project").json()
     assert project["stats"]["nodes"] == 10
     assert project["diagnostics"] == []
+    assert len(project["graph"]["files"]) == 3
+    assert {p["id"] for p in project["graph"]["projects"]} == {"Algebra", "Topology"}
     detail = client.get("/api/node", params={"id": "Topology/Notes26Continuity#Identity map"}).json()
     assert len(detail["formal"]) == 3
     assert all(f["code"] and not f["error"] for f in detail["formal"])
@@ -103,5 +115,5 @@ def test_background_import_lifecycle(client, monkeypatch, failure):
 
 def test_static_resources_are_local_and_served(client):
     assert client.get("/").status_code == 200
-    for asset in ["app.js", "graph.js", "style.css", "vendor/katex/katex.min.js", "vendor/katex/auto-render.min.js", "vendor/katex/fonts/KaTeX_Main-Regular.woff2"]:
+    for asset in ["app.js", "graph.js", "graph-view.js", "style.css", "vendor/katex/katex.min.js", "vendor/katex/auto-render.min.js", "vendor/katex/fonts/KaTeX_Main-Regular.woff2"]:
         assert client.get(f"/static/{asset}").status_code == 200
