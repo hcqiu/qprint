@@ -4,6 +4,51 @@
 
 下列内容是各标注日期的实测记录，不表示本次双语文档整理重新执行了这些业务测试。v1 指首版产品，Python 包版本为 `0.1.0`。
 
+## 2026-09-22：FLT3 报告与旧版工具链
+
+下载器复现旧 Lean 发布物无 digest 的失败，确认原始报告已保存但缺少浏览器入口。新增报告查看/下载/持久历史、异常与保存失败呈现，以及旧工具链、旧 Lake 包名/Git 元数据和缓存目录兼容。FLT3 原生默认目标实际构建通过，源码和原生配置哈希未变。详见 [FLT3 实验](flt3-experiment.md)。全量 Python **216 passed**（两个既有提示），Node **12 passed**。浏览器点击真实历史报告成功显示错误和诊断。
+
+## 2026-09-22：sphere-eversion 等待排查
+
+生产下载器复现同一固定提交，修复新版 ProofWidgets 发布策略后，原生 mathlib 缓存准备及 `lake build` 均通过。配置和选定源码未改动；范围为原生默认目标，未执行额外安全审计。完整过程、报告与耗时见 [实验记录](sphere-eversion-experiment.md)。
+
+新增请求局部进度、下载字节/解压项数、构建活动与任务耗时展示。全量 Python 测试 **184 passed**（两个既有依赖弃用提示），Node 前端测试 **10 passed**。覆盖运行中 API 快照、无总量时不伪造百分比、进度回调故障、子进程超时和新旧 ProofWidgets 分支。本次前端通过纯函数与 API 测试验证，未声称重新进行了浏览器交互验收；用户正在运行的旧服务未重启。
+
+## 2026-09-22：下载后验证与受限恢复
+
+Conda `qprint` 全量 pytest：**176 passed**，两个既有 FastAPI/Starlette 弃用提示。新增覆盖策略、原生入口、续传与校验、归档路径、固定提交、缓存修复、release 收据、helper 权限边界与重试预算、源码/配置变化，以及 API/CLI 导入开关。runtime skill 的 quick_validate 通过。
+
+真实 Agda 2.8.0 的 inherit/require/off 边界符合预期；TypeTopology 上游 `AllModulesIndex.lagda` 在 inherit 下通过（约 566 秒），未做额外安全审计。新 Lean 拓扑导入自动获得九个锁定依赖，修复 Windows release 收据问题后，由干净 runtime helper 重试通过原生 Lake 默认目标。复用了 7740 个已有官方缓存对象，不是无缓存性能测试。另一个无历史上下文的 skill 小样例也完成了真实 Lean 重试。报告路径见[外部实验](external-topology-experiment.md)。
+
+浏览器确认默认勾选、取消勾选、论文导入隐藏选项。归档比较确认原有 5 个 Lean、996 个 Agda 源文件及新 Lean 源码/原生配置未变。默认开启不保证任何仓库都能通过；下载、检查和安全审计分别报告。本轮未重建完整 Release；清单已加入 runtime skill。
+
+## 2026-09-21：仓库内托管形式化环境
+
+后续模块化扩展已完成：136 项回归测试通过，并用 serre-finiteness 完成干净 agent 的版本修复实验，35 模块全通过。详情见[实验记录](serre-finiteness-experiment.md)；下列 115 项测试和 ZIP 属于此前阶段。
+
+已安装到 Git 忽略目录：Lean 4.19.0、Agda 2.8.0、Cubical 0.9（固定提交 `b150186d2544e7efeddd31e5d14a8b9ecbb100f7`）。原有用户导入目录未迁移。实现 manager、resolver、执行上下文、项目声明、安装记录及 light/full Release 清单。
+
+执行 `conda run -n qprint pytest -q --basetemp D:/Qprint_v2/.qprint/tests-toolchain-release-final --tb=short`：**115 passed、2 warnings，无跳过**，6.85 秒。原有两条第三方弃用提示仍存在。新增验证包括多版本选择、浮动/冲突/rc 版本拒绝、显式 PATH 回退、Agda 库和数据目录隔离、哈希/归档/原子安装/删除保护、自动发现、两种 ZIP 输入规则及真实工具链。
+
+`conda run -n qprint python -m qprint verify --workspace examples/verification` 实测 Lean 构建与环境声明查询、Agda/Cubical 类型检查与声明探针全部通过。不存在声明的真实工具链测试能正确失败。Agda 最初遇到全局 Cubical 参数破坏内置模块 full/erased 模式边界的问题；现已保留库选项作用域、在探针中设置模式，并重查全部接口，示例回归通过。
+
+实际构建了约 502 MB 的 full 测试 ZIP，解压到 `.qprint/relocated full environment/Qprint`，从解压后的代码重新验证两种语言成功；报告中的 compiler/include 路径均在新目录内，不依赖原安装路径。测试产物不包含 Python 运行时，使用已有 Conda 环境。`git check-ignore` 确认编译器及 Cubical 库被忽略；36 份 Markdown 本地链接检查通过。本次无前端改动。安装、移植和打包边界详见[工具链文档](toolchains.md)。
+
+## 2026-09-20：统一形式化验证适配层
+
+新增 Lean / Agda 适配器、统一阶段报告、CLI、显式启用的后台 API、项目配置、进程超时与日志限制。作者进度保持独立，Coq 明确返回未支持。
+
+执行：
+
+```powershell
+conda run -n qprint pytest -q --basetemp D:/Qprint_v2/.qprint/tests-verification-final --tb=short
+conda run -n qprint python -m qprint verify --workspace examples/demo --language agda
+```
+
+Python 结果：**85 passed、2 skipped、2 warnings**，耗时 1.73 秒。新增测试覆盖命令与探针构造、失败阶段短路、正确行号配错误声明、缺少工具、超时、限长日志、配置与路径限制、探针注入、源码变化、API token/Origin/执行开关/队列、CLI 退出码及作者状态不变。两条第三方弃用提示与历史记录相同。
+
+本机 Conda 环境没有 `lake`、`lean` 或 `agda`；两项真实工具链测试跳过，不能据此声称真实 Lean/Agda 工程已经编译验证。CLI 冒烟正确输出 `incomplete` / `unavailable`，退出 1。Windows Conda 捕获中文输出的编码问题通过验证报告使用 ASCII JSON 转义解决；解码后的名称和诊断不变。本次没有前端改动或浏览器验收。详细能力及限制见[验证模块](formal-verification.md)。
+
 ## 2026-09-20：blueprint 分级指南扩展
 
 依据 `blueprint分级指南.md` 实现图谱的节点 / Milestone / 项目颗粒度及全范围 / 当前项目范围。磁盘节点格式未增加分级字段，分组由索引 Markdown 和目录派生。

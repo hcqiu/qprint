@@ -2,6 +2,7 @@ from pathlib import Path
 import re
 
 from .paths import WorkspaceError, read_text, safe_path
+from .formal_sources import SOURCE_SUFFIXES
 
 EXTENSIONS = {"lean": ".lean", "agda": ".agda", "coq": ".v"}
 
@@ -14,7 +15,8 @@ def locate_code(root: Path, binding: dict) -> dict:
         filename = binding.get("file")
         if not filename:
             components = declaration.split(".")
-            candidates = ["/".join(components[:i]) + EXTENSIONS[language] for i in range(len(components), 0, -1)]
+            candidates = ["/".join(components[:i]) + suffix for i in range(len(components), 0, -1)
+                          for suffix in SOURCE_SUFFIXES.get(language, (EXTENSIONS[language],))]
             filename = next((p for p in candidates if safe_path(base, p).is_file()), None)
         if not filename:
             result["error"] = "远程绑定，尚未下载" if binding.get("url") else "未找到模块文件，请配置 file 和 lines"

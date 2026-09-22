@@ -6,9 +6,13 @@ Baseline date: 2026-09-20. Checked items are implemented capabilities. Unchecked
 
 ## Implemented baseline
 
+- [x] [Managed toolchains](docs/toolchains.en.md): local Lean/Agda, pinned Cubical, requirements, resolver/context, install/list/remove, light/full ZIPs.
+
 - [x] Multiple Markdown nodes, metadata, relations, diagnostics, and a demo workspace.
 - [x] TeX anchor fragments, bounded plasTeX rendering, and local KaTeX.
 - [x] Lean / Agda / Coq bindings and source lookup.
+- [x] [Unified verification adapters](docs/formal-verification.en.md): Lean / Agda, independent results, CLI, opt-in background API, timeouts, and diagnostics.
+- [x] [Native project resolution and version repair](docs/formal-resolution.en.md): modular resolver, exact artifact acquisition, timestamped reports, project checks and an independent helper skill.
 - [x] Reading, search, Markdown saves, revision conflicts, and node deep links.
 - [x] Three graph granularities, scope selection, project ownership, and two drill-down highlight steps.
 - [x] GitHub / arXiv imports, provenance, background jobs, and archive protections.
@@ -40,7 +44,9 @@ Baseline date: 2026-09-20. Checked items are implemented capabilities. Unchecked
 
 ## Extensions requiring separate design
 
-- [ ] Compiler/LSP integration: separate author progress from verification results and define dependency installation, workspace trust, execution permissions, and result caching.
+- [ ] Standalone Python runtime/offline wheels, more platforms/versions, Coq installation, shared Lean caches, and complete dependencies for arbitrary projects.
+
+- [ ] Verification extensions: Coq adapter, Lean axiom/sorry auditing, special names and parameterized Agda modules, real-toolchain CI, cancellable jobs, full dependency fingerprints, and UI results; design LSP separately.
 - [ ] Legacy leanblueprint migration: provide read-only analysis and conversion previews while retaining originals; this item remains deferred from the original requirements.
 - [ ] AI assistance or bidirectional generation: define context, diff previews, user confirmation, and provenance; generated content must not automatically be marked proven.
 - [ ] Remote and multi-user deployment: design authentication, authorization, isolation, concurrent editing, and persistent jobs first; the local token does not provide these facilities.

@@ -6,6 +6,8 @@
 
 当前包版本为 `0.1.0`。文档描述当前实现；未来工作单独列在 TODO 中。
 
+**许可证：非商业免费，商业用途须另行取得书面授权。** 个人非商业学习、非营利教育和学术研究可免费使用；公司内部使用、商业 SaaS、商业产品集成、再销售等需要商业授权。版权人为 Haochen Qiu。这是源码可见项目。范围与例外见 [许可指南](docs/licensing.md)、[非商业许可证](LICENSE)及[商业许可条款](COMMERCIAL-LICENSE.md)；第三方内容沿用各自许可证。
+
 | 文档 | 用途 |
 | --- | --- |
 | [PRODUCT.md](PRODUCT.md) | 产品目标、用户流程、功能边界 |
@@ -140,7 +142,7 @@ conda run -n qprint python -m qprint import-paper 1603.04246 --dest Geometry --n
 
 论文 PDF 保存为 `pdf/Geometry/Via16SpherePacking.pdf`，多文件源码保存在 `tex/Geometry/Via16SpherePacking/`，保持内部相对路径；下载器不会擅自给论文添加 blueprint 标记。导入后按需要创建同名 Markdown，并以实际源码路径绑定节点。
 
-现有目标不会被覆盖。下载上限 100 MiB、解压上限 300 MiB / 10,000 个归档条目；拒绝路径穿越与链接文件。每个导入目录包含 `.qprint-source.json` 以记录来源。源码不存在、网络失败、超限会显示错误。后台任务记录只保留在当前服务进程，重启后清空。下载不会执行代码或安装仓库依赖。
+现有目标不会被覆盖。下载上限 100 MiB、解压上限 300 MiB / 10,000 个归档条目；拒绝路径穿越与链接文件。每个导入目录包含 `.qprint-source.json` 以记录来源。源码不存在、网络失败、超限会显示错误。后台任务记录只保留在当前服务进程，重启后清空。GitHub 导入默认开启“下载后验证”，会准备固定环境并执行项目检查；可取消界面复选框或传 `--no-verify-after-download`。验证失败保留源码和报告。
 
 ## 测试与开发
 
@@ -161,6 +163,27 @@ conda run -n qprint pytest -q --basetemp .qprint/test-local
 
 主要代码：`blueprint.py` 解析节点，`workspace.py` 构建索引，`tex.py` 解析片段并适配 plasTeX DOM，`formal.py` 定位代码，`importers.py` 导入资源，`server.py` 提供 API，`static/` 为无构建步骤的前端。API 的 OpenAPI schema 在运行服务的 `/openapi.json`。
 
+## 形式化验证
+
+独立项目使用 `conda run -n qprint python -m qprint formal verify --project PROJECT --language agda --timeout 600`，默认覆盖全部模块。原生配置解析、自动安装、带时间的错误报告和版本修复 skill 见[项目解析文档](docs/formal-resolution.md)。
+
+2026-09-21 起，编译器和库安装在 Qprint 根目录的 `toolchains/`、`packages/`（Git 忽略）。子项目优先使用原生配置，并由 `.qprint-formal.yaml` 补充 Agda 版本；管理命令及 light/full ZIP 打包见[工具链文档](docs/toolchains.md)。已提供独立的真实验证示例：
+
+```powershell
+conda run -n qprint python -m qprint toolchain list
+conda run -n qprint python -m qprint verify --workspace examples/verification
+```
+
+Full ZIP 包含指定形式化环境，但当前仍需已有 Python/Conda 环境。
+
+新增[统一形式化验证适配层](docs/formal-verification.md)：Lean 构建与声明存在性检查、Agda 类型检查与声明解析，Coq 明确返回未支持。显式验证自动补齐支持的固定版本（`--offline` 禁止下载），例如：
+
+```powershell
+conda run -n qprint python -m qprint verify --workspace D:/my-math --language lean
+```
+
+可选 `--node "路径#标题"` 和 `--timeout 180`。输出独立 JSON 报告，不改写作者 `status`。HTTP 入口为 `POST /api/verify`，需以 `serve --allow-verification` 启用可信工作区的执行。阅读和保存不自动验证；GitHub 导入的“下载后验证”默认开启。Agda 默认 `safe: inherit`，尊重上游 OPTIONS；安全审计需显式 `formal audit`。自动恢复及两个受限 helper 见[解析文档](docs/formal-resolution.md)。
+
 ## 当前边界
 
-plasTeX 渲染支持常用论文结构和数学公式，但不替代完整 LaTeX 排版。片段中的跨文件 `\input`、外部图像、复杂宏包会回退到 TeX 源文并提示；多行宏定义需要后续扩展。Lean / Agda / Coq 编译器和 LSP 不在首版范围，示例代码用于导航演示，未作为完整形式化项目编译。AI 双向生成与旧 leanblueprint 转换器按原需求留在后续范围。
+plasTeX 渲染支持常用论文结构和数学公式，但不替代完整 LaTeX 排版。片段中的跨文件 `\input`、外部图像、复杂宏包会回退到 TeX 源文并提示；多行宏定义需要后续扩展。Lean/Agda 可通过仓库内工具链管理器安装；Coq 验证、Lean 公理审计和 LSP 尚未实现，示例代码用于导航演示，未作为完整形式化项目编译。AI 双向生成与旧 leanblueprint 转换器按原需求留在后续范围。

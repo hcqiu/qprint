@@ -3,18 +3,23 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 import secrets
 from threading import Lock
+from typing import Literal
 from urllib.parse import urlparse
 import uuid
+import time
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
+import json
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from .importers import import_code, import_paper
-from .paths import WorkspaceError
+from .paths import WorkspaceError, read_text
+from .formal_report_access import report_file, report_links, recent_reports, report_text
 from .workspace import ConflictError, Workspace
+from .verification import verify_bindings
 
 
 class DocumentUpdate(BaseModel):
@@ -30,12 +35,22 @@ class ImportRequest(BaseModel):
     language: str = "lean"
     name: str = ""
     ref: str | None = None
+    verify_after_download: bool = True
+    timeout: float = Field(default=600, ge=1, le=3600, allow_inf_nan=False)
 
 
-def create_app(root: Path) -> FastAPI:
+class VerificationRequest(BaseModel):
+    node_id: str | None = Field(default=None, max_length=2048)
+    language: Literal["lean", "agda", "coq"] | None = None
+    timeout: float = Field(default=120, ge=1, le=3600, allow_inf_nan=False)
+
+
+def create_app(root: Path, *, allow_verification: bool = False, toolchain_home: Path | None = None,
+               allow_system_toolchains: bool = False) -> FastAPI:
     workspace = Workspace(root)
     token = secrets.token_urlsafe(32)
     executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="qprint-import")
+    verification_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="qprint-verify")
     jobs, job_lock = {}, Lock()
     static = Path(__file__).parent / "static"
 
@@ -43,6 +58,7 @@ def create_app(root: Path) -> FastAPI:
     async def lifespan(app):
         yield
         executor.shutdown(wait=False, cancel_futures=True)
+        verification_executor.shutdown(wait=False, cancel_futures=True)
 
     app = FastAPI(title="Qprint", lifespan=lifespan, docs_url=None, redoc_url=None)
     app.state.workspace = workspace
@@ -76,7 +92,21 @@ def create_app(root: Path) -> FastAPI:
 
     @app.get("/api/project")
     def project():
-        return {**workspace.project(), "token": token}
+        return {**workspace.project(), "token": token, "verification_enabled": allow_verification}
+
+    @app.get("/api/formal-reports")
+    def reports():
+        return {"reports": recent_reports(workspace.root)}
+
+    @app.get("/api/formal-report")
+    def report(path: str, download: bool = False):
+        target = report_file(workspace.root, path)
+        data = json.loads(read_text(target))
+        if not isinstance(data, dict) or not isinstance(data.get("status"), str):
+            raise WorkspaceError("无效的验证报告")
+        if download:
+            return JSONResponse(data, headers={"Content-Disposition": f'attachment; filename="{target.name}"'})
+        return PlainTextResponse(report_text(data))
 
     @app.get("/api/node")
     def node(id: str):
@@ -108,18 +138,26 @@ def create_app(root: Path) -> FastAPI:
 
     def run_import(job_id, payload):
         with job_lock:
-            jobs[job_id]["status"] = "running"
+            jobs[job_id].update(status="running", started_at=time.time())
         try:
             if payload.kind == "code":
-                result = import_code(workspace.root, payload.source, payload.language, payload.dest, payload.ref)
+                def phase(value):
+                    with job_lock:
+                        jobs[job_id]["phase"] = value
+                def progress(value):
+                    with job_lock:
+                        jobs[job_id].update(progress=value, updated_at=time.time())
+                result = import_code(workspace.root, payload.source, payload.language, payload.dest, payload.ref,
+                                     verify_after_download=payload.verify_after_download, timeout=payload.timeout,
+                                     toolchain_home=toolchain_home, on_phase=phase, on_progress=progress)
             else:
                 result = import_paper(workspace.root, payload.source, payload.dest, payload.name)
             workspace.reload()
             with job_lock:
-                jobs[job_id].update(status="succeeded", result=result)
+                jobs[job_id].update(status="succeeded", phase="complete", result=result, finished_at=time.time())
         except Exception as exc:
             with job_lock:
-                jobs[job_id].update(status="failed", error=str(exc))
+                jobs[job_id].update(status="failed", error=str(exc), finished_at=time.time())
 
     @app.post("/api/import", status_code=202)
     def start_import(payload: ImportRequest):
@@ -127,18 +165,61 @@ def create_app(root: Path) -> FastAPI:
             raise WorkspaceError("导入类型必须是 code 或 paper")
         job_id = uuid.uuid4().hex
         with job_lock:
-            if sum(j["status"] in {"queued", "running"} for j in jobs.values()) >= 5:
+            if sum(j.get("kind") == "import" and j["status"] in {"queued", "running"} for j in jobs.values()) >= 5:
                 raise HTTPException(429, "导入队列已满")
-            jobs[job_id] = {"id": job_id, "status": "queued", "result": None, "error": None}
+            jobs[job_id] = {"id": job_id, "kind": "import", "status": "queued", "result": None, "error": None}
         executor.submit(run_import, job_id, payload)
+        return {"id": job_id, "status": "queued"}
+
+    def run_verification(job_id, bindings, timeout, diagnostics):
+        with job_lock:
+            jobs[job_id]["status"] = "running"
+        try:
+            result = verify_bindings(workspace.root, bindings, timeout=timeout,
+                                     toolchain_home=toolchain_home, allow_system=allow_system_toolchains)
+            result["diagnostics"] = diagnostics
+            if any(d["severity"] == "error" for d in diagnostics):
+                result["status"] = "incomplete"
+            with job_lock:
+                # Job success means a report was produced; inspect result.status.
+                jobs[job_id].update(status="succeeded", result=result)
+        except Exception as exc:
+            with job_lock:
+                jobs[job_id].update(status="failed", error=str(exc))
+
+    @app.post("/api/verify", status_code=202)
+    def start_verification(payload: VerificationRequest):
+        if not allow_verification:
+            raise HTTPException(403, "验证执行未启用；可信工作区可使用 serve --allow-verification")
+        try:
+            with workspace.lock:
+                bindings = workspace.verification_bindings(payload.node_id, payload.language)
+                diagnostics = list(workspace.diagnostics)
+        except KeyError:
+            raise HTTPException(404, "节点不存在")
+        job_id = uuid.uuid4().hex
+        with job_lock:
+            if sum(j.get("kind") == "verification" and j["status"] in {"queued", "running"} for j in jobs.values()) >= 5:
+                raise HTTPException(429, "验证队列已满")
+            jobs[job_id] = {"id": job_id, "kind": "verification", "status": "queued", "result": None, "error": None}
+        verification_executor.submit(run_verification, job_id, bindings, payload.timeout, diagnostics)
         return {"id": job_id, "status": "queued"}
 
     @app.get("/api/jobs/{job_id}")
     def job(job_id: str):
         with job_lock:
             if job_id not in jobs:
-                raise HTTPException(404, "导入任务不存在（重启后任务记录会清空）")
-            return dict(jobs[job_id])
+                raise HTTPException(404, "任务不存在（重启后任务记录会清空）")
+            result = dict(jobs[job_id])
+            if (result.get("result") or {}).get("verification"):
+                payload = dict(result["result"])
+                verification = dict(payload["verification"])
+                verification["reports"] = [report_links(workspace.root, r) for r in verification.get("reports", [])]
+                payload["verification"] = verification
+                result["result"] = payload
+            if "started_at" in result:
+                result["elapsed_seconds"] = round(result.get("finished_at", time.time()) - result["started_at"], 1)
+            return result
 
     @app.get("/")
     def home():

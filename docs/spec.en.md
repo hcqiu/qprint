@@ -8,11 +8,11 @@ Status: the initial version is implemented; results are in [verification](verifi
 
 ## 1. Goals and boundaries
 
-Qprint is a local mathematical knowledge base and proof navigation IDE centered on Markdown blueprints. TeX and Lean / Agda / Coq code are optional node attachments. A node remains valid without either. The initial delivery includes a runnable Python service, browser UI, CLI, demo, and automated tests. It supports browsing, location, editing original Markdown, rebuilding indexes, and importing material. It does not execute imported code or claim automatic proof verification.
+Qprint is a local mathematical knowledge base and proof navigation IDE centered on Markdown blueprints. TeX and Lean / Agda / Coq code are optional node attachments. A node remains valid without either. The initial delivery includes a runnable Python service, browser UI, CLI, demo, and automated tests. It supports browsing, location, editing original Markdown, rebuilding indexes, and importing material. Reading never executes downloaded code. GitHub imports default to post-download verification, with an opt-out. Explicit verification is specified in section 9.
 
 The stack uses Python 3.12, FastAPI, plasTeX, native ES modules, and SVG. It draws on leanblueprint's paper-reading structure and plasTeX approach without forking its Lean-specific data model. Force-directed interaction and traditional layered graphs are implemented locally without embedding an entire note application. Data stays on disk without a database.
 
-Bidirectional AI generation, automatic legacy leanblueprint migration (commented out in the original request), LSP, compiler verification, and multi-user collaboration remain future scope. `complete` is author-assigned status and must be described accordingly in the UI.
+Bidirectional AI generation, automatic legacy leanblueprint migration (commented out in the original request), LSP, Coq verification, and multi-user collaboration remain future scope. The 2026-09-20 extension adds explicit Lean / Agda checks (section 9). `complete` remains author-assigned and independent of verification.
 
 ## 2. Workspace and data contract
 
@@ -61,7 +61,7 @@ A reading fragment starts after its anchor and ends before the next anchor. The 
 
 plasTeX parses a DOM which a controlled adapter converts into paragraphs, headings, theorems, lists, emphasis, references, and mathematics. Local KaTeX renders math in the browser. Supported single-line macro and theorem definitions are retained from the preamble. External execution and file reads are not permitted. Unsupported complex macros, images, and cross-file `\input` produce warnings and allow original source inspection. The initial version is not a full typesetting engine and does not promise compatibility with all arXiv packages. TeX source remains accessible.
 
-Code lookup returns explicitly bound lines or attempts language-specific declaration boundaries: Lean namespaces, Agda top-level signatures, and Coq Definition/Theorem declarations, among others. Uncertain or multiple candidates require an explicit message, never a whole file presented as an exact declaration. Module shorthand resolves against language directories. Special syntax and nonstandard library paths can specify `file` / `lines`. No formal-language compilers are installed by the application.
+Code lookup returns explicitly bound lines or attempts language-specific declaration boundaries: Lean namespaces, Agda top-level signatures, and Coq Definition/Theorem declarations, among others. Uncertain or multiple candidates require an explicit message, never a whole file presented as an exact declaration. Module shorthand resolves against language directories. Special syntax and nonstandard library paths can specify `file` / `lines`. Source navigation never installs compilers; explicit installation is specified in section 11.
 
 ## 4. User interface
 
@@ -126,10 +126,38 @@ Based on the [blueprint granularity guide](../blueprint分级指南.md), groupin
 
 Additional acceptance covers unindexed fallback, subfolders, nested indexes, cross-project dependencies, deduplication, empty files, project cycles, both drill-down highlights, initial/manual scope, and forced all scope at project level.
 
-## 9. Design references
+## 9. Unified verification extension (2026-09-20)
+
+1. `verification.py` defines adapters, an injectable runner, and stage results. Lean builds the bound module and queries its exact environment name. Agda typechecks and resolves exported names, preserving upstream OPTIONS by default (safe: inherit), with explicit required safety audit and optional Cubical mode. Coq returns `unsupported`.
+2. Explicit `verify --workspace PATH [--node ID] [--language LANG] [--timeout SECONDS]` emits JSON. Exit 0 requires every selected binding to pass and no index errors; empty selections do not pass. `check` remains index-only.
+3. `POST /api/verify` requires token/Origin protection and `serve --allow-verification`. A separate single worker accepts five queued/running jobs, queried through `/api/jobs/{id}`. Job success means report generation; inspect `result.status` for check success.
+4. Version 1 `qprint-verification.json` configures multiple projects, source roots, and Agda include/safe/mode settings within language-directory boundaries. Binding syntax is unchanged; `lines` never establishes declaration existence. Explicit verification acquires supported missing exact versions and never accepts arbitrary command configuration.
+5. Separate reports record time, binding, project, policy, source hash, stages, statuses, return codes, and bounded logs. Missing tools, failures, timeouts, unsupported languages, and changed source cannot pass. Never overwrite author progress, reuse cached success, or claim axiom-free proofs or agreement with prose.
+6. Timeout defaults to 120 seconds per stage (1–3600 allowed). No shell, closed stdin, hidden Windows windows, attempted process-tree termination on timeout, and probe cleanup on normal exit. Toolchains may execute project code; this is not an OS sandbox.
+
+Acceptance covers stage success/failure, valid lines with nonexistent names, missing tools, timeouts, Coq/empty selections, configuration/path/probe injection, source changes, API enablement/queues, CLI exit codes, and unchanged author progress. Missing real tools must be recorded as skipped. Full contracts are in [formal verification](formal-verification.en.md).
+
+## 10. Design references
 
 - [leanblueprint](https://github.com/PatrickMassot/leanblueprint): plasTeX blueprint approach.
 - [Sphere Packing](https://thefundamentaltheor3m.github.io/Sphere-Packing-Lean/blueprint/): section tree and paper reader structure.
 - [Sphere Eversion](https://leanprover-community.github.io/sphere-eversion/blueprint/index.html): reader/dependency graph navigation.
 - [nodum](https://github.com/nodummd/nodum): interaction reference; its code was not copied.
 - [plasTeX package documentation](https://plastex.github.io/plastex/plastex/sec-packages.html): custom commands and DOM.
+
+## 11. Managed formal environment extension (2026-09-21)
+
+Gitignored `toolchains/` and `packages/` under Qprint hold versioned compilers and libraries separately. Existing workspaces are not migrated. Lean's `lean-toolchain` is authoritative; Agda pins compiler/packages in `project.yaml`. Declaration roots are discovered when explicit verification configuration is absent; custom source roots retain the existing configuration.
+
+`ToolchainManager` installs/lists/removes artifacts with streaming download, pinned hashes, bounded/path-safe extraction, version checks, managed Agda data setup, receipts, and atomic publication. `FormalProjectResolver` parses native requirements without downloading; verification uses `ToolchainResolver` and a separate artifact provider to acquire missing exact versions and create `FormalExecutionContext`. System fallback is explicit and version-checked, without parent-environment changes. Reports include inspectable environment versions/origins.
+
+Agda uses an isolated registry while retaining native module/library option scope. Mode and infective library options configure probes, never globally force Cubical mode onto primitives. Author progress remains independent. Initial support is Windows x64 Lean 4.19.0, Agda 2.8.0, and Cubical 0.9; Coq/other platforms remain extensions.
+
+`release-manifest.json` defines light/full ZIPs; full explicitly includes installed ignored artifacts and fails if any are absent. Private caches, imported user repositories, and indiscriminate working-tree copies are excluded. Python runtime bundling is not included. Acceptance covers exact resolution, missing/conflicting/system versions, isolated packages/data, atomic installation failure, removal boundaries, Git ignores, both ZIP flavors, real toolchains, missing declarations, and relocated extraction. See [managed toolchains](toolchains.en.md).
+
+
+## Download verification automation (2026-09-22)
+
+GitHub post-download verification defaults on across UI, CLI and API through shared import/service modules. Download publication and verification results are separate; failures retain sources. Opt-out performs no checking. Agda inherit/require/off policy is independent of version resolution: preserve upstream OPTIONS by default and never downgrade explicit require. Reports separate scope, typecheck, safe audit and preparation recovery events.
+
+Preparation uses fixed sources, full commits and applicable SHA-256 checks for bounded HTTP/cache/Windows archive recovery. Native Lake can record acquisition of a verified release; no proof compilation result is fabricated. Unresolved non-version cases go to a fresh [runtime helper](../skills/formalization-runtime-helper/SKILL.md) with restricted Python inspect/recover operations. Version cases use the version helper. Host permissions enforce agent scope; the backend does not launch AI. See [module contracts and limits](formal-resolution.en.md).

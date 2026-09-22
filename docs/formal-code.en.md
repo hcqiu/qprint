@@ -4,6 +4,8 @@
 
 Implementation: [formal.py](../qprint/formal.py). Tests: [test_tex_formal.py](../tests/test_tex_formal.py). This module reads source slices; it does not compile or execute proofs.
 
+The separate [unified verification layer](formal-verification.en.md) provides CLI and opt-in background API checks for Lean / Agda, independent of source slicing and author progress.
+
 ## Binding syntax
 
 Use language fields in a node's `qprint` metadata, for example:

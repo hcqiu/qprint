@@ -6,12 +6,26 @@
 
 ## 系统结构
 
+形式化验证已拆分为项目边界、原生配置解析、artifact 获取、环境组装、语言适配器、进程执行及报告存储；具体职责与调用规则见[项目解析与版本修复](docs/formal-resolution.md)。独立项目入口是 `formal_service.py`，Blueprint 入口仍为 `verification.py`。
+
 ```mermaid
 flowchart TD
     Browser[浏览器：app.js / graph.js] --> API[FastAPI：server.py]
     CLI[CLI：__main__.py] --> WS[Workspace]
     API --> WS
     API --> Jobs[单线程导入队列]
+    API --> VerifyJobs[独立单线程验证队列]
+    CLI --> Verify[verification.py：绑定编排]
+    CLI --> ProjectVerify[formal_service.py：独立项目]
+    VerifyJobs --> Verify
+    Verify --> Resolver[formal_environment.py：环境组装]
+    ProjectVerify --> Resolver
+    Resolver --> Native[formal_projects.py：原生配置与版本证据]
+    Resolver --> Acquire[formal_artifacts.py：固定版本获取]
+    Resolver --> Context[FormalExecutionContext]
+    Context --> Toolchain[toolchains / packages 中的固定环境]
+    Acquire --> Manager[toolchains.py：安装/列出/删除]
+    Manager --> Toolchain
     CLI --> Import[importers.py]
     Jobs --> Import
     Import --> Remote[GitHub / arXiv]
@@ -35,6 +49,8 @@ flowchart TD
 | `graph_index.py`、`static/graph-view.js` | 文件/项目派生数据、颗粒度/范围/下钻状态 | [图谱](docs/graph.md) |
 | `tex.py`、`_tex_worker.py` | 标签、章节、片段与受限渲染 | [TeX](docs/tex-rendering.md) |
 | `formal.py` | 三语言声明定位与源码切片 | [形式化代码](docs/formal-code.md) |
+| `verification.py` | 显式工具链执行、Lean/Agda 适配器、阶段结果、超时与日志 | [形式化验证](docs/formal-verification.md) |
+| `toolchains.py`、`formal_environment.py`、`release.py` | 版本化安装、需求解析、执行上下文、库隔离及 light/full ZIP | [工具链管理](docs/toolchains.md) |
 | `server.py` | HTTP 契约、写入保护、后台任务 | [API](docs/server-api.md) |
 | `static/app.js`、`graph.js`、HTML/CSS | 页面状态、阅读编辑、SVG 布局与交互 | [前端](docs/frontend.md) |
 | `importers.py` | 限额下载、归档校验、暂存发布、来源记录 | [导入器](docs/importers.md) |
@@ -56,9 +72,11 @@ flowchart TD
 
 **编辑保存：**读取原文和 SHA-256 → 客户端提交整份文本及原摘要 → 比较当前版本 → 校验解析结果和大小 → 同目录临时文件 → 再次检查版本 → `os.replace` → 重建索引。它是乐观冲突检测，不是对外部编辑器的操作系统文件锁。
 
-**导入：**API 创建内存任务 → 单工作线程下载并校验 → 工作区内暂存 → 发布新目录/文件 → 刷新索引 → 客户端轮询结果。CLI 同步执行相同导入器；不经过 HTTP 任务队列。
+**导入：**API 创建内存任务 → 单工作线程下载并校验 → 工作区内暂存 → 发布新目录/文件 → 按默认开启的开关准备环境并验证代码 → 刷新索引 → 客户端轮询结果。CLI 同步执行相同导入器；不经过 HTTP 任务队列。
 
 ## 并发与故障隔离
+
+**验证：** CLI 或已启用执行的 POST API → 锁内复制绑定/诊断 → 锁外执行适配器 → 独立 JSON 报告。验证有单独工作线程及五任务队列，不写入节点状态，不缓存成功结果。配置、源码哈希、历史结果与执行信任边界见[验证模块](docs/formal-verification.md)。
 
 `Workspace` 使用进程内 `RLock` 保护索引操作，API 导入任务表使用独立锁。导入执行器只有一个工作线程，最多接受五个排队或运行中的任务。记录不持久化，也没有取消接口。
 

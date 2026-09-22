@@ -8,11 +8,11 @@
 
 ## 1. 目标与边界
 
-Qprint 是以 Markdown blueprint 为核心的本地数学知识库和 proof navigation IDE。TeX 与 Lean / Agda / Coq 都是节点的可选附件，任何一种附件缺失都不影响节点存在。首版交付可运行的 Python 服务、浏览器界面、CLI、示例工程与自动测试。支持浏览、定位、编辑节点原始 Markdown、重建索引和导入资料；不运行下载的代码、不声称自动验证证明。
+Qprint 是以 Markdown blueprint 为核心的本地数学知识库和 proof navigation IDE。TeX 与 Lean / Agda / Coq 都是节点的可选附件，任何一种附件缺失都不影响节点存在。首版交付可运行的 Python 服务、浏览器界面、CLI、示例工程与自动测试。支持浏览、定位、编辑节点原始 Markdown、重建索引和导入资料；阅读不自动运行下载的代码；GitHub 导入默认执行可关闭的下载后验证。显式验证入口见第 9 节。
 
 采用 Python 3.12、FastAPI、plasTeX、原生 ES modules 和 SVG。继承 leanblueprint 的论文阅读结构与 plasTeX 原理，但不直接 fork 其 Lean 专用数据模型。图谱自行实现力导向交互及传统分层模式，避免引入整个笔记应用。数据保留在磁盘，不引入数据库。
 
-AI 双向生成、旧 leanblueprint 自动迁移（原需求已注释）、LSP、编译器验证、多用户协作是后续范围。当前 `complete` 是作者声明状态，界面必须明确说明。
+AI 双向生成、旧 leanblueprint 自动迁移（原需求已注释）、LSP、Coq 验证、多用户协作是后续范围。2026-09-20 增加显式 Lean / Agda 验证（第 9 节）。`complete` 仍是作者声明状态，与验证结果独立。
 
 ## 2. 工作区与数据契约
 
@@ -63,7 +63,7 @@ coq: []
 
 HTML 由 plasTeX 解析 DOM 再通过受控适配器输出段落、标题、定理环境、列表、强调、引用与数学公式；浏览器通过本地 KaTeX 渲染数学。保留论文 preamble 中支持的单行宏定义和定理定义。禁止执行 TeX 外部命令/读取外部文件，复杂宏、图像及跨文件 `\input` 未能在片段渲染时还原的部分给出警告并允许查看原始 TeX；首版不是完整排版引擎，不承诺所有 arXiv 宏包兼容。TeX 原文永远可访问。
 
-代码解析器返回绑定行号对应的源码；未写行号时按语言声明边界尝试定位（Lean namespace、Agda 顶层签名、Coq Definition/Theorem 等），无法确定或存在多个候选时展示明确提示，不能将整个文件当作已定位声明。模块简写通过语言目录的模块路径查找；跨标准库目录和特殊语法可显式配置 `file` / `lines`。不安装 Lean/Agda/Coq 编译器。
+代码解析器返回绑定行号对应的源码；未写行号时按语言声明边界尝试定位（Lean namespace、Agda 顶层签名、Coq Definition/Theorem 等），无法确定或存在多个候选时展示明确提示，不能将整个文件当作已定位声明。模块简写通过语言目录的模块路径查找；跨标准库目录和特殊语法可显式配置 `file` / `lines`。源码导航不安装编译器；显式安装入口见第 11 节。
 
 ## 4. 用户界面
 
@@ -128,10 +128,38 @@ HTML 由 plasTeX 解析 DOM 再通过受控适配器输出段落、标题、定�
 
 验收补充：无索引回退、带子文件夹的项目、嵌套索引、跨项目依赖、引用去重、空文件、项目循环、两级下钻成员高亮、默认/手选范围及项目级强制全范围。
 
-## 9. 设计参考
+## 9. 统一形式化验证扩展（2026-09-20）
+
+1. `verification.py` 提供统一适配器、可注入执行器及阶段结果。Lean 构建绑定模块并查询完整环境声明名；Agda 类型检查并解析导出的名称，默认保留上游 OPTIONS（safe: inherit），可显式 require 安全审计及配置 Cubical；Coq 返回 `unsupported`。
+2. `verify --workspace PATH [--node ID] [--language LANG] [--timeout SECONDS]` 显式执行并输出 JSON。仅全部选中绑定通过且无索引错误时退出 0，空选择不算通过；`check` 仍只检查索引。
+3. `POST /api/verify` 要求 token/Origin 保护和 `serve --allow-verification`；独立单线程接受最多五个排队/运行任务，通过 `/api/jobs/{id}` 查询。任务成功表示生成报告，检查结果读 `result.status`。
+4. `qprint-verification.json` version 1 配置多个语言项目、源码根、Agda include/safe/mode；路径保持语言目录边界。绑定格式不变，`lines` 不能作为声明存在的证据。显式验证自动补齐支持的固定版本，不接受任意命令配置。
+5. 独立报告记录时间、绑定、项目、策略、源码哈希、阶段、状态、退出码和限长日志。工具缺失、失败、超时、未支持或源码变化不可误报通过；不改写节点状态、不复用成功缓存，不声称无公理证明或与论文语义一致。
+6. 每阶段超时默认 120 秒（可选 1–3600 秒）；无 shell、关闭 stdin、Windows 隐藏窗口、超时尝试终止进程树、正常退出清理探针。工具链可能运行项目代码，本层不是操作系统沙箱。
+
+验收覆盖成功/失败阶段、正确行号配错误声明名、工具缺失、超时、Coq/空选择、配置/路径/探针注入保护、源码变化、API 开关与队列、CLI 退出码、作者状态不变。真实工具链缺失必须记录跳过。完整配置和结果契约见[验证模块](formal-verification.md)。
+
+## 10. 设计参考
 
 * [leanblueprint](https://github.com/PatrickMassot/leanblueprint)：plasTeX blueprint 原理。
 * [Sphere Packing](https://thefundamentaltheor3m.github.io/Sphere-Packing-Lean/blueprint/)：章节目录与论文阅读结构。
 * [Sphere Eversion](https://leanprover-community.github.io/sphere-eversion/blueprint/index.html)：阅读与依赖图导航。
 * [nodum](https://github.com/nodummd/nodum)：现代知识图谱交互参考；未复制其代码。
 * [plasTeX package 文档](https://plastex.github.io/plastex/plastex/sec-packages.html)：自定义命令及 DOM。
+
+## 11. 托管形式化环境扩展（2026-09-21）
+
+Qprint 根目录的 `toolchains/` 和 `packages/` 分别保存版本化编译器与依赖库，忽略 Git；不迁移现有工作区。Lean 子项目的 `lean-toolchain` 为唯一版本来源，Agda 优先原生 `.agda-lib`，由 `.qprint-formal.yaml`、兼容 `project.yaml`、lock/recipe 或 README 补充精确版本/库需求。无显式验证配置时自动发现声明根，特殊源码根沿用既有配置。
+
+`ToolchainManager` 显式安装/列出/删除固定目录项；流式下载、固定 SHA-256、解压路径/文件类型/大小校验、版本检查、Agda 托管数据初始化、安装记录和原子发布组成安装契约。`FormalProjectResolver` 负责无下载的原生配置解析；验证时 `ToolchainResolver` 通过独立 artifact provider 自动补齐支持的固定版本，再生成 `FormalExecutionContext`。默认使用精确托管版本；系统回退必须显式开启且满足版本，不影响父进程环境。报告增加可审阅的环境来源及版本。
+
+Agda 使用隔离库清单，保留原生模块/库选项。mode 与库感染性选项进入声明探针，不能全局强制改变内置模块的 Cubical 语义。作者进度保持独立。首批 Windows x64 Lean 4.19.0、Agda 2.8.0 与 Cubical 0.9；Coq/其他平台后续扩展。
+
+`release-manifest.json` 和打包脚本区分 light/full ZIP，full 显式包含 Git 忽略的已安装目录项，缺失即失败；禁止把私有缓存、用户导入仓库或整个工作树无差别装入包。当前不包含 Python 运行时。验收覆盖精确版本选择、缺失/冲突/系统回退、依赖和运行数据隔离、安装失败不发布、删除边界、Git 忽略、两种 ZIP、真实工具链、声明失败及解压到新路径后的验证。详见[工具链文档](toolchains.md)。
+
+
+## 下载验证自动化补充（2026-09-22）
+
+GitHub 下载后验证默认开启，UI、CLI、API 共用 `formal_import.py` 和 `formal_service.py`。发布源码与检查结果分别保存，失败保留源码；关闭开关后不执行验证。Agda 的 `inherit/require/off` 与版本解析独立，默认尊重上游 OPTIONS，显式 require 不自动降级。报告区分检查范围、原生类型检查、安全审计和准备恢复事件。
+
+准备层以固定来源、完整 commit 与适用的 SHA-256 校验为依据，对 HTTP、缓存损坏和 Windows release 解包问题有限恢复；可由原生 Lake 写入已校验 release 的下载收据，不生成或伪造证明编译结果。无法恢复的非版本问题交给独立 [runtime helper](../skills/formalization-runtime-helper/SKILL.md)，只使用受限 Python inspect/recover 操作；版本问题继续交给 version helper。宿主限制实际 agent 权限，后端不自动启动 AI。模块和限制详见[解析文档](formal-resolution.md)。

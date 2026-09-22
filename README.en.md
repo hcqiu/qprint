@@ -6,6 +6,8 @@ A Markdown-centered mathematical knowledge graph and proof navigation IDE. Bluep
 
 The current package version is `0.1.0`. Documentation describes implemented behavior; future work is listed separately in TODO.
 
+**License: free for noncommercial use; commercial use requires separate written authorization.** Personal noncommercial learning, nonprofit education, and academic research are eligible; internal company use, commercial SaaS, commercial product integration, and resale require commercial authorization. Copyright belongs to Haochen Qiu. This is a source-available project. See the [licensing guide](docs/licensing.en.md), [noncommercial license](LICENSE), and [commercial terms](COMMERCIAL-LICENSE.md) for scope and exceptions. Third-party material retains its own licenses.
+
 | Document | Purpose |
 | --- | --- |
 | [PRODUCT.en.md](PRODUCT.en.md) | Product goals, workflows, and boundaries |
@@ -140,7 +142,7 @@ conda run -n qprint python -m qprint import-paper 1603.04246 --dest Geometry --n
 
 The PDF is saved to `pdf/Geometry/Via16SpherePacking.pdf`, with multi-file source under `tex/Geometry/Via16SpherePacking/`, retaining internal paths. The downloader does not insert blueprint markers. Create Markdown and bind nodes to actual source paths afterward.
 
-Existing destinations are not overwritten. Limits are 100 MiB per download and 300 MiB / 10,000 archive entries when extracting. Traversal and link files are rejected. Each imported directory includes `.qprint-source.json` provenance. Missing source, network failures, and exceeded limits produce errors. Background job records last only for the current server process. Downloads do not execute code or install repository dependencies.
+Existing destinations are not overwritten. Limits are 100 MiB per download and 300 MiB / 10,000 archive entries when extracting. Traversal and link files are rejected. Each imported directory includes `.qprint-source.json` provenance. Missing source, network failures, and exceeded limits produce errors. Background job records last only for the current server process. GitHub imports verify after download by default, preparing pinned environments and executing project checks. Uncheck the UI option or use `--no-verify-after-download` to opt out. Failed checks preserve sources and reports.
 
 ## Tests and development
 
@@ -163,4 +165,25 @@ Main modules: `blueprint.py` parses nodes, `workspace.py` builds indexes, `tex.p
 
 ## Current limits
 
-plasTeX rendering supports common paper structures and mathematics but does not replace full LaTeX typesetting. Cross-file `\input`, external images, and complex packages can fall back to source with warnings; multiline macros need further work. Lean / Agda / Coq compilers and LSP are outside the initial scope. Demo code illustrates navigation and has not been compiled as complete formalization projects. Bidirectional AI generation and legacy leanblueprint conversion remain future work from the original requirements.
+plasTeX rendering supports common paper structures and mathematics but does not replace full LaTeX typesetting. Cross-file `\input`, external images, and complex packages can fall back to source with warnings; multiline macros need further work. Qprint can explicitly install managed Lean/Agda toolchains. Coq verification, Lean axiom auditing, and LSP remain unimplemented. Demo code illustrates navigation and has not been compiled as complete formalization projects. Bidirectional AI generation and legacy leanblueprint conversion remain future work from the original requirements.
+
+## Formal verification
+
+For an independent project, use `conda run -n qprint python -m qprint formal verify --project PROJECT --language agda --timeout 600`; all modules are selected by default. Native resolution, automatic installation, timestamped reports and the version helper skill are documented in [project resolution](docs/formal-resolution.en.md).
+
+Since 2026-09-21, compilers/libraries live in gitignored `toolchains/` and `packages/` under Qprint. Projects prefer native configuration, with `.qprint-formal.yaml` filling missing Agda pins. See [managed toolchains](docs/toolchains.en.md) for commands and light/full ZIP packaging. A real verification example is provided:
+
+```powershell
+conda run -n qprint python -m qprint toolchain list
+conda run -n qprint python -m qprint verify --workspace examples/verification
+```
+
+Full ZIPs include the specified formal environment; an existing Python/Conda environment is still required.
+
+The [unified adapter layer](docs/formal-verification.en.md) provides Lean builds/declaration checks and Agda typechecking/name resolution. Coq explicitly returns unsupported. Explicit verification acquires supported missing exact versions unless `--offline` is selected:
+
+```powershell
+conda run -n qprint python -m qprint verify --workspace D:/my-math --language lean
+```
+
+Optional flags include `--node "path#heading"` and `--timeout 180`. JSON results remain separate from author `status`. HTTP uses `POST /api/verify`, enabled through `serve --allow-verification` for trusted workspaces. Reading and saving never trigger verification; GitHub imports verify by default. Agda defaults to `safe: inherit`, preserving upstream OPTIONS; use `formal audit` for explicit safety requirements. See [automatic recovery and helper boundaries](docs/formal-resolution.en.md).

@@ -48,9 +48,11 @@ Node graphs distinguish `uses` from `inspired_by`. File and project graphs aggre
 
 ## Boundaries
 
+Qprint owns compiler installations through a [managed store](docs/toolchains.en.md); projects declare exact requirements. Initial Windows x64 Lean/Agda and Cubical install explicitly. Release manifests distinguish light/full bundles; a standalone Python runtime is not bundled yet.
+
 The current product targets local, single-user use. Reading and graphs use local assets; importing material or refreshing vendored assets requires network access. PDFs are saved as imported resources. The reader centers on TeX fragments and does not provide PDF page navigation.
 
-Qprint does not run Lean / Agda / Coq compilers and has no LSP integration, automated proving, bidirectional AI generation, multi-user collaboration, or legacy leanblueprint converter. `complete` is an author assertion. TeX rendering is not full LaTeX typesetting: cross-file input, external images, complex packages, and multiline macros have limitations, with original source retained on failure.
+Qprint provides explicit [Lean / Agda verification adapters](docs/formal-verification.en.md), with results separate from author-assigned `complete`; reading never runs toolchains; GitHub imports default to optional post-download verification. Coq verification, Lean axiom auditing, LSP, automated proving, bidirectional AI generation, multi-user collaboration, and legacy leanblueprint conversion remain unimplemented. TeX rendering is not full LaTeX typesetting: cross-file input, external images, complex packages, and multiline macros have limitations, with original source retained on failure.
 
 Graph grouping requires no migration or Project / Milestone metadata. External edits require a manual refresh. Import job history disappears on server restart. No large-graph performance guarantee has been established.
 

@@ -35,15 +35,17 @@ def test_repository_default_branch_nested_code_license_and_no_overwrite(tmp_path
     calls = []
     def download(url):
         calls.append(url)
+        if "/commits/" in url:
+            return json.dumps({"sha": "a" * 40}).encode()
         if "api.github.com" in url:
             return json.dumps({"default_branch": "main"}).encode()
         return zip_bytes({"repo-main/Topology/Test.agda": "module Test where", "repo-main/LICENSE": "License"})
-    result = import_code(tmp_path, "https://github.com/test/repo", "agda", "serre-finiteness", downloader=download)
+    result = import_code(tmp_path, "https://github.com/test/repo", "agda", "serre-finiteness", downloader=download, verify_after_download=False)
     assert result["files"] == 2
     assert (tmp_path / "agda/serre-finiteness/Topology/Test.agda").exists()
     assert (tmp_path / "agda/serre-finiteness/LICENSE").exists()
     assert (tmp_path / "agda/serre-finiteness/.qprint-source.json").exists()
-    assert len(calls) == 2
+    assert len(calls) == 3 and calls[-1].endswith("a" * 40)
     with pytest.raises(WorkspaceError):
         import_code(tmp_path, "https://github.com/test/repo", "agda", "serre-finiteness", downloader=download)
 
@@ -119,5 +121,5 @@ def test_download_rejects_offsite_redirect_and_large_body(monkeypatch):
         importers.fetch("https://arxiv.org/pdf/2001.00001")
     monkeypatch.setattr(importers, "MAX_DOWNLOAD", 5)
     monkeypatch.setattr(importers.httpx, "Client", lambda **kwargs: original_client(transport=httpx.MockTransport(lambda request: httpx.Response(200, content=b"123456")), **kwargs))
-    with pytest.raises(WorkspaceError, match="100 MiB"):
+    with pytest.raises(WorkspaceError, match="byte limit"):
         importers.fetch("https://arxiv.org/pdf/2001.00001")

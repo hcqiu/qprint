@@ -4,6 +4,8 @@
 
 实现：[formal.py](../qprint/formal.py)。测试：[test_tex_formal.py](../tests/test_tex_formal.py)。本模块读取源码片段，不编译或执行证明。
 
+工具链检查由独立的[统一形式化验证适配层](formal-verification.md) 提供，通过 CLI 或显式启用的后台 API 检查 Lean / Agda，不依据源码切片判断声明存在，也不修改作者进度。
+
 ## 绑定写法
 
 在节点 `qprint` 元数据中填写语言字段，例如：

@@ -29,16 +29,21 @@ conda run -n qprint python -m pip install -e . --no-deps
 
 ## CLI
 
+新增 `toolchain list|install|remove [目录项ID] [--home PATH]`，安装可用 `--archive ZIP`；`verify`/`serve` 支持 `--toolchain-home` 和显式 `--allow-system-toolchains`。`start.ps1` 对应 `-ToolchainHome`、`-AllowVerification`、`-AllowSystemToolchains`。没有 demo 的发行包默认使用 `examples/verification`。完整安装与 `scripts/build-release.ps1 [-Full]` 契约见[工具链管理](toolchains.md)。
+
 | 命令 | 参数与行为 |
 | --- | --- |
 | `serve` | `--workspace PATH`、`--port 8765`；要求工作区存在，绑定 127.0.0.1 |
 | `check` | `--workspace PATH`；输出 JSON 诊断，有 error 退出 1，否则 0 |
+| `verify` | `--workspace PATH`；可选 `--node`、`--language`、`--timeout`；显式运行工具链，全部通过才退出 0 |
 | `import-code URL` | 必填 `--language`、`--dest`；可选 `--ref`、`--workspace` |
 | `import-paper ID` | 必填 `--dest`、`--name`；可选 `--workspace` |
 
 统一前缀为 `conda run -n qprint python -m qprint`。默认工作区相对当前目录为 `examples/demo`。导入同步输出 JSON 或失败信息；`serve` 是持续运行进程。入口安装后也提供 `qprint` 命令，但仓库示例统一使用模块调用。
 
 ## 自动验证
+
+`serve --allow-verification` 为可信工作区启用后台验证 API。编译器可通过仓库内 manager 显式安装，配置和结果边界见[形式化验证](formal-verification.md)。`test_verification.py` 覆盖适配器、执行器和 API，真实工具链缺失时明确跳过。
 
 ```powershell
 conda run -n qprint pytest -q

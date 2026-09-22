@@ -96,7 +96,8 @@ def test_cycles_are_preserved(tmp_path):
 
 @pytest.mark.parametrize("failure", [False, True])
 def test_background_import_lifecycle(client, monkeypatch, failure):
-    def run(*args):
+    def run(*args, **kwargs):
+        assert kwargs["verify_after_download"] is True
         if failure:
             raise WorkspaceError("test network failure")
         return {"files": 2, "path": "lean/test"}
@@ -117,3 +118,18 @@ def test_static_resources_are_local_and_served(client):
     assert client.get("/").status_code == 200
     for asset in ["app.js", "graph.js", "graph-view.js", "style.css", "vendor/katex/katex.min.js", "vendor/katex/auto-render.min.js", "vendor/katex/fonts/KaTeX_Main-Regular.woff2"]:
         assert client.get(f"/static/{asset}").status_code == 200
+
+
+def test_import_optout_passed_to_backend(client, monkeypatch):
+    def run(*args, **kwargs):
+        assert kwargs["verify_after_download"] is False
+        return {"verification": {"status": "not_run"}}
+    monkeypatch.setattr("qprint.server.import_code", run)
+    response = client.post("/api/import", json={"kind": "code", "source": "https://github.com/example/repo",
+                                               "dest": "test", "language": "lean", "verify_after_download": False})
+    for _ in range(100):
+        job = client.get('/api/jobs/' + response.json()["id"]).json()
+        if job["status"] in {"failed", "succeeded"}:
+            break
+        time.sleep(.01)
+    assert job["status"] == "succeeded" and job["result"]["verification"]["status"] == "not_run"

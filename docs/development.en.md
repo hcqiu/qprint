@@ -29,6 +29,10 @@ conda run -n qprint python -m pip install -e . --no-deps
 
 ## CLI
 
+`toolchain list|install|remove [artifact-id] [--home PATH]` manages local artifacts; installation accepts `--archive ZIP`. `verify`/`serve` add `--toolchain-home` and explicit `--allow-system-toolchains`. Startup script equivalents are `-ToolchainHome`, `-AllowVerification`, and `-AllowSystemToolchains`. Releases without the navigation demo default to `examples/verification`. Installation and `scripts/build-release.ps1 [-Full]` are documented under [toolchains](toolchains.en.md).
+
+`verify --workspace PATH [--node ID] [--language LANG] [--timeout SECONDS]` explicitly runs installed toolchains and exits 0 only when all selected checks pass. `serve --allow-verification` enables the background API for trusted workspaces. See [formal verification](formal-verification.en.md) for configuration and result boundaries. `test_verification.py` covers adapters, the runner, and API; real toolchain checks skip explicitly when tools are missing.
+
 | Command | Arguments and behavior |
 | --- | --- |
 | `serve` | `--workspace PATH`, `--port 8765`; requires an existing workspace and binds 127.0.0.1 |

@@ -5,3 +5,8 @@ __pycache__/
 .qprint/
 build/
 dist/
+/toolchains/
+/packages/
+.lake/
+_build/
+*.agdai

@@ -117,6 +117,16 @@ class Workspace:
         text = read_text(safe)
         return {"path": path, "text": text, "revision": revision(text)}
 
+    def verification_bindings(self, node_id: str | None = None, language: str | None = None):
+        """Snapshot bindings only; compiler work must run outside the index lock."""
+        from copy import deepcopy
+        with self.lock:
+            if node_id is not None and node_id not in self.nodes:
+                raise KeyError(node_id)
+            nodes = [self.nodes[node_id]] if node_id is not None else self.nodes.values()
+            return [dict(deepcopy(binding), node_id=node.id) for node in nodes
+                    for binding in node.bindings if language is None or binding["language"] == language]
+
     def save_document(self, path: str, text: str, expected: str):
         with self.lock:
             safe = safe_path(self.root, f"blueprint/{path}")

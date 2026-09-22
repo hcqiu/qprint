@@ -6,12 +6,26 @@ This document covers `0.1.0` and the graph granularity extension. Qprint consist
 
 ## System structure
 
+Formal verification separates project boundaries, native requirements, artifact acquisition, environment assembly, language adapters, process execution and report storage. See [project resolution](docs/formal-resolution.en.md) for responsibilities. `formal_service.py` handles independent projects; `verification.py` retains the Blueprint entry point.
+
 ```mermaid
 flowchart TD
     Browser[Browser: app.js / graph.js] --> API[FastAPI: server.py]
     CLI[CLI: __main__.py] --> WS[Workspace]
     API --> WS
     API --> Jobs[Single-worker import queue]
+    API --> VerifyJobs[Separate single-worker verification queue]
+    CLI --> Verify[verification.py: binding orchestration]
+    CLI --> ProjectVerify[formal_service.py: independent projects]
+    VerifyJobs --> Verify
+    Verify --> Resolver[formal_environment.py: environment assembly]
+    ProjectVerify --> Resolver
+    Resolver --> Native[formal_projects.py: native configuration and evidence]
+    Resolver --> Acquire[formal_artifacts.py: exact artifact acquisition]
+    Resolver --> Context[FormalExecutionContext]
+    Context --> Toolchain[Pinned toolchains / packages]
+    Acquire --> Manager[toolchains.py: install/list/remove]
+    Manager --> Toolchain
     CLI --> Import[importers.py]
     Jobs --> Import
     Import --> Remote[GitHub / arXiv]
@@ -35,6 +49,8 @@ The browser retrieves data through same-origin APIs and renders mathematics usin
 | `graph_index.py`, `static/graph-view.js` | Derived file/project data and granularity/scope/drill-down state | [Graphs](docs/graph.en.md) |
 | `tex.py`, `_tex_worker.py` | Anchors, sections, fragments, bounded rendering | [TeX](docs/tex-rendering.en.md) |
 | `formal.py` | Declaration lookup and source slices for three languages | [Formal code](docs/formal-code.en.md) |
+| `verification.py` | Explicit execution, Lean/Agda adapters, stage results, timeouts, and logs | [Formal verification](docs/formal-verification.en.md) |
+| `toolchains.py`, `formal_environment.py`, `release.py` | Versioned installs, requirements, contexts, package isolation, light/full ZIPs | [Toolchains](docs/toolchains.en.md) |
 | `server.py` | HTTP contracts, write protection, background jobs | [API](docs/server-api.en.md) |
 | `static/app.js`, `graph.js`, HTML/CSS | Page state, reading/editing, SVG layout and interaction | [Frontend](docs/frontend.en.md) |
 | `importers.py` | Bounded downloads, archive validation, staged publication, provenance | [Importers](docs/importers.en.md) |
@@ -56,9 +72,11 @@ The name in `/api/project` refers to the whole workspace; `graph.projects` conta
 
 **Save an edit:** retrieve source and SHA-256 → submit the entire text and original hash → compare the current revision → validate parsing and size → write a sibling temporary file → recheck the revision → `os.replace` → rebuild indexes. This is optimistic conflict detection, not an operating-system lock on external editors.
 
-**Import:** create an in-memory API job → download and validate in one worker → stage inside the workspace → publish new files/directories → refresh indexes → poll results from the browser. The CLI runs the same importers synchronously without the HTTP job queue.
+**Import:** create an in-memory API job → download and validate in one worker → stage inside the workspace → publish new files/directories → prepare and verify code when the default-on switch is enabled → refresh indexes → poll results from the browser. The CLI runs the same importers synchronously without the HTTP job queue.
 
 ## Concurrency and failure isolation
+
+**Verification:** CLI or execution-enabled POST API → snapshot bindings/diagnostics under the lock → run adapters outside the lock → separate JSON report. Verification has its own single worker and five-job queue, never writes author progress, and does not cache successes. Configuration, source hashes, historical results, and execution trust boundaries are documented in the [verification module](docs/formal-verification.en.md).
 
 `Workspace` uses an in-process `RLock` for index operations. The API job table has a separate lock. The import executor has one worker and accepts at most five queued or running jobs. Job records are not persisted, and there is no cancellation endpoint.
 

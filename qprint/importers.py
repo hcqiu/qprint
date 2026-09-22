@@ -1,6 +1,7 @@
 """Bounded downloads, validated archives and non-overwriting publication."""
 from datetime import datetime, timezone
 import gzip
+import hashlib
 import io
 import json
 from pathlib import Path
@@ -15,6 +16,9 @@ import zipfile
 import httpx
 
 from .paths import WorkspaceError, safe_path
+from .formal_progress import with_progress, update
+from .formal_downloads import fetch_bytes, recording
+from .formal_preparation import record_preparation, preparation_summary
 
 MAX_DOWNLOAD = 100 * 1024 * 1024
 MAX_EXPANDED = 300 * 1024 * 1024
@@ -23,23 +27,7 @@ HOSTS = {"api.github.com", "codeload.github.com", "github.com", "arxiv.org", "ex
 
 
 def fetch(url: str) -> bytes:
-    with httpx.Client(timeout=60, follow_redirects=False, headers={"User-Agent": "Qprint/0.1 (local research workspace)"}) as client:
-        for _ in range(6):
-            parsed = urlparse(url)
-            if parsed.scheme != "https" or parsed.hostname not in HOSTS or parsed.username or parsed.port not in {None, 443}:
-                raise WorkspaceError("下载地址或重定向不在允许的 HTTPS 来源范围内")
-            with client.stream("GET", url) as response:
-                if response.is_redirect:
-                    url = urljoin(url, response.headers["location"])
-                    continue
-                response.raise_for_status()
-                output = bytearray()
-                for chunk in response.iter_bytes():
-                    output.extend(chunk)
-                    if len(output) > MAX_DOWNLOAD:
-                        raise WorkspaceError("下载超过 100 MiB 限制")
-                return bytes(output)
-        raise WorkspaceError("下载重定向次数过多")
+    return fetch_bytes(url, limit=MAX_DOWNLOAD, hosts=HOSTS)
 
 
 def extract_archive(data: bytes, destination: Path, strip_root: bool = False) -> list[str]:
@@ -118,9 +106,17 @@ def provenance(folder: Path, info: dict):
     target.write_text(json.dumps({**info, "downloaded_at": datetime.now(timezone.utc).isoformat()}, indent=2), encoding="utf-8")
 
 
-def import_code(root: Path, url: str, language: str, dest: str, ref: str | None = None, downloader=fetch):
+@with_progress
+@record_preparation
+def import_code(root: Path, url: str, language: str, dest: str, ref: str | None = None, downloader=fetch,
+                *, verify_after_download=True, timeout=600, toolchain_home=None, offline=False,
+                verifier=None, on_phase=None, on_progress=None):
     if language not in {"lean", "agda", "coq"}:
         raise WorkspaceError("语言必须是 lean、agda 或 coq")
+    if type(verify_after_download) is not bool:
+        raise WorkspaceError("verify_after_download must be boolean")
+    if on_phase:
+        on_phase("downloading")
     match = re.fullmatch(r"https://github\.com/([\w.-]+)/([\w.-]+?)(?:\.git)?/?", url.strip())
     if not match:
         raise WorkspaceError("请输入 GitHub 仓库根地址，分支请填写在 ref 中")
@@ -133,20 +129,46 @@ def import_code(root: Path, url: str, language: str, dest: str, ref: str | None 
         ref = info.get("default_branch")
     if not isinstance(ref, str) or not re.fullmatch(r"[\w./-]+", ref) or ".." in ref:
         raise WorkspaceError("无效的仓库 ref")
-    data = downloader(f"https://codeload.github.com/{owner}/{repo}/zip/{quote(ref, safe='')}")
+    commit = json.loads(downloader(f"https://api.github.com/repos/{owner}/{repo}/commits/{quote(ref, safe='')}" )).get("sha")
+    if not isinstance(commit, str) or not re.fullmatch(r"[0-9a-f]{40}", commit):
+        raise WorkspaceError("GitHub did not resolve the ref to a fixed commit")
+    data = downloader(f"https://codeload.github.com/{owner}/{repo}/zip/{commit}")
     root.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix=".qprint-import-", dir=root) as temp:
         stage = Path(temp) / "code"
         stage.mkdir()
+        update("extract-source", "正在解压项目源码")
         files = extract_archive(data, stage, strip_root=True)
         if not files:
             raise WorkspaceError("仓库归档没有文件")
-        provenance(stage, {"type": "github", "url": url, "ref": ref})
+        provenance(stage, {"type": "github", "url": url, "ref": ref, "revision": commit,
+                           "sha256": hashlib.sha256(data).hexdigest()})
         target.parent.mkdir(parents=True, exist_ok=True)
         if target.exists():
             raise WorkspaceError("目标已存在")
         stage.rename(target)
-    return {"path": target.relative_to(root).as_posix(), "files": len(files), "ref": ref}
+    result = {"path": target.relative_to(root).as_posix(), "files": len(files), "ref": ref, "revision": commit,
+              "verification": {"status": "not_run", "reason": "disabled", "reports": []}}
+    if verify_after_download:
+        from .formal_import import verify_download
+        if on_phase:
+            on_phase("verifying")
+        update("resolve", "正在识别项目与解析固定环境")
+        try:
+            result["verification"] = (verifier or verify_download)(target, language, timeout=timeout,
+                                                                  toolchain_home=toolchain_home, offline=offline)
+        except Exception as exc:
+            # Import publication is retained even if compiler preparation fails.
+            from .formal_reports import failure_report
+            verification = {"status": "error", "message": str(exc), "reports": []}
+            try:
+                report = failure_report(target, language, exc, home=toolchain_home, timeout=timeout, offline=offline)
+                verification["reports"] = [{key: report[key] for key in ("project", "status", "message", "report_path", "diagnosis")}]
+            except Exception as report_error:
+                verification["report_error"] = f"无法保存验证报告：{report_error}"
+            result["verification"] = verification
+    result["download_preparation"] = preparation_summary(None)
+    return result
 
 
 def arxiv_id(value: str) -> str:

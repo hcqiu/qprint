@@ -48,9 +48,11 @@ Qprint 是以 Markdown 为中心的数学知识库和证明导航工具。它把
 
 ## 产品边界
 
+Qprint 通过[仓库内工具链存储](docs/toolchains.md)管理编译器，子项目声明精确环境。首批 Windows x64 Lean/Agda 与 Cubical 可显式安装，Release 清单区分轻量/full 包；尚不包含独立 Python 运行时。
+
 当前面向本机、单用户使用。正常阅读与图谱使用本地资源；导入资料及重新获取前端供应商资源需要网络。PDF 是导入保存的资料，现有阅读视图以 TeX 片段为中心，没有 PDF 页码定位功能。
 
-应用不执行 Lean / Agda / Coq 编译，也没有 LSP、自动证明、AI 双向生成、多用户协作或旧 leanblueprint 转换器。`complete` 由作者声明。TeX 渲染不是完整 LaTeX 排版：跨文件输入、外部图像、复杂宏包和多行宏存在限制，失败时保留原文。
+应用提供显式调用的[Lean / Agda 验证适配层](docs/formal-verification.md)，结果独立于作者声明的 `complete`；不会在阅读或导入时运行工具链。Coq 验证、Lean 公理审计、LSP、自动证明、AI 双向生成、多用户协作和旧 leanblueprint 转换器尚未实现。TeX 渲染不是完整 LaTeX 排版：跨文件输入、外部图像、复杂宏包和多行宏存在限制，失败时保留原文。
 
 图谱分级不要求迁移文件或添加 Project / Milestone 元数据。外部文件修改需手动刷新；导入任务记录在服务重启后清空。尚无大规模图谱性能承诺。
 

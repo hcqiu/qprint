@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "artifacts": {
+    "lean-4.19.0-windows-x64": {
+      "kind": "toolchain",
+      "language": "lean",
+      "version": "4.19.0",
+      "platform": "windows-x64",
+      "path": "lean/4.19.0",
+      "url": "https://github.com/leanprover/lean4/releases/download/v4.19.0/lean-4.19.0-windows.zip",
+      "sha256": "2c197a74b6d9c4d46363e34e06591165ed848237ba66de849f8b8d5539eb3895",
+      "strip_prefix": "lean-4.19.0-windows",
+      "executables": {"lean": "bin/lean.exe", "lake": "bin/lake.exe"}
+    },
+    "agda-2.8.0-windows-x64": {
+      "kind": "toolchain",
+      "language": "agda",
+      "version": "2.8.0",
+      "platform": "windows-x64",
+      "path": "agda/2.8.0",
+      "url": "https://github.com/agda/agda/releases/download/v2.8.0/Agda-v2.8.0-win64.zip",
+      "sha256": "5c97846c45dc8c43d79a5df3cc78ccf58bad710aac2182b70c4f5ede30af3cbc",
+      "subdir": "bin",
+      "bundled_license": "toolchain-licenses/agda-2.8.0.txt",
+      "executables": {"agda": "bin/agda.exe"}
+    },
+    "cubical-0.9": {
+      "kind": "package",
+      "language": "agda",
+      "name": "cubical",
+      "version": "0.9",
+      "revision": "b150186d2544e7efeddd31e5d14a8b9ecbb100f7",
+      "path": "agda/cubical/b150186d2544e7efeddd31e5d14a8b9ecbb100f7",
+      "url": "https://codeload.github.com/agda/cubical/zip/b150186d2544e7efeddd31e5d14a8b9ecbb100f7",
+      "sha256": "dfb312e85cd321a8d9460ec47d41c64101fed421fa426eb2bdeada7a3b8342e6",
+      "strip_prefix": "cubical-b150186d2544e7efeddd31e5d14a8b9ecbb100f7",
+      "include_paths": ["."],
+      "library_file": "cubical.agda-lib",
+      "flags": ["--guardedness"]
+    }
+  }
+}

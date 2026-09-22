@@ -4,6 +4,51 @@
 
 The following records describe checks executed on their stated dates. This bilingual documentation update does not rerun or reassert those business tests. v1 means the initial product scope; the Python package version is `0.1.0`.
 
+## 2026-09-22: FLT3 reports and legacy toolchains
+
+The downloader reproduced the missing legacy release digest failure; the original report existed but had no browser entry point. Added readable/downloadable persistent reports, explicit exception/storage failures, legacy compiler acquisition, Lake name/Git metadata and cache-directory compatibility. FLT3 native default targets passed with original source/configuration hashes preserved. See the [FLT3 experiment](flt3-experiment.en.md). Full Python suite: **216 passed**, with two existing warnings; Node: **12 passed**. Clicking an actual history report in the browser displayed its error and diagnosis.
+
+## 2026-09-22: sphere-eversion wait investigation
+
+The production downloader reproduced the same pinned commit. After correcting the newer ProofWidgets release strategy, native mathlib cache preparation and `lake build` passed. Selected sources/configuration stayed unchanged; scope was native default targets with no additional safety audit. See the [experiment record](sphere-eversion-experiment.en.md) for reports and timings.
+
+Added request-local progress, download bytes/extraction counts, build activity and elapsed time. Full Python suite: **184 passed**, with two existing dependency deprecations. Node frontend tests: **10 passed**. Coverage includes running API snapshots, unknown totals, failing observers, subprocess timeout and both ProofWidgets strategies. This turn validated frontend formatting and API behavior through tests, without claiming another browser-interaction acceptance run. The user's existing server was not restarted.
+
+## 2026-09-22: post-download verification and restricted recovery
+
+Full pytest in Conda `qprint`: **176 passed**, with two existing FastAPI/Starlette deprecation warnings. Coverage includes policies, native entries, resume/integrity, archive boundaries, pinned sources, cache repair, release receipts, helper scope/retry limits, source/configuration changes and API/CLI import switches. The runtime skill passed quick_validate.
+
+Real Agda 2.8.0 respected inherit/require/off. TypeTopology's upstream `AllModulesIndex.lagda` passed under inherit in about 566 seconds, without an extra safe audit. A fresh Lean topology import acquired nine locked dependencies; after fixing Windows release receipts, a fresh runtime helper replay passed native Lake default targets. It reused 7740 existing official cache objects, not a cold-cache benchmark. An independent minimal-context skill fixture also completed real Lean checking. See [experiment reports](external-topology-experiment.en.md).
+
+Browser checks confirmed default-on, opt-out and hiding the option for papers. Archive comparisons confirmed unchanged original 5 Lean / 996 Agda sources and fresh Lean sources/native configuration. Download, checking and safety results remain separate; universal upstream success is not guaranteed. The full Release was not rebuilt; its manifest now includes the runtime skill.
+
+## 2026-09-21: managed local formal environments
+
+The subsequent modular extension passed 136 regressions and a fresh-agent version-repair experiment with all 35 serre-finiteness modules passing. See [experiment record](serre-finiteness-experiment.en.md). The following 115-test and ZIP results belong to the earlier phase.
+
+Installed in gitignored stores: Lean 4.19.0, Agda 2.8.0, and Cubical 0.9 pinned to `b150186d2544e7efeddd31e5d14a8b9ecbb100f7`. Existing imported material was not moved. Added manager/resolver/context, project requirements, receipts, and explicit light/full release manifests.
+
+Executed `conda run -n qprint pytest -q --basetemp D:/Qprint_v2/.qprint/tests-toolchain-release-final --tb=short`: **115 passed, 2 warnings, no skips**, 6.85 seconds. The existing dependency deprecations remain. Coverage includes exact versions, floating/conflicting/rc rejection, explicit PATH fallback, isolated Agda libraries/data, hashes/archives/atomic installs/removal, discovery, ZIP input rules, and real compilers.
+
+`conda run -n qprint python -m qprint verify --workspace examples/verification` passed Lean build/environment lookup and Agda/Cubical typechecking/declaration probes. Real missing-declaration tests failed as expected. Initial global Cubical flags broke primitive full/erased mode boundaries; native library scope is now preserved, mode is assigned to probes, and all interfaces are rechecked. The example regression passes.
+
+Built an approximately 502 MB full test ZIP and extracted it into `.qprint/relocated full environment/Qprint`. Both languages verified successfully using the extracted code; compiler/include paths all pointed inside the new directory. The archive used the existing Conda environment and did not bundle Python. Git ignore checks passed for compilers/Cubical, and local links in 36 Markdown documents passed. No frontend changes were made. See [toolchains](toolchains.en.md) for installation, relocation, and packaging boundaries.
+
+## 2026-09-20: unified formal verification adapters
+
+Added Lean / Agda adapters, unified stage reports, CLI, opt-in background API, project configuration, process timeouts, and bounded returned logs. Author progress remains separate; Coq explicitly returns unsupported.
+
+Executed:
+
+```powershell
+conda run -n qprint pytest -q --basetemp D:/Qprint_v2/.qprint/tests-verification-final --tb=short
+conda run -n qprint python -m qprint verify --workspace examples/demo --language agda
+```
+
+Python results: **85 passed, 2 skipped, 2 warnings**, 1.73 seconds. New coverage includes command/probe construction, failed-stage short circuiting, valid lines with nonexistent declarations, missing tools, timeouts, bounded logs, configuration/path restrictions, probe injection, source changes, API token/Origin/enablement/queues, CLI exit codes, and unchanged author progress. The two dependency deprecations match the historical record.
+
+The local Conda environment has no `lake`, `lean`, or `agda`; two real-toolchain tests skipped. This run does not establish compilation of real Lean/Agda projects. CLI smoke correctly returned `incomplete` / `unavailable`, exit 1. Verification reports now use ASCII JSON escapes to avoid Windows Conda capture encoding failures; decoded names and diagnostics are unchanged. There were no frontend changes or browser acceptance checks in this extension. See [formal verification](formal-verification.en.md) for capabilities and limitations.
+
 ## 2026-09-20: blueprint granularity extension
 
 The [blueprint granularity guide](../blueprint分级指南.md) was implemented with node / Milestone / project levels and all / current-project scope. No grouping fields were added to the stored node format; groups derive from index Markdown and directories.
