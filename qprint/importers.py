@@ -31,6 +31,7 @@ def fetch(url: str) -> bytes:
 
 
 def extract_archive(data: bytes, destination: Path, strip_root: bool = False) -> list[str]:
+    destination = destination.resolve()
     records = []
     expanded_size = 0
     if zipfile.is_zipfile(io.BytesIO(data)):
@@ -206,10 +207,19 @@ def extract_source(data: bytes, stage: Path, name: str):
 
 
 def import_paper(root: Path, source: str, dest: str, name: str, downloader=fetch):
+    root = root.resolve()
     identifier = arxiv_id(source)
     if "/" in name or not name:
         raise WorkspaceError("论文名必须是不含目录的 basename")
-    prefix = f"{dest}/" if dest else ""
+    safe_path(root, f"tex/{name}")
+    if dest:
+        safe_path(root, f"tex/{dest}")
+    # The UI accepts a project directory as well as its parent category.
+    # Do not append the paper basename twice when it is already the last part.
+    parent = dest
+    if dest and dest.rsplit("/", 1)[-1].casefold() == name.casefold():
+        parent = dest.rpartition("/")[0]
+    prefix = f"{parent}/" if parent else ""
     pdf_target = safe_path(root, f"pdf/{prefix}{name}.pdf")
     tex_target = safe_path(root, f"tex/{prefix}{name}")
     if pdf_target.exists() or tex_target.exists():
@@ -226,18 +236,26 @@ def import_paper(root: Path, source: str, dest: str, name: str, downloader=fetch
         files = extract_source(source_data, tex_stage, name)
         if not any(p.lower().endswith(".tex") for p in files):
             raise WorkspaceError("arXiv 源码归档中没有 TeX 文件")
-        provenance(tex_stage, {"type": "arxiv", "id": identifier})
+        # Some source archives wrap all files in a redundant directory. Preserve
+        # the actual paper tree and relative includes while discarding wrappers.
+        source_root = tex_stage
+        while True:
+            children = list(source_root.iterdir())
+            if len(children) != 1 or not children[0].is_dir():
+                break
+            source_root = children[0]
+        provenance(source_root, {"type": "arxiv", "id": identifier})
         pdf_stage = stage / "paper.pdf"
         pdf_stage.write_bytes(pdf)
         tex_target.parent.mkdir(parents=True, exist_ok=True)
         pdf_target.parent.mkdir(parents=True, exist_ok=True)
         if pdf_target.exists() or tex_target.exists():
             raise WorkspaceError("导入期间目标已被创建")
-        tex_stage.rename(tex_target)
+        source_root.rename(tex_target)
         try:
             pdf_stage.rename(pdf_target)
         except Exception:
             # Roll back only the directory that this operation just published.
-            tex_target.rename(tex_stage)
+            tex_target.rename(source_root)
             raise
     return {"pdf": pdf_target.relative_to(root).as_posix(), "tex": tex_target.relative_to(root).as_posix(), "files": len(files), "id": identifier}

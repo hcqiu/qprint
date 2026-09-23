@@ -2,7 +2,7 @@
   "schema_version": 1,
   "version": "0.1.0",
   "source_paths": [
-    "qprint", "docs", "examples/verification", "tools", "tests", "skills/formalization-version-helper", "skills/formalization-runtime-helper",
+    "qprint", "docs", "examples/verification", "tools", "tests", "skills/formalization-version-helper", "skills/formalization-runtime-helper", "skills/tex-to-blueprint",
     "scripts/build-release.ps1", "release-manifest.json", "pyproject.toml",
     "requirements-lock.txt", "LICENSE", "COMMERCIAL-LICENSE.md", "THIRD-PARTY-NOTICES.md", "README.md", "README.en.md", "ARCHITECTURE.md",
     "ARCHITECTURE.en.md", "PRODUCT.md", "PRODUCT.en.md", "TODO.md", "TODO.en.md",

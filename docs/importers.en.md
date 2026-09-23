@@ -67,3 +67,7 @@ After source download, a first run may still acquire a compiler of several hundr
 ## Opening failure reports
 
 Import results show each project's status, error, readable report link and full JSON download. “查看历史验证报告” reads the latest 30 reports from the current workspace on disk, including after server restart. Plain report paths remain available for helper handoff. Unexpected discovery/verification exceptions produce failure reports where possible; storage failures expose `report_error` instead of referring to a nonexistent report. One project's exception does not discard other results in a multi-project repository.
+
+## Paper destination normalization
+
+A destination may name the parent category (`Topology`) or the paper project (`Topology/Lin20K3`) with `--name Lin20K3`; both publish to `tex/Topology/Lin20K3/` and `pdf/Topology/Lin20K3.pdf`. A matching final directory component is not appended twice (case-insensitive). A source archive containing only an enclosing directory has that wrapper removed; relative paths inside the paper are preserved, and archives with multiple root entries remain intact. Existing targets are still never overwritten.

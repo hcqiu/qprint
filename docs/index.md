@@ -26,6 +26,7 @@
 | [工作区](workspace.md) | 文件布局、路径、索引、诊断和保存 | [Workspace](workspace.en.md) |
 | [知识图谱](graph.md) | 项目识别、引用聚合、范围和下钻 | [Graphs](graph.en.md) |
 | [TeX 渲染](tex-rendering.md) | 标签、章节、片段、渲染和回退 | [TeX rendering](tex-rendering.en.md) |
+| [TeX → Blueprint](tex-to-blueprint.md) | 标注、生成脚本、review 与真实论文测试 | [TeX → Blueprint](tex-to-blueprint.en.md) |
 | [形式化代码](formal-code.md) | Lean / Agda / Coq 绑定与定位 | [Formal code](formal-code.en.md) |
 | [形式化验证](formal-verification.md) | 统一适配器、Lean/Agda 检查、配置及执行边界 | [Formal verification](formal-verification.en.md) |
 | [工具链管理](toolchains.md) | 仓库内安装、项目需求、依赖解析及 Release 打包 | [Managed toolchains](toolchains.en.md) |

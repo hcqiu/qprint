@@ -27,15 +27,19 @@ Place markers before content and outside theorem or other environments. `tex: To
 
 `TexDocument(path, source)` exposes `preamble`, `anchors`, `sections`, and `diagnostics`. Scanning masks comments, verbatim/lstlisting/minted environments, and `\verb` content while preserving offsets and line numbers. Anchors before the document body are excluded.
 
-Labels must be unique within a file. `fragment(label)` returns content after that marker and before the next marker, stopping at `\end{document}`. Missing or duplicated labels return no fragment. Splitting one theorem internally with markers does not preserve a complete environment.
+Repeated labels within a file are supported for statements and separated proofs. `fragment(label)` joins matching fragments in source order; each stops at the next marker, section heading, bibliography, or `\end{document}`. Only missing labels return no fragment. `fragments(label)` exposes the individual parts; `annotations(label)` collects all `\bpdesc` descriptions and deduplicated `\uses` labels. Arguments support balanced nested braces. Splitting one theorem internally with markers does not preserve a complete environment.
 
 Section indexing supports chapter, section, subsection, and subsubsection, including starred forms. The workspace links each section to its first subsequent bound node. Sections without nodes still expose the TeX source file. Previous/next navigation only visits bound nodes within the same TeX file.
 
 ## Rendering pipeline
 
-`render_tex(fragment, preamble)` starts an independent Python worker, sending JSON and receiving HTML plus warnings. Combined input exceeding 200,000 characters falls back immediately; the subprocess has an eight-second timeout. The worker retains matching single-line macro/theorem definitions from the preamble and falls back if its combined source exceeds 100,000 characters.
+`render_tex(fragment, preamble, references=None)` starts an independent Python worker, sending JSON and receiving HTML plus warnings. Combined input exceeding 200,000 characters falls back immediately; the subprocess has an eight-second timeout. The worker retains matching single-line macro/theorem definitions from the preamble and falls back if its combined source exceeds 100,000 characters.
 
-The worker generates a plasTeX DOM. A controlled adapter emits paragraphs, headings, lists, emphasis, theorems, references, and math placeholders. Escaped math source is stored in `data-tex` and rendered by local KaTeX in the browser. TeX references may remain textual; this is not a full LaTeX numbering and cross-reference system.
+The worker generates a plasTeX DOM. A controlled adapter emits paragraphs, headings, lists, emphasis, theorems, references, and math placeholders. Escaped math source is stored in `data-tex` and rendered by local KaTeX in the browser.
+
+Ordinary `\label` commands create hidden anchors. `\ref` and `\eqref` display linked numbers, with parentheses for `eqref`. The workspace caches numbering for each whole TeX paper, preserving context for forward references, references across nodes, and fragments joined by repeated `bpnode` markers. Local references scroll to the label; references across nodes open the target node and then scroll. Labels outside bound fragments open the source at the corresponding line. Ordinary references are resolved separately from Blueprint dependencies, preserving existing `\uses` and `\bpnode` behavior.
+
+Labels are removed from KaTeX input. References inside math become numbers, with clickable links after the formula. Missing or duplicate ordinary labels produce visible text and warnings instead of guessed destinations. If size limits, timeouts, or unsupported external commands prevent whole-paper numbering, links display label names rather than misleading fragment-local numbers. Cross-file `\input` expansion remains unsupported; labels are never implicitly matched against another paper.
 
 Forbidden external input, file operations, package loading, low-level macro definitions, image commands, and related commands trigger source fallback. The adapter does not emit arbitrary TeX-generated HTML. Timeouts, process failures, and unsupported commands preserve readable source and warnings.
 
@@ -43,4 +47,10 @@ Forbidden external input, file operations, package loading, low-level macro defi
 
 This is a bounded reading renderer, not a complete LaTeX engine or operating-system security sandbox. Multiline macros, complex packages, external images, and cross-file `\input` are not fully supported. Preserving imported source directories does not imply include expansion during rendering.
 
-For missing labels, check paths and spelling; fix duplicates in the file. For broken fragments, move markers outside environments. Switch to TeX mode when rendering warnings appear. Refresh after edits to clear cached output. See [TODO](../TODO.en.md) for future work.
+For missing labels, check paths and spelling; ensure repeated labels denote the same mathematical node. For broken fragments, move markers outside environments. Switch to TeX mode when rendering warnings appear. Refresh after edits to clear cached output. See [TODO](../TODO.en.md) for future work.
+
+## Blueprint annotations and conversion
+
+`bpnode` and `bpdesc` are hidden in rendered paper content; descriptions become Blueprint prose. `uses` produces inline dependency links while preserving existing `ref` and `cite`. Links inside math appear after the formula so KaTeX receives clean input. Resolution prefers explicit node IDs, same-file TeX anchors, declared dependencies, then globally unique aliases. Missing or ambiguous targets remain visible with warnings. URLs and labels are escaped.
+
+Use the [tex-to-blueprint skill](../skills/tex-to-blueprint/SKILL.md) for annotation, generation and mathematical review. Run `conda run -n qprint python -m qprint.tex_to_blueprint` or the skill's `scripts/convert.py` entry point. See [workflow and validation](tex-to-blueprint.en.md).

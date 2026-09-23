@@ -7,11 +7,11 @@ from urllib.parse import quote
 
 from markdown_it import MarkdownIt
 
-from .blueprint import WIKILINK, parse_markdown, resolve_link, revision
+from .blueprint import WIKILINK, parse_markdown, resolve_link, resolve_tex_use, revision
 from .formal import locate_code
 from .graph_index import build_graph_index
 from .paths import WorkspaceError, read_text, safe_path
-from .tex import TexDocument, render_tex
+from .tex import TexDocument, render_tex, tex_commands
 
 
 class ConflictError(WorkspaceError):
@@ -28,6 +28,7 @@ class Workspace:
         with self.lock:
             self.nodes, self.documents, self.tex, self.diagnostics = {}, {}, {}, []
             self.render_cache = {}
+            self.tex_label_cache = {}
             for path in sorted((self.root / "blueprint").rglob("*.md")):
                 relative = path.relative_to(self.root / "blueprint").as_posix()
                 try:
@@ -63,7 +64,7 @@ class Workspace:
                     if doc and doc.fragment(label) is not None:
                         self.locations[node.id] = (path, label)
                     else:
-                        self.diagnostics.append({"severity": "error", "path": node.path, "line": node.line, "message": f"TeX 标签不存在或不唯一: {node.tex}"})
+                        self.diagnostics.append({"severity": "error", "path": node.path, "line": node.line, "message": f"TeX 标签不存在: {node.tex}"})
             self.order = sorted(self.locations, key=lambda key: (self.locations[key][0], next(a["start"] for a in self.tex[self.locations[key][0]].anchors if a["label"] == self.locations[key][1])))
             self.graph_index = build_graph_index(self.documents, self.nodes)
 
@@ -98,7 +99,13 @@ class Workspace:
                 doc = self.tex[path]
                 source = doc.fragment(label)
                 if node_id not in self.render_cache:
-                    self.render_cache[node_id] = render_tex(source, doc.preamble)
+                    try:
+                        references = {value: target for value in doc.annotations(label)["uses"]
+                                      if (target := resolve_tex_use(value, node, self.nodes))}
+                    except ValueError:
+                        references = {}
+                    self.render_cache[node_id] = render_tex(source, doc.preamble, references,
+                                                           labels=self.tex_labels(path, node_id))
                 rendered, warnings = self.render_cache[node_id]
                 anchor = next(a for a in doc.anchors if a["label"] == label)
                 result["tex_content"] = {"path": path, "label": label, "line": anchor["line"], "source": source, "html": rendered, "warnings": warnings}
@@ -109,6 +116,49 @@ class Workspace:
             result["relations"] = [{"kind": e["kind"], "id": e["source"], "title": self.nodes[e["source"]].title} for e in self.edges if e["target"] == node_id]
             result["backlinks"] = [{"kind": e["kind"], "id": e["target"], "title": self.nodes[e["target"]].title} for e in self.edges if e["source"] == node_id]
             return result
+
+    def tex_labels(self, path: str, current_id: str):
+        """Resolve ordinary LaTeX labels within their source paper, independently of uses."""
+        if path not in self.tex_label_cache:
+            doc = self.tex[path]
+            start = len(doc.preamble)
+            body = doc.source[start:min([doc.body_end, *doc.bibliography_offsets])]
+            numbers, _ = render_tex(body, doc.preamble, index_only=True)
+            if not isinstance(numbers, dict):
+                numbers = {}
+            owners = {}
+            for node_id, (node_path, binding) in self.locations.items():
+                if node_path != path:
+                    continue
+                try:
+                    for command in tex_commands(doc.fragment(binding), {"label"}):
+                        owners.setdefault(command["value"], set()).add(node_id)
+                except ValueError:
+                    continue
+            targets = {}
+            try:
+                for command in tex_commands(body, {"label"}):
+                    label = command["value"]
+                    if label in targets:
+                        targets[label] = {"ambiguous": True}
+                        continue
+                    candidates = sorted(owners.get(label, []))
+                    targets[label] = {"text": numbers.get(label, {}).get("text", label),
+                                      "path": path, "owners": candidates,
+                                      "line": doc.source.count("\n", 0, start + command["start"]) + 1}
+            except ValueError:
+                pass
+            self.tex_label_cache[path] = targets
+        result = {}
+        for label, target in self.tex_label_cache[path].items():
+            target = dict(target)
+            owners = target.pop("owners", [])
+            if current_id in owners:
+                target["local"] = True
+            elif len(owners) == 1:
+                target["node"] = owners[0]
+            result[label] = target
+        return result
 
     def document(self, path: str):
         safe = safe_path(self.root, f"blueprint/{path}")

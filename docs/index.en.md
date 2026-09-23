@@ -26,6 +26,7 @@ Start with README to use the application and PRODUCT to understand its purpose. 
 | [Workspace](workspace.en.md) | File layout, paths, indexing, diagnostics, saves | [工作区](workspace.md) |
 | [Graphs](graph.en.md) | Project detection, reference aggregation, scope, drill-down | [知识图谱](graph.md) |
 | [TeX rendering](tex-rendering.en.md) | Anchors, sections, fragments, rendering, fallbacks | [TeX 渲染](tex-rendering.md) |
+| [TeX → Blueprint](tex-to-blueprint.en.md) | Annotation, generation, review and real-paper tests | [TeX → Blueprint](tex-to-blueprint.md) |
 | [Formal code](formal-code.en.md) | Lean / Agda / Coq bindings and lookup | [形式化代码](formal-code.md) |
 | [Formal verification](formal-verification.en.md) | Unified adapters, Lean/Agda checks, configuration, and execution boundaries | [形式化验证](formal-verification.md) |
 | [Managed toolchains](toolchains.en.md) | Local installs, requirements, package resolution, and releases | [工具链管理](toolchains.md) |

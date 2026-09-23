@@ -50,6 +50,14 @@ def test_repository_default_branch_nested_code_license_and_no_overwrite(tmp_path
         import_code(tmp_path, "https://github.com/test/repo", "agda", "serre-finiteness", downloader=download)
 
 
+def test_archive_accepts_relative_destination(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    destination = Path("relative")
+    destination.mkdir()
+    assert extract_archive(zip_bytes({"main.tex": "Paper"}), destination) == ["main.tex"]
+    assert (destination / "main.tex").read_text() == "Paper"
+
+
 @pytest.mark.parametrize("name", ["../escape", "root/../../escape", "/absolute", "C:/escape", "root/file:ads", "root/nul.txt"])
 def test_archive_rejects_traversal_before_writing(tmp_path, name):
     with pytest.raises(WorkspaceError):
@@ -100,6 +108,50 @@ def test_paper_error_rolls_back_and_preserves_existing_files(tmp_path):
         import_paper(tmp_path, "2001.00001", "Topology", "Test", downloader=download)
     assert not (tmp_path / "pdf/Topology/Test.pdf").exists()
     assert not (tmp_path / "tex/Topology/Test").exists()
+    assert not list(tmp_path.glob(".qprint-import-*"))
+
+
+@pytest.mark.parametrize("dest", ["Topology/Paper", "Topology/paper", "Paper"])
+@pytest.mark.parametrize("wrapper", ["", "Paper/", "export/Paper/"])
+def test_paper_does_not_duplicate_project_or_archive_directory(tmp_path, dest, wrapper):
+    archive = tar_bytes({wrapper + "main.tex": b"\\input{sections/result}",
+                         wrapper + "sections/result.tex": b"A theorem.",
+                         wrapper + "refs.bib": b"bibliography"})
+    result = import_paper(tmp_path, "2003.03925v6", dest, "Paper",
+                          downloader=lambda url: b"%PDF-1.7" if "/pdf/" in url else archive)
+    parent = "Topology/" if dest.startswith("Topology/") else ""
+    assert result["tex"] == f"tex/{parent}Paper"
+    assert result["pdf"] == f"pdf/{parent}Paper.pdf"
+    paper = tmp_path / result["tex"]
+    assert (paper / "main.tex").read_text() == r"\input{sections/result}"
+    assert (paper / "sections/result.tex").exists()
+    assert not (paper / "Paper").exists()
+    assert json.loads((paper / ".qprint-source.json").read_text())["id"] == "2003.03925v6"
+
+
+def test_archive_with_multiple_roots_preserves_layout(tmp_path):
+    archive = zip_bytes({"tex/main.tex": r"\input{../shared/defs}", "shared/defs.tex": "Definitions"})
+    result = import_paper(tmp_path, "2003.03925", "Topology", "Paper",
+                          downloader=lambda url: b"%PDF-1.7" if "/pdf/" in url else archive)
+    paper = tmp_path / result["tex"]
+    assert (paper / "tex/main.tex").exists()
+    assert (paper / "shared/defs.tex").exists()
+
+
+@pytest.mark.parametrize("wrapper", ["", "outer/Paper/"])
+def test_paper_pdf_publish_failure_rolls_back_normalized_source(tmp_path, monkeypatch, wrapper):
+    archive = tar_bytes({wrapper + "main.tex": b"\\begin{document}Paper\\end{document}"})
+    rename = Path.rename
+    def fail_pdf(path, target):
+        if path.name == "paper.pdf":
+            raise OSError("test publication failure")
+        return rename(path, target)
+    monkeypatch.setattr(Path, "rename", fail_pdf)
+    with pytest.raises(OSError, match="publication failure"):
+        import_paper(tmp_path, "2003.03925", "Topology/Paper", "Paper",
+                     downloader=lambda url: b"%PDF-1.7" if "/pdf/" in url else archive)
+    assert not (tmp_path / "tex/Topology/Paper").exists()
+    assert not (tmp_path / "pdf/Topology/Paper.pdf").exists()
     assert not list(tmp_path.glob(".qprint-import-*"))
 
 

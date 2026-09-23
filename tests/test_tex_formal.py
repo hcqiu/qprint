@@ -28,11 +28,11 @@ Unwrapped definition.
     assert len(doc.sections) == 2
 
 
-def test_duplicate_tex_anchor_and_missing_label():
+def test_repeated_tex_anchor_and_missing_label():
     doc = TexDocument("A.tex", r"\bpnode{x} first \bpnode{x} second")
-    assert doc.fragment("x") is None
+    assert doc.fragment("x") == "first\n\nsecond"
     assert doc.fragment("missing") is None
-    assert doc.diagnostics
+    assert not doc.diagnostics
 
 
 def test_plastex_dom_theorems_math_and_escaped_content():
