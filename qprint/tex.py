@@ -2,6 +2,7 @@
 from dataclasses import dataclass
 from html import escape
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -11,6 +12,38 @@ from threading import RLock
 from urllib.parse import quote
 
 _PARSE_LOCK = RLock()
+_LAYOUT_WARNING = "部分 TeX 排版细节未完整还原（已保留可读内容）: "
+
+
+def merge_tex_warnings(warnings: list[str]) -> list[str]:
+    """Keep reference/security errors distinct, but summarize layout once per page."""
+    result, commands = [], []
+    for warning in warnings:
+        if warning.startswith("未完整渲染命令: "):
+            commands.append(warning.removeprefix("未完整渲染命令: "))
+        elif warning.startswith(_LAYOUT_WARNING):
+            commands.extend(warning.removeprefix(_LAYOUT_WARNING).split("、"))
+        else:
+            result.append(warning)
+    if commands:
+        result.append(_LAYOUT_WARNING + "、".join(dict.fromkeys(commands)))
+    return list(dict.fromkeys(result))
+
+
+_TEXT_SPACING = {
+    "active::~": "\u00a0", "nobreakspace": "\u00a0",
+    "thinspace": "\u2009", ",": "\u2009",
+    "enspace": "\u2002", "enskip": "\u2002",
+    "quad": "\u2003", "qquad": "\u2003\u2003",
+    "medspace": "\u2005", ":": "\u2005",
+    "thickspace": "\u2004", ";": "\u2004", "space": " ",
+}
+_FLOW_ONLY = {
+    "relax", "protect", "leavevmode", "noindent", "unskip",
+    "ignorespaces", "nobreak", "nopagebreak", "nolinebreak",
+    "newpage", "clearpage", "cleardoublepage", "pagebreak",
+    "samepage", "raggedbottom", "flushbottom", "sloppy", "fussy",
+}
 
 
 def tex_commands(source: str, names: set[str]):
@@ -127,8 +160,13 @@ def tex_label_anchor(label: str) -> str:
     return "tex-label-" + label.encode("utf-8").hex()
 
 
+def citation_anchor(key: str) -> str:
+    return "tex-cite-" + key.encode("utf-8").hex()
+
+
 def render_tex(fragment: str, preamble: str = "", references: dict[str, str] | None = None,
-               *, labels: dict | None = None, index_only: bool = False):
+               *, labels: dict | None = None, index_only: bool = False,
+               bibliography: dict | None = None, bibliography_only: bool = False):
     """Isolate macro expansion so malformed/recursive TeX cannot hang the server."""
     if len(fragment) + len(preamble) > 200_000:
         return f"<pre>{escape(fragment)}</pre>", ["片段或宏定义过大，已显示原文。"]
@@ -136,7 +174,8 @@ def render_tex(fragment: str, preamble: str = "", references: dict[str, str] | N
         completed = subprocess.run(
             [sys.executable, "-m", f"{__package__}._tex_worker"],
             input=json.dumps({"fragment": fragment, "preamble": preamble, "references": references or {},
-                              "labels": labels, "index_only": index_only}),
+                              "labels": labels, "index_only": index_only,
+                              "bibliography": bibliography, "bibliography_only": bibliography_only}),
             capture_output=True, text=True, encoding="utf-8", timeout=8,
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
             cwd=Path(__file__).resolve().parent.parent,
@@ -152,10 +191,13 @@ def render_tex(fragment: str, preamble: str = "", references: dict[str, str] | N
 
 
 def _render_tex_dom(fragment: str, preamble: str = "", references: dict[str, str] | None = None,
-                    *, labels: dict | None = None, index_only: bool = False):
+                    *, labels: dict | None = None, index_only: bool = False,
+                    bibliography: dict | None = None, bibliography_only: bool = False):
     from plasTeX import Command
     from plasTeX.TeX import TeX
     from plasTeX.Base.LaTeX.Crossref import ref
+    from plasTeX.Base.TeX.Primitives import BoxCommand
+    from plasTeX.Packages.amsthm import proof
 
     warnings = []
     original_fragment = fragment
@@ -195,6 +237,13 @@ def _render_tex_dom(fragment: str, preamble: str = "", references: dict[str, str
     class eqref(ref):
         pass
 
+    class ReadingBox(BoxCommand):
+        def parse(self, tex):
+            # TeX's optional `to`/`spread` dimensions are layout, not box text.
+            if tex.readKeyword(["to", "spread"]):
+                tex.readDimen()
+            return super().parse(tex)
+
     def label_anchor(label):
         if label in emitted_anchors:
             return ""
@@ -224,6 +273,23 @@ def _render_tex_dom(fragment: str, preamble: str = "", references: dict[str, str
             return f'<span class="reference unresolved">{escape(text)}</span>'
         return (f'<a class="reference tex-ref" href="{href}"{attributes}'
                 f' data-tex-anchor="{anchor}">{escape(text)}</a>')
+
+    def citation_links(keys, note, raw):
+        if bibliography is None:
+            return f'<span class="reference">{escape(raw)}</span>'
+        links = []
+        path = bibliography["path"]
+        for key in keys:
+            entry = bibliography["entries"].get(key)
+            if not entry:
+                warnings.append(f"文献引用不存在或不唯一: {key}")
+                links.append(f'<span class="unresolved" title="{escape(key, quote=True)}">?</span>')
+                continue
+            href = "#references=" + quote(path, safe="") + "&cite=" + quote(key, safe="")
+            links.append(f'<a class="tex-cite" href="{escape(href, quote=True)}" data-bibliography="{escape(path, quote=True)}"'
+                         f' data-cite-key="{escape(key, quote=True)}">{escape(entry["label"])}</a>')
+        return '<span class="reference">[' + ', '.join(links) + (', ' + note if note else '') + ']</span>'
+
     # Only retain local macro/theorem definitions, never package loader directives.
     definitions = []
     for line in preamble.splitlines():
@@ -245,12 +311,44 @@ def _render_tex_dom(fragment: str, preamble: str = "", references: dict[str, str
         if getattr(node, "nodeType", None) == 3:
             return escape(str(node))
         name = node.nodeName
+        if name in _TEXT_SPACING:
+            return _TEXT_SPACING[name]
+        if name in _FLOW_ONLY:
+            return children(node)
+        if name in {"newline", "linebreak", "\\"}:
+            return "<br>"
+        if name in {"hrulefill", "dotfill"}:
+            border = "solid" if name == "hrulefill" else "dotted"
+            return (f'<span class="tex-rule" aria-hidden="true" '
+                    f'style="display:inline-block;width:3em;border-bottom:1px {border} currentColor"></span>')
+        if name in {"vspace", "addvspace", "hspace"}:
+            length = getattr(node.attributes.get("len"), "pt", 0)
+            length = float(length or 0)
+            # Use parsed dimensions only; cap paper-layout gaps in the web reader.
+            length = max(-144, min(144, length)) if math.isfinite(length) else 0
+            if name == "hspace":
+                style = f"display:inline-block;width:{max(0, length):g}pt"
+                if length < 0:
+                    style += f";margin-right:{length:g}pt"
+            else:
+                style = f"display:block;height:{max(0, length):g}pt"
+            return f'<span class="tex-spacing" aria-hidden="true" style="{style}"></span>'
+        if name in {"smallskip", "medskip", "bigskip", "vfill"}:
+            height = {"smallskip": ".5", "medskip": "1", "bigskip": "2", "vfill": "1"}[name]
+            return f'<span class="tex-spacing" aria-hidden="true" style="display:block;height:{height}em"></span>'
+        if name in {"hfill", "indent"}:
+            return "\u2003\u2003"
+        if name in {"negthinspace", "!"}:
+            return '<span class="tex-spacing" aria-hidden="true" style="margin-right:-.1667em"></span>'
         if name == "qprintdependency":
             return dependency_links(node.attributes.get("index", ""))
         if name == "label":
             return label_anchor(str(node.attributes.get("label", "")))
         if name in {"ref", "eqref"}:
             return reference_link(str(node.attributes.get("label", "")), name == "eqref")
+        if name == "cite":
+            note = node.attributes.get("text")
+            return citation_links(node.attributes.get("bibkeys", []), children(note) if note is not None else "", node.source)
         if name in {"math", "displaymath", "equation", "equation*", "align", "align*", "gather", "gather*"}:
             raw = node.source
             links = []
@@ -258,6 +356,15 @@ def _render_tex_dom(fragment: str, preamble: str = "", references: dict[str, str
                 links.append(dependency_links(match[1]))
                 return ""
             raw = re.sub(r"\\qprintdependency\s*\{(\d+)\}", remove_dependency, raw)
+            cite_links = []
+            for command in reversed(list(tex_commands(raw, {"cite"}))):
+                citation_source = raw[command["start"]:command["end"]]
+                keys = [key.strip() for key in command["value"].split(",") if key.strip()]
+                note = re.search(r"\\cite\s*\[([^\]]*)\]", citation_source)
+                cite_links.append(citation_links(keys, escape(note[1]) if note else "", citation_source))
+                # Citations remain clickable after math, like Blueprint dependencies.
+                raw = raw[:command["start"]] + raw[command["end"]:]
+            links.extend(reversed(cite_links))
             anchors, ref_links = [], []
             for command in reversed(list(tex_commands(raw, {"label", "ref", "eqref"}))):
                 label = command["value"]
@@ -285,12 +392,31 @@ def _render_tex_dom(fragment: str, preamble: str = "", references: dict[str, str
         if name in tags:
             tag = tags[name]
             return f"<{tag}>{children(node)}</{tag}>"
-        if name == "cite":
-            return f'<span class="reference">{escape(node.source)}</span>'
-        if name in {"theorem", "lemma", "definition", "proof", "proposition", "corollary", "remark", "conjecture"} or hasattr(node, "thmName"):
+        if name == "newblock":
+            return " "
+        if name in {"url", "href"} and bibliography_only:
+            value = node.attributes.get("url", "")
+            url = str(getattr(value, "textContent", value))
+            text = children(node) if name == "href" else escape(url)
+            if re.match(r"https?://", url, re.I):
+                return f'<a href="{escape(url, quote=True)}" target="_blank" rel="noopener noreferrer">{text}</a>'
+            return text
+        if name == "proof":
+            qed = '<span class="qed" aria-label="证毕" style="display:block;text-align:right">□</span>'
+            if node.macroMode == Command.MODE_END:
+                return qed
+            caption = node.attributes.get("caption")
+            title = children(caption) if caption is not None else "Proof"
+            return f'<section class="theorem proof"><div class="theorem-label">{title}</div>{children(node)}{qed}</section>'
+        if name in {"theorem", "lemma", "definition", "proposition", "corollary", "remark", "conjecture"} or hasattr(node, "thmName"):
             title = getattr(node, "thmName", name)
             title = title.textContent if hasattr(title, "textContent") else str(title)
             return f'<section class="theorem"><div class="theorem-label">{escape(title.title())}</div>{children(node)}</section>'
+        # Preserve plasTeX's text for escaped symbols, spacing and accents
+        # before the source fallback.
+        text = getattr(node, "str", None)
+        if isinstance(text, str):
+            return escape(text)
         if node.childNodes:
             return children(node)
         raw = getattr(node, "source", "")
@@ -303,9 +429,34 @@ def _render_tex_dom(fragment: str, preamble: str = "", references: dict[str, str
             tex = TeX()
             tex.ownerDocument.context.addGlobal("qprintdependency", qprintdependency)
             tex.ownerDocument.context.addGlobal("eqref", eqref)
+            tex.ownerDocument.context.addGlobal("proof", proof)
+            for name in ("hbox", "vbox"):
+                tex.ownerDocument.context.addGlobal(name, type(name, (ReadingBox,), {}))
+            if bibliography_only:
+                from plasTeX.Packages.hyperref import href, url
+                tex.ownerDocument.context.addGlobal("href", href)
+                tex.ownerDocument.context.addGlobal("url", url)
             tex.ownerDocument.config["general"]["load-tex-packages"] = False
             tex.input("\\documentclass{article}\n" + source)
             document = tex.parse()
+            if bibliography_only:
+                cites = document.userdata.get("bibliography", {}).get("bibcites", {})
+                entries, seen = [], set()
+                for item in document.getElementsByTagName("bibitem"):
+                    key = str(item.attributes.get("key", ""))
+                    duplicate = key in seen
+                    if duplicate:
+                        warnings.append(f"重复的文献标签: {key}")
+                    seen.add(key)
+                    label = getattr(cites.get(key), "textContent", key)
+                    anchor = citation_anchor(key)
+                    if duplicate:
+                        anchor += f"-duplicate-{len(entries)}"
+                    entries.append({"key": key, "label": str(label), "anchor": anchor,
+                                    "html": children(item)})
+                if not entries:
+                    warnings.append("BBL 中没有可渲染的 bibitem 条目；当前支持 BibTeX 的 thebibliography 格式。")
+                return {"entries": entries}, merge_tex_warnings(warnings)
             parsed_labels = {}
             for label, target in document.context.labels.items():
                 number = getattr(getattr(target, "ref", None), "textContent", "")
@@ -326,6 +477,6 @@ def _render_tex_dom(fragment: str, preamble: str = "", references: dict[str, str
                     if label not in label_targets:
                         label_targets[label] = {"text": label, "local": True}
             html = convert(document)
-        return html, list(dict.fromkeys(warnings))
+        return html, merge_tex_warnings(warnings)
     except Exception as exc:
         return f'<pre class="tex-fallback">{escape(original_fragment)}</pre>', [f"plasTeX 渲染失败，已保留原文: {exc}"]

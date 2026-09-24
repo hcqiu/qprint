@@ -131,6 +131,13 @@ def create_app(root: Path, *, allow_verification: bool = False, toolchain_home: 
             doc = workspace.tex[path]
             return {"path": path, "source": doc.source, "sections": doc.sections}
 
+    @app.get("/api/references")
+    def references(path: str):
+        try:
+            return {key: value for key, value in workspace.bibliography(path).items() if key != "citations"}
+        except KeyError:
+            raise HTTPException(404, "TeX 文件不存在")
+
     @app.post("/api/reload")
     def reload():
         workspace.reload()

@@ -1,4 +1,5 @@
 from html import escape
+from collections import Counter
 from pathlib import Path
 import os
 import tempfile
@@ -11,7 +12,7 @@ from .blueprint import WIKILINK, parse_markdown, resolve_link, resolve_tex_use, 
 from .formal import locate_code
 from .graph_index import build_graph_index
 from .paths import WorkspaceError, read_text, safe_path
-from .tex import TexDocument, render_tex, tex_commands
+from .tex import TexDocument, render_tex, tex_commands, merge_tex_warnings
 
 
 class ConflictError(WorkspaceError):
@@ -29,6 +30,7 @@ class Workspace:
             self.nodes, self.documents, self.tex, self.diagnostics = {}, {}, {}, []
             self.render_cache = {}
             self.tex_label_cache = {}
+            self.bibliography_cache = {}
             for path in sorted((self.root / "blueprint").rglob("*.md")):
                 relative = path.relative_to(self.root / "blueprint").as_posix()
                 try:
@@ -74,7 +76,8 @@ class Workspace:
             for path, doc in self.tex.items():
                 located = [(key, next(a["start"] for a in doc.anchors if a["label"] == label)) for key, (p, label) in self.locations.items() if p == path]
                 sections = [{**section, "node_id": next((key for key, offset in sorted(located, key=lambda item: item[1]) if offset >= section["offset"]), None)} for section in doc.sections]
-                papers.append({"path": path, "sections": sections, "nodes": [key for key in self.order if self.locations[key][0] == path]})
+                papers.append({"path": path, "sections": sections, "nodes": [key for key in self.order if self.locations[key][0] == path],
+                               "has_bibliography": bool(self.bibliography_files(path))})
             return {"name": self.root.name, "nodes": [n.public() for n in self.nodes.values()], "edges": self.edges, "graph": self.graph_index, "papers": papers, "diagnostics": self.diagnostics, "stats": {"nodes": len(self.nodes), "complete": sum(n.status == "complete" for n in self.nodes.values()), "edges": len(self.edges), "papers": len(self.tex)}}
 
     def detail(self, node_id: str):
@@ -104,8 +107,11 @@ class Workspace:
                                       if (target := resolve_tex_use(value, node, self.nodes))}
                     except ValueError:
                         references = {}
-                    self.render_cache[node_id] = render_tex(source, doc.preamble, references,
-                                                           labels=self.tex_labels(path, node_id))
+                    bibliography = self.bibliography(path)
+                    rendered, warnings = render_tex(source, doc.preamble, references,
+                                                    labels=self.tex_labels(path, node_id),
+                                                    bibliography=bibliography["citations"])
+                    self.render_cache[node_id] = rendered, merge_tex_warnings([*bibliography["warnings"], *warnings])
                 rendered, warnings = self.render_cache[node_id]
                 anchor = next(a for a in doc.anchors if a["label"] == label)
                 result["tex_content"] = {"path": path, "label": label, "line": anchor["line"], "source": source, "html": rendered, "warnings": warnings}
@@ -116,6 +122,48 @@ class Workspace:
             result["relations"] = [{"kind": e["kind"], "id": e["source"], "title": self.nodes[e["source"]].title} for e in self.edges if e["target"] == node_id]
             result["backlinks"] = [{"kind": e["kind"], "id": e["target"], "title": self.nodes[e["target"]].title} for e in self.edges if e["source"] == node_id]
             return result
+
+    def bibliography_files(self, path: str):
+        """Only consider BBL files beside this paper, never another project."""
+        if path not in self.tex:
+            raise KeyError(path)
+        folder = safe_path(self.root, "tex/" + path).parent
+        return sorted(p for p in folder.iterdir() if p.suffix.lower() == ".bbl" and p.is_file())
+
+    def bibliography(self, path: str):
+        with self.lock:
+            if path not in self.tex:
+                raise KeyError(path)
+            if path in self.bibliography_cache:
+                return self.bibliography_cache[path]
+            files = self.bibliography_files(path)
+            data = {"path": path, "bbl": None, "entries": [], "html": "", "warnings": [], "citations": None}
+            matching = [p for p in files if p.stem == Path(path).stem]
+            chosen = matching[0] if len(matching) == 1 else files[0] if len(files) == 1 else None
+            if chosen is None:
+                if files:
+                    data["warnings"].append("同目录有多个 BBL，且没有与 TeX 同名的文件；引用保留原文。")
+            else:
+                try:
+                    relative = chosen.relative_to(self.root).as_posix()
+                    source = read_text(safe_path(self.root, relative))
+                    parsed, warnings = render_tex(source, bibliography_only=True)
+                    data.update(bbl=relative.removeprefix("tex/"), warnings=warnings)
+                    if isinstance(parsed, dict):
+                        entries = parsed["entries"]
+                        counts = Counter(entry["key"] for entry in entries)
+                        data["entries"] = entries
+                        if entries:
+                            data["citations"] = {"path": path, "entries": {
+                                entry["key"]: {"label": entry["label"]} for entry in entries if counts[entry["key"]] == 1}}
+                        else:
+                            data["html"] = f'<pre class="tex-fallback">{escape(source)}</pre>'
+                    else:
+                        data["html"] = parsed
+                except (OSError, UnicodeError, WorkspaceError) as exc:
+                    data["warnings"].append(f"无法读取 BBL，引用保留原文: {exc}")
+            self.bibliography_cache[path] = data
+            return data
 
     def tex_labels(self, path: str, current_id: str):
         """Resolve ordinary LaTeX labels within their source paper, independently of uses."""

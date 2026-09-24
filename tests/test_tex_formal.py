@@ -49,6 +49,48 @@ def test_unsafe_tex_is_not_executed():
     assert warnings and "tex-fallback" in html
 
 
+def test_proof_has_one_heading_and_ends_with_qed():
+    html, warnings = render_tex(r"\begin{proof}The claim follows.\end{proof}After the proof.")
+    assert not warnings
+    assert html.count('class="theorem-label">Proof</div>') == 1
+    assert html.count('class="qed"') == 1 and "□" in html
+    assert html.index("The claim follows.") < html.index('class="qed"') < html.index("</section>") < html.index("After the proof.")
+    assert r"\end{proof}" not in html
+
+
+def test_proof_optional_caption_multiple_proofs_and_links():
+    html, warnings = render_tex(
+        r"\begin{proof}[Proof of \ref{result}]First\uses{dependency}.\end{proof}"
+        r"\begin{proof}\label{result}Second proof.\end{proof}",
+        references={"dependency": "A#B"})
+    assert not warnings
+    assert html.count('class="qed"') == 2
+    assert html.count('class="theorem proof"') == 2
+    assert 'class="reference tex-ref"' in html
+    assert '<a class="wikilink tex-use" href="#node=A%23B">↗ dependency</a>' in html
+    html, warnings = render_tex(r"\begin{proof}[<script>]Body.\end{proof}")
+    assert not warnings and '<script>' not in html and '&lt;script&gt;' in html
+
+
+def test_proof_end_fragment_is_qed_not_a_heading():
+    html, warnings = render_tex(r"A concluding sentence.\end{proof}")
+    assert not warnings
+    assert 'class="qed"' in html and 'theorem-label' not in html
+
+
+def test_plastex_text_characters_keep_nonbreaking_spaces_and_accents():
+    html, warnings = render_tex(r"J.~F. Adams, pp.~483. \~{n} \& \verb|A~B| $x\sim y$")
+    assert not warnings
+    assert "J.\u00a0F. Adams, pp.\u00a0483." in html
+    assert "ñ" in html and "&amp;" in html
+    assert "A~B" in html and r"\sim" in html
+    html, warnings = render_tex(r"A~B \unsupportedqprintcommand")
+    assert "A\u00a0B" in html
+    assert len(warnings) == 1
+    assert warnings[0].startswith("部分 TeX 排版细节未完整还原")
+    assert "unsupportedqprintcommand" in warnings[0]
+
+
 def test_render_timeout_preserves_source(monkeypatch):
     def timeout(*args, **kwargs):
         raise subprocess.TimeoutExpired("renderer", 8)

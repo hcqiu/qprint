@@ -8,5 +8,7 @@ from .tex import _render_tex_dom
 if __name__ == "__main__":
     request = json.load(sys.stdin)
     result = _render_tex_dom(request["fragment"], request["preamble"], request.get("references"),
-                             labels=request.get("labels"), index_only=request.get("index_only", False))
+                             labels=request.get("labels"), index_only=request.get("index_only", False),
+                             bibliography=request.get("bibliography"),
+                             bibliography_only=request.get("bibliography_only", False))
     print(json.dumps(result))

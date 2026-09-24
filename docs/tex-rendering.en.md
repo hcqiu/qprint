@@ -37,6 +37,8 @@ Section indexing supports chapter, section, subsection, and subsubsection, inclu
 
 The worker generates a plasTeX DOM. A controlled adapter emits paragraphs, headings, lists, emphasis, theorems, references, and math placeholders. Escaped math source is stored in `data-tex` and rendered by local KaTeX in the browser.
 
+Text-mode `~`, `\thinspace`, `\enspace`, `\quad`, and `\qquad` become corresponding Unicode spaces. Rules (`\hrulefill` / `\dotfill`) and spacing (`\vspace` / `\hspace` and paragraph skips) use bounded CSS approximations; line breaks become `<br>`. Paper pagination, `\noindent`, `\relax`, and `\leavevmode` are safely ignored. Box `to` / `spread` dimensions are consumed while keeping box content. Math still goes to KaTeX, and verbatim remains literal. Unsupported layout commands are deduplicated into one warning per page, including both body and BBL warnings. Missing references, external-command restrictions, and parsing failures remain separate diagnostics.
+
 Ordinary `\label` commands create hidden anchors. `\ref` and `\eqref` display linked numbers, with parentheses for `eqref`. The workspace caches numbering for each whole TeX paper, preserving context for forward references, references across nodes, and fragments joined by repeated `bpnode` markers. Local references scroll to the label; references across nodes open the target node and then scroll. Labels outside bound fragments open the source at the corresponding line. Ordinary references are resolved separately from Blueprint dependencies, preserving existing `\uses` and `\bpnode` behavior.
 
 Labels are removed from KaTeX input. References inside math become numbers, with clickable links after the formula. Missing or duplicate ordinary labels produce visible text and warnings instead of guessed destinations. If size limits, timeouts, or unsupported external commands prevent whole-paper numbering, links display label names rather than misleading fragment-local numbers. Cross-file `\input` expansion remains unsupported; labels are never implicitly matched against another paper.
@@ -48,6 +50,14 @@ Forbidden external input, file operations, package loading, low-level macro defi
 This is a bounded reading renderer, not a complete LaTeX engine or operating-system security sandbox. Multiline macros, complex packages, external images, and cross-file `\input` are not fully supported. Preserving imported source directories does not imply include expansion during rendering.
 
 For missing labels, check paths and spelling; ensure repeated labels denote the same mathematical node. For broken fragments, move markers outside environments. Switch to TeX mode when rendering warnings appear. Refresh after edits to clear cached output. See [TODO](../TODO.en.md) for future work.
+
+## Citations and the References page
+
+Following the rendering rules in the [cross-file citation guide](../产品经理prompt/跨文件引用指南.md), `\cite{KM}` stays literal when no `.bbl` exists beside the TeX file. A `.bib` alone does not enable citation rendering. BibTeX `thebibliography` / `bibitem` output supplies numeric or explicit labels, multiple citation keys, and optional notes such as `\cite[Theorem 2]{KM}`. Clicking a citation opens the paper's complete References list and locates the entry. The sidebar also provides a References entry; returning to the citing node, reloading, and browser history are supported.
+
+A BBL matching the TeX basename takes precedence; otherwise the sole BBL in that directory is used. Ambiguous files preserve source with a warning instead of mixing paper numbering. Missing or duplicate citation keys display `?` with warnings. Read failures, unsupported formats (including biblatex `\entry` data), and parsing failures preserve readable source. Existing size, timeout, and external-command restrictions apply to BBL files too. Refresh clears cached results. `/api/references?path=...` returns references for an indexed paper.
+
+Bibliographic navigation and Blueprint dependencies remain separate: `\cite` opens the reference list, while existing `\uses` links open nodes. The guide's agent-driven project search and `\uses` annotation rules belong to the annotation workflow; the renderer does not infer graph dependencies from citation keys alone.
 
 ## Blueprint annotations and conversion
 
