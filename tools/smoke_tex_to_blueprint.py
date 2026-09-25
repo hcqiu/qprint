@@ -1,6 +1,6 @@
-"""Offline structural smoke test on an arXiv source archive; not semantic annotation.
+r"""Offline structural smoke test on an arXiv source archive; not semantic annotation.
 
-Example: conda run -n qprint python tools/smoke_tex_to_blueprint.py ARCHIVE
+Example: .\.conda\python.exe tools/smoke_tex_to_blueprint.py ARCHIVE
     --output .qprint/paper-smoke --title TITLE --author AUTHOR --year YEAR
 Only disposable extracted copies are annotated. No network or source-paper edits.
 """

@@ -31,16 +31,16 @@ Store home precedence: `--toolchain-home` (`--home` for manager commands), then 
 The initial catalog supports **Windows x64**: Lean **4.19.0**, Agda **2.8.0**, and Cubical **0.9**, commit `b150186d2544e7efeddd31e5d14a8b9ecbb100f7`. Other versions/platforms require reviewed catalog entries; there is no nearest-version selection.
 
 ```powershell
-conda run -n qprint python -m qprint toolchain list
-conda run -n qprint python -m qprint toolchain install lean-4.19.0-windows-x64
-conda run -n qprint python -m qprint toolchain install agda-2.8.0-windows-x64
-conda run -n qprint python -m qprint toolchain install cubical-0.9
+.\.conda\python.exe -m qprint toolchain list
+.\.conda\python.exe -m qprint toolchain install lean-4.19.0-windows-x64
+.\.conda\python.exe -m qprint toolchain install agda-2.8.0-windows-x64
+.\.conda\python.exe -m qprint toolchain install cubical-0.9
 ```
 
 Initial installation downloads fixed official HTTPS artifacts. An existing ZIP can be installed offline, with the same required SHA-256:
 
 ```powershell
-conda run -n qprint python -m qprint toolchain install agda-2.8.0-windows-x64 --archive D:/downloads/Agda-v2.8.0-win64.zip
+.\.conda\python.exe -m qprint toolchain install agda-2.8.0-windows-x64 --archive downloads/Agda-v2.8.0-win64.zip
 ```
 
 Downloads stream to disk, limited to 2 GiB; extraction allows at most 100,000 entries and 8 GiB expanded content. Paths, links, special files, case collisions, and reserved receipt filenames are validated before extraction. Staging, hash verification, compiler version checks, and Agda `--setup` precede atomic publication. Failure cleans staging. Matching installations are reused; unmanaged or mismatched directories are never overwritten.
@@ -49,7 +49,7 @@ Each `.qprint-install.json` records URL, archive hash, version, platform, and UT
 
 Agda child-process `Agda_datadir` and `AGDA_DIR` point to its existing managed `data/` directory. The installer creates it before `--setup` to prevent fallback to the user profile. Compiler/library licenses are retained, including the bundled [Agda license](../qprint/toolchain-licenses/agda-2.8.0.txt).
 
-Remove by exact catalog ID, for example `conda run -n qprint python -m qprint toolchain remove cubical-0.9`. Only the matching recorded installation is removed, after path/link checks. Projects and other versions remain. Stop dependent verification first; there is no reference counting or cancellation. A `.qprint/toolchain-manager.lock` serializes installation/removal; after a crash, confirm that no installer is active before manually clearing a leftover lock.
+Remove by exact catalog ID, for example `.\.conda\python.exe -m qprint toolchain remove cubical-0.9`. Only the matching recorded installation is removed, after path/link checks. Projects and other versions remain. Stop dependent verification first; there is no reference counting or cancellation. A `.qprint/toolchain-manager.lock` serializes installation/removal; after a crash, confirm that no installer is active before manually clearing a leftover lock.
 
 ## Project declarations
 
@@ -100,8 +100,8 @@ The context supplies exact executables, version, project/source roots, package p
 Explicit verification first acquires supported missing versions. Offline resolution, unavailable exact artifacts and incomplete installations report errors. Only explicit `--allow-system-toolchains` permits PATH fallback, with compiler version checks and a matching Lake version for Lean. External Agda must already have its runtime data configured. System fallback is outside the managed bundle's portability guarantee.
 
 ```powershell
-conda run -n qprint python -m qprint verify --workspace examples/verification
-conda run -n qprint python -m qprint serve --workspace examples/verification --allow-verification
+.\.conda\python.exe -m qprint verify --workspace examples/verification
+.\.conda\python.exe -m qprint serve --workspace examples/verification --allow-verification
 # Alternatively: ./start.ps1 -Workspace examples/verification -AllowVerification
 ```
 
@@ -114,11 +114,11 @@ Reports add `environment`: version, executables, origin, artifact IDs, library p
 ```powershell
 ./scripts/build-release.ps1
 ./scripts/build-release.ps1 -Full
-# Equivalent: conda run -n qprint python tools/build_release.py [--full]
+# Equivalent: .\.conda\python.exe tools/build_release.py [--full]
 ```
 
 Outputs are `dist/Qprint-0.1.0-windows-x64-light.zip` and `...-full.zip`, with a `Qprint/` root. Light contains code, docs, and the verification example. Full adds the listed Lean, Agda, Cubical, receipts, and licenses; missing items fail the build. Existing ZIPs are never overwritten. Git data, caches, imported user repositories, Agda interfaces, and Lake build directories are excluded. `release-info.json` records contents.
 
-**These ZIPs do not bundle Python/Conda or a Python wheel dependency collection.** An existing `qprint` Python environment and dependencies are still required; standalone runtime packaging remains future work. Offline full-bundle verification means no additional formal compiler/example-library downloads after Python is available. When the navigation demo is absent, CLI and startup defaults select `examples/verification`.
+**These ZIPs do not bundle Python/Conda or a Python wheel dependency collection.** The bundle includes `environment.yml`; after extraction, run `conda env create -p .\.conda -f environment.yml` from its Qprint root. `.conda` is excluded from ZIPs; standalone runtime packaging remains future work. Offline full-bundle verification means no additional formal compiler/example-library downloads after Python is available. When the navigation demo is absent, CLI and startup defaults select `examples/verification`.
 
 Sources: [Lean 4.19.0](https://github.com/leanprover/lean4/releases/tag/v4.19.0), [Agda 2.8.0](https://github.com/agda/agda/releases/tag/v2.8.0), [Cubical compatibility](https://github.com/agda/cubical/tree/v0.9), and [Agda data-directory options](https://agda.readthedocs.io/en/v2.8.0/tools/command-line-options.html).

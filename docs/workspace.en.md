@@ -18,7 +18,7 @@ my-math/
 
 Directories may be absent or empty, and nodes need not bind papers or code. The server loads the specified workspace, defaulting to `examples/demo` relative to the current directory. Matching Markdown/TeX paths support a label-only binding; other locations require explicit paths.
 
-Blueprint paths are relative to `blueprint/`, TeX paths to `tex/`, and code paths to the corresponding language directory. API and metadata paths use `/`, not Windows backslashes. A CLI workspace root may use `D:/my-math`.
+Blueprint paths are relative to `blueprint/`, TeX paths to `tex/`, and code paths to the corresponding language directory. API and metadata paths use `/`, not Windows backslashes. A CLI workspace root may use `my-math`.
 
 `safe_path(root, relative)` rejects empty or absolute paths, `.` / `..` segments, backslashes, Windows drive/ADS syntax, reserved names, invalid characters, and trailing dots/spaces. It checks that the resolved path, including symlinks, stays inside the specified root. `read_text` reads UTF-8 with optional BOM and a 5 MiB per-file limit.
 

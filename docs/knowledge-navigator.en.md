@@ -2,7 +2,7 @@
 
 Start every agent in the opened Qprint folder. The UI publishes a relative
 workspace and its automatically assigned tab session to `.qprint/runtime/navigation.json`.
-Run `qprint agent state` with no flags: all subsequent queries follow this runtime.
+Run `.\.conda\python.exe -m qprint agent state` with no flags: all subsequent queries follow this runtime.
 There is no workspace scan or guessed session. Explicit `--workspace` overrides
 must stay relative to and inside Qprint. Without runtime, the current folder is used.
 Use the exact same Qprint folder that launched the UI. An installed Conda CLI
@@ -23,22 +23,24 @@ folder as `create_app(..., runtime_root=...)`. Moving the entire folder needs
 no state edits. Internal resolved filesystem paths are not returned to agents.
 
 The UI host prepares its index and publishes the workspace on startup, before
-the first browser click. A fresh PowerShell can run `conda run -n qprint qprint agent state`
+the first browser click. A fresh PowerShell can run `.\.conda\python.exe -m qprint agent state`
 without activation or inherited UI terminal variables. Without an index, state
 still succeeds with `index_status: unavailable` and a startup hint. A persisted
 focus retains its node ID, document and selection, with `focus_verified: false`;
 mathematical queries continue to require an index. No query implicitly builds one.
 
-Prepare a local environment with `conda env create -p ./.conda -f environment.yml`.
-If qprint is not on PATH, prefix commands with `conda run -p ./.conda` without
-activating the environment; honor an explicit repository environment override.
-Do not discover installation-specific interpreter paths.
+For first-time setup, run `conda init powershell` and
+`conda env create -p .\.conda -f environment.yml` in Anaconda Prompt / Miniconda
+Prompt from the Qprint root. Thereafter use `.\.conda\python.exe -m qprint`;
+no activation, PATH lookup, or profile initialization is needed. When Conda is
+available, `conda run -p .\.conda python -m qprint` is equivalent.
+If the environment is missing, report the setup command instead of discovering
+installation-specific interpreter paths or using a named/global environment.
 
 Queries use a read-only index and separate session storage. UI startup also
-migrates legacy WAL storage; offline maintenance can use `qprint index`. History write failures produce `state_warning`
+migrates legacy WAL storage; offline maintenance can use `.\.conda\python.exe -m qprint index`. History write failures produce `state_warning`
 without blocking valid source results. `agent batch --calls` runs up to 32
-registered query tools sequentially with per-call results/errors. On Windows
-start Conda sequentially to avoid activation-file collisions.
+registered query tools sequentially with per-call results/errors.
 
 [中文](knowledge-navigator.md) | [English](knowledge-navigator.en.md)
 
@@ -49,23 +51,23 @@ UI index sharing (section 14) and the project-wide four-layer restructuring
 ## Usage
 
 ```text
-qprint index
-qprint agent state
-qprint agent search "Ganea construction"
-qprint agent resolve GaneaIso
-qprint agent open NODE_ID
-qprint agent source NODE_ID --source tex --max-lines 100
-qprint agent dependencies NODE_ID --depth 2
-qprint agent backlinks NODE_ID --depth 2
-qprint agent path A B --type uses --direction out
-qprint agent context NODE_ID --token-budget 6000
-qprint agent refs NODE_ID
-qprint agent explain-edge A B --type uses
+.\.conda\python.exe -m qprint index
+.\.conda\python.exe -m qprint agent state
+.\.conda\python.exe -m qprint agent search "Ganea construction"
+.\.conda\python.exe -m qprint agent resolve GaneaIso
+.\.conda\python.exe -m qprint agent open NODE_ID
+.\.conda\python.exe -m qprint agent source NODE_ID --source tex --max-lines 100
+.\.conda\python.exe -m qprint agent dependencies NODE_ID --depth 2
+.\.conda\python.exe -m qprint agent backlinks NODE_ID --depth 2
+.\.conda\python.exe -m qprint agent path A B --type uses --direction out
+.\.conda\python.exe -m qprint agent context NODE_ID --token-budget 6000
+.\.conda\python.exe -m qprint agent refs NODE_ID
+.\.conda\python.exe -m qprint agent explain-edge A B --type uses
 ```
 
-In this repository, prefix commands with `conda run -n qprint python -m`.
+The examples include the local interpreter prefix and run from the Qprint root.
 All results are JSON. Query commands use the existing index without rescanning
-the workspace. `qprint watch --interval 1` runs a foreground
+the workspace. `.\.conda\python.exe -m qprint watch --interval 1` runs a foreground
 polling indexer; `--once` exits after one update. Failed updates preserve the
 previous index, and watch retries after the next polling interval.
 
@@ -200,7 +202,7 @@ search currently scans vectors linearly rather than using an ANN service.
 Record reviewed edge explanations using front-matter reasons or:
 
 ```text
-qprint agent annotate-edge A B --type uses --reason "B identifies the fiber of p_n."
+.\.conda\python.exe -m qprint agent annotate-edge A B --type uses --reason "B identifies the fiber of p_n."
 ```
 
 Notes survive incremental indexing. Edge explanations include source evidence;

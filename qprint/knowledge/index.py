@@ -55,7 +55,7 @@ def connect(root, *, readonly=False):
     path = safe_path(root, ".qprint/index/knowledge.sqlite")
     if readonly:
         if not path.is_file():
-            raise WorkspaceError("Knowledge index is missing; ask the host to run qprint index for the active workspace")
+            raise WorkspaceError("Knowledge index is missing; ask the host to run .\\.conda\\python.exe -m qprint index for the active workspace")
         db = sqlite3.connect(path.as_uri() + "?mode=ro", uri=True, timeout=30)
         db.row_factory = sqlite3.Row
         try:
@@ -65,7 +65,7 @@ def connect(root, *, readonly=False):
             return db
         except sqlite3.Error as exc:
             db.close()
-            raise WorkspaceError("Cannot read knowledge index; ask the host to run qprint index to refresh legacy WAL storage, and check directory permissions") from exc
+            raise WorkspaceError("Cannot read knowledge index; ask the host to run .\\.conda\\python.exe -m qprint index to refresh legacy WAL storage, and check directory permissions") from exc
         except Exception:
             db.close()
             raise

@@ -6,7 +6,7 @@ description: Navigate a Qprint TeX and Blueprint Markdown knowledge base using i
 # Qprint Knowledge Navigator
 
 Start the agent in the Qprint folder and keep that working directory. Run
-`qprint agent state` first. The UI publishes its workspace and session to the
+`.\.conda\python.exe -m qprint agent state` first. The UI publishes its workspace and session to the
 local runtime; all query commands follow it automatically. Do not guess a
 workspace, invent a session or change into a paper's folder.
 The working directory must be the exact Qprint folder that launched the UI;
@@ -29,18 +29,21 @@ If `current_node` is null or `stale_focus` is true, search/resolve the quotation
 do not assume the first recent node is the current page.
 
 ```text
-qprint agent state
-qprint agent search "Ganea construction"
-qprint agent resolve "GaneaIso"
-qprint agent open NODE_ID
-qprint agent source NODE_ID --source tex --max-lines 100
+.\.conda\python.exe -m qprint agent state
+.\.conda\python.exe -m qprint agent search "Ganea construction"
+.\.conda\python.exe -m qprint agent resolve "GaneaIso"
+.\.conda\python.exe -m qprint agent open NODE_ID
+.\.conda\python.exe -m qprint agent source NODE_ID --source tex --max-lines 100
 ```
 
-If the CLI is not on PATH, use `conda run -p ./.conda qprint agent state`
-(and the same prefix for other commands), without activating an environment.
-The host prepares this local environment. Do not discover a machine-specific
-Python/Conda executable. Follow an explicit repository environment instruction
-when provided. Optional overrides use only relative paths, for example
+Always use `.\.conda\python.exe -m qprint` from the Qprint root, without
+activating an environment or relying on PATH/profile initialization.
+The user prepares it once in Anaconda Prompt / Miniconda Prompt with
+`conda init powershell` and `conda env create -p .\.conda -f environment.yml`.
+If the local interpreter is missing, report that setup command. Do not discover
+a machine-specific executable or fall back to a named/global environment.
+`conda run -p .\.conda python -m qprint` is equivalent when Conda is available.
+Optional overrides use only relative paths, for example
 `--workspace examples/demo`; `--session` is for deliberate session targeting,
 not required for the current UI. With no published runtime, the current folder
 is the workspace; do not scan for another workspace to guess the user's intent.
@@ -80,15 +83,13 @@ explanation exists, inspect the source before reasoning about why the result is
 used. Persist a reviewed reason with `annotate-edge A B --reason "..."` only
 when recording review notes is within the user's task.
 
-On Windows, launch Conda queries sequentially: parallel `conda run` processes
-can collide on activation temporary files. For several already-known queries,
-`agent batch --calls '[{"tool":"kb_state","arguments":{}},{"tool":"kb_open","arguments":{"node":"NODE_ID"}}]'`
+For several already-known queries,
+`.\.conda\python.exe -m qprint agent batch --calls '[{"tool":"kb_state","arguments":{}},{"tool":"kb_open","arguments":{"node":"NODE_ID"}}]'`
 runs them in one process, in order, with per-call results/errors, following the
 active runtime. Batch is limited to 32 query tools;
 it cannot run arbitrary code or modify annotations/focus.
 
-When a query fails, use its diagnostic. A transient Conda activation failure
-can be retried once sequentially. Do not repeatedly elevate privileges or use
+When a query fails, use its diagnostic. Do not repeatedly elevate privileges or use
 other agents/tools to work around a task's Navigator-only boundary. If the
 environment remains blocked, report the failure without inventing an answer.
 `state_warning` means history could not be saved in a read-only environment;
@@ -100,7 +101,7 @@ The deterministic indexer owns discovery and parsing. If an index is missing or
 within the task's permissions; otherwise report that reindexing is needed:
 
 ```text
-qprint index
+.\.conda\python.exe -m qprint index
 ```
 
 Do not reconstruct the index by asking an LLM to scan and summarize every file.

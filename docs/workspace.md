@@ -18,7 +18,7 @@ my-math/
 
 这些目录允许缺失或为空，节点不必绑定论文或代码。服务加载指定工作区，默认是当前目录下的 `examples/demo`。Markdown 与 TeX 使用相同相对路径时可用标签简写；不同位置应显式填写绑定路径。
 
-Blueprint 文件路径相对 `blueprint/`，TeX 路径相对 `tex/`，代码路径相对其语言目录。API 和元数据使用 `/`，不使用 Windows 反斜杠；本地 CLI 的工作区根路径可用 `D:/my-math`。
+Blueprint 文件路径相对 `blueprint/`，TeX 路径相对 `tex/`，代码路径相对其语言目录。API 和元数据使用 `/`，不使用 Windows 反斜杠；本地 CLI 的工作区根路径可用 `my-math`。
 
 `safe_path(root, relative)` 拒绝空路径、绝对路径、`.` / `..` 段、反斜杠、Windows drive/ADS、保留名、非法字符和末尾点/空格，并检查解析符号链接后的路径仍在指定根目录内。`read_text` 读取 UTF-8（允许 BOM），单文件上限 5 MiB。
 

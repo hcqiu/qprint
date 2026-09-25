@@ -16,7 +16,7 @@ def build_release(root: Path, output: Path, *, full: bool = False, manifest: dic
         raise WorkspaceError("Unsupported release manifest schema")
     paths = list(manifest["source_paths"])
     # Source manifests must never accidentally scoop up private workspaces or caches.
-    forbidden = {".git", ".qprint", ".codex", ".agents", "toolchains", "packages", "dist"}
+    forbidden = {".git", ".qprint", ".conda", ".codex", ".agents", "toolchains", "packages", "dist"}
     if any(p.split("/")[0] in forbidden for p in paths):
         raise WorkspaceError("Runtime stores and private directories cannot be source_paths")
     receipts = []
@@ -52,7 +52,7 @@ def build_release(root: Path, output: Path, *, full: bool = False, manifest: dic
                     candidate = Path(directory) / name
                     if candidate.is_symlink() or candidate.is_junction():
                         raise WorkspaceError(f"Release input contains a link: {candidate}")
-                folders[:] = [name for name in folders if name not in {".git", "__pycache__", ".lake", "_build", "config"}
+                folders[:] = [name for name in folders if name not in {".git", ".conda", "__pycache__", ".lake", "_build", "config"}
                               and not name.startswith((".install-", "qprint-verify-"))]
                 for name in sorted(files):
                     if not name.endswith((".pyc", ".agdai")):

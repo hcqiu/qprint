@@ -1,5 +1,7 @@
 # TeX to Blueprint
 
+> Command examples now use the project-local `.conda` convention. Historical results and timings are unchanged; this command migration does not imply those experiments were rerun.
+
 [中文](tex-to-blueprint.md) · [Rendering](tex-rendering.en.md)
 
 The workflow follows the product prompt: agent annotation, deterministic generation, then mathematical review. Projects, milestones and nodes remain folders, Markdown files and first-level headings; no hierarchy fields are added to the node schema.
@@ -7,8 +9,8 @@ The workflow follows the product prompt: agent annotation, deterministic generat
 Use the [skill](../skills/tex-to-blueprint/SKILL.md) to read the paper, identify shared definitions outside environments and implicit dependencies, and add `\bpnode`, `\bpdesc` and `\uses` without changing existing references or citations. Repeated labels within a file collect statement and proof fragments into one node.
 
 ```powershell
-conda run -n qprint python -m qprint.tex_to_blueprint search --workspace WORKSPACE --query KEYWORD
-conda run -n qprint python -m qprint.tex_to_blueprint generate --workspace WORKSPACE --tex Paper/main.tex --dest Topology/Paper --title TITLE --author AUTHOR --year 2025 --keyword topology --dry-run
+.\.conda\python.exe -m qprint.tex_to_blueprint search --workspace WORKSPACE --query KEYWORD
+.\.conda\python.exe -m qprint.tex_to_blueprint generate --workspace WORKSPACE --tex Paper/main.tex --dest Topology/Paper --title TITLE --author AUTHOR --year 2025 --keyword topology --dry-run
 ```
 
 Remove `--dry-run` to write. Source paths are relative to `tex/`; destinations are relative to `blueprint/`. Repeat `--tex`, `--author` and `--keyword` as needed. `--dependency-map MAP.json` maps ambiguous labels to complete node IDs. Search reads only existing Blueprint Markdown.
@@ -22,8 +24,8 @@ Review drafts against the paper, reorganize them into mathematical milestones, c
 ## Validation
 
 ```powershell
-conda run -n qprint pytest tests/test_tex_formal.py tests/test_tex_to_blueprint.py tests/test_workspace_api.py
-conda run -n qprint python tools/smoke_tex_to_blueprint.py SOURCE_ARCHIVE --output NEW_TEST_WORKSPACE --title TITLE --author AUTHOR --year YEAR --render-limit 12
+.\.conda\python.exe -m pytest tests/test_tex_formal.py tests/test_tex_to_blueprint.py tests/test_workspace_api.py
+.\.conda\python.exe tools/smoke_tex_to_blueprint.py SOURCE_ARCHIVE --output NEW_TEST_WORKSPACE --title TITLE --author AUTHOR --year YEAR --render-limit 12
 ```
 
 Unit and integration tests cover repeated anchors, nested descriptions, empty subsections, multiple files, external dependency disambiguation, inline/math links, HTML escaping, source fallback, path validation, dry runs and overwrite prevention.
@@ -43,7 +45,7 @@ Initial full Python regression: 227 tests passed, with two existing FastAPI/Star
 
 ## Portable skill
 
-The skill now contains its own `references/blueprint-format.md`, `scripts/convert.py` and `scripts/qprint_blueprint/` runtime. It does not read product prompts, repository documentation or application modules at runtime. Python dependencies come from Conda `qprint`. Run the script by its absolute path from any directory. The additional `validate --workspace WORKSPACE --project PROJECT --render-limit 5` command checks bindings, annotation coverage and dependency links, then returns rendered HTML and warnings.
+The skill now contains its own `references/blueprint-format.md`, `scripts/convert.py` and `scripts/qprint_blueprint/` runtime. It does not read product prompts, repository documentation or application modules at runtime. Python dependencies come from the Qprint-local `.conda`. Run `.\.conda\python.exe skills/tex-to-blueprint/scripts/convert.py` from the Qprint root. The additional `validate --workspace WORKSPACE --project PROJECT --render-limit 5` command checks bindings, annotation coverage and dependency links, then returns rendered HTML and warnings.
 
 For maintainers only, `tools/bundle_blueprint_skill.py` refreshes the bundled runtime from application modules; regression tests check that these copies stay identical and that a relocated skill can generate and render without the checkout. This maintainer script is not an agent input.
 

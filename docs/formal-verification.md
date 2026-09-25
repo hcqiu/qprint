@@ -61,9 +61,9 @@ Agda 只需类型检查，不生成 Haskell/JavaScript 可执行程序。首版�
 ## CLI
 
 ```powershell
-conda run -n qprint python -m qprint verify --workspace D:/my-math
-conda run -n qprint python -m qprint verify --workspace D:/my-math --language lean
-conda run -n qprint python -m qprint verify --workspace D:/my-math --node "Topology/Notes#My theorem" --timeout 180
+.\.conda\python.exe -m qprint verify --workspace my-math
+.\.conda\python.exe -m qprint verify --workspace my-math --language lean
+.\.conda\python.exe -m qprint verify --workspace my-math --node "Topology/Notes#My theorem" --timeout 180
 ```
 
 `--node` 与 `--language` 可组合。标准输出为 JSON 报告；全部选中绑定通过且没有索引错误时退出 `0`，检查失败、工具缺失、未支持、空选择或错误退出 `1`。不存在的节点、无效配置等请求级错误写入标准错误。`check` 命令仍只检查索引，不运行工具链。超时范围为 1–3600 秒，默认 120 秒，**对每个阶段单独计时**，并非整个批次的时间上限。
@@ -75,7 +75,7 @@ CLI JSON 将非 ASCII 字符转义为 `\u...`，避免 Windows/Conda 捕获输�
 验证会执行工作区中的工具链代码，因此 HTTP 服务默认禁用执行。对可信工作区启动：
 
 ```powershell
-conda run -n qprint python -m qprint serve --workspace D:/my-math --allow-verification
+.\.conda\python.exe -m qprint serve --workspace my-math --allow-verification
 ```
 
 `GET /api/project` 返回 `verification_enabled`。使用同源写入 token 显式提交：

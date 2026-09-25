@@ -38,7 +38,7 @@ class KnowledgeNavigator:
             db = connect(self.root, readonly=True)
             try:
                 if not db.execute("SELECT 1 FROM metadata WHERE key='indexed'").fetchone():
-                    raise WorkspaceError("Knowledge index is missing; ask the host to run qprint index for the active workspace")
+                    raise WorkspaceError("Knowledge index is missing; ask the host to run .\\.conda\\python.exe -m qprint index for the active workspace")
             except Exception:
                 db.close()
                 raise
@@ -296,7 +296,7 @@ class KnowledgeNavigator:
                 text = read_text(safe_path(self.root, file))
                 indexed = self.db.execute("SELECT hash FROM files WHERE path=?", (file,)).fetchone()
                 if not indexed or digest(text) != indexed[0]:
-                    raise WorkspaceError(f"Source changed since indexing; run qprint index: {self._file(file)}")
+                    raise WorkspaceError(f"Source changed since indexing; run .\\.conda\\python.exe -m qprint index: {self._file(file)}")
                 cache[file] = text.splitlines()
             actual_last = min(last, first + remaining_lines - 1)
             text = "\n".join(cache[file][first - 1:actual_last])

@@ -63,4 +63,4 @@ worker 通过 plasTeX 生成 DOM，再由受控适配器输出段落、标题、
 
 `bpnode` 和 `bpdesc` 不显示在论文正文中；描述写入 Blueprint 正文。`uses` 在标注位置显示依赖链接，保留原有 `ref`、`cite`。公式内的依赖链接显示在公式之后，避免污染 KaTeX 输入。工作区依次按完整节点 ID、同文件 TeX 标签、节点已声明的依赖及全局唯一别名解析；未解决的依赖显示文字和警告。链接目标经过 URL 编码，显示文字经过 HTML 转义。
 
-标注、批量转换、项目索引和 agent review 使用 [tex-to-blueprint skill](../skills/tex-to-blueprint/SKILL.md)。脚本入口为 `conda run -n qprint python skills/tex-to-blueprint/scripts/convert.py` 或 `conda run -n qprint python -m qprint.tex_to_blueprint`。参见 [流程与实测](tex-to-blueprint.md)。
+标注、批量转换、项目索引和 agent review 使用 [tex-to-blueprint skill](../skills/tex-to-blueprint/SKILL.md)。脚本入口为 `.\.conda\python.exe skills/tex-to-blueprint/scripts/convert.py` 或 `.\.conda\python.exe -m qprint.tex_to_blueprint`。参见 [流程与实测](tex-to-blueprint.md)。

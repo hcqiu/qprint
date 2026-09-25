@@ -3,11 +3,10 @@
   "guide": "产品经理prompt/knowledge_navigator测试.md",
   "workspace": "examples/demo",
   "skill": "skills/knowledge-navigator/SKILL.md",
-  "agent_environment_template": "在 Qprint 文件夹启动，保持当前目录。读取 skills/knowledge-navigator/SKILL.md；只使用 qprint agent 查询工具。由 runtime 自动提供当前 workspace、节点、文档、selection 和 session，不自行设置它们。所有命令、返回的文件位置和答案引用都使用相对 Qprint 文件夹的路径。禁止直接读其他源文件/代码、SQL、内部 API、网络、浏览器、其他 agent/协调工具和索引维护命令。只回答下面用户的问题。\n用户消息：{question}",
+  "agent_environment_template": "在 Qprint 文件夹启动，保持当前目录。读取 skills/knowledge-navigator/SKILL.md；只使用 .\\.conda\\python.exe -m qprint agent 查询工具；不执行 conda activate，不使用命名或全局环境。由 runtime 自动提供当前 workspace、节点、文档、selection 和 session，不自行设置它们。所有命令、返回的文件位置和答案引用都使用相对 Qprint 文件夹的路径。禁止直接读其他源文件/代码、SQL、内部 API、网络、浏览器、其他 agent/协调工具和索引维护命令。只回答下面用户的问题。\n用户消息：{question}",
   "runtime": {
     "initial_cwd": ".",
     "corrected_cwd": ".",
-    "conda_environment": "qprint",
     "index_prebuilt": true,
     "session_pattern": "state-20260924-<RUN_ID>",
     "direct_read_allowlist": [
@@ -22,8 +21,9 @@
       "agent coordination",
       "index/watch/annotate-edge"
     ],
-    "launcher": "qprint",
-    "automatic_workspace_and_session": true
+    "launcher": ".\\.conda\\python.exe -m qprint",
+    "automatic_workspace_and_session": true,
+    "conda_prefix": "./.conda"
   },
   "isolation": {
     "fork_turns": "none",
@@ -187,7 +187,7 @@
       "original_case_id": "K4"
     }
   ],
-  "state_setup": "Host starts Qprint UI for the case workspace and publishes the current node, quotation and a fresh session; the agent discovers all of these with qprint agent state.",
+  "state_setup": "Host starts Qprint UI for the case workspace and publishes the current node, quotation and a fresh session; the agent discovers all of these with .\\.conda\\python.exe -m qprint agent state.",
   "follow_up_runs": [
     {
       "id": "V2K2R",

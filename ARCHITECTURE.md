@@ -4,6 +4,14 @@
 
 本文对应 `0.1.0` 及图谱分级扩展。Qprint 由本地 Python 服务、无构建步骤的浏览器前端和普通文件工作区组成，没有数据库。
 
+## 本地 Python 环境与启动边界
+
+Qprint 根目录同时是用户和 Agent 的命令工作目录。首次安装在 Anaconda Prompt / Miniconda Prompt 中运行 `conda init powershell`，再运行 `conda env create -p .\.conda -f environment.yml`。`environment.yml` 安装项目及开发依赖，环境只属于当前安装目录。
+
+以后入口统一为 `.\.conda\python.exe`；Conda 可用时也可使用 `conda run -p .\.conda python ...`。启动脚本、打包脚本和仓库 skills 不 activate，不依赖 profile 或全局 PATH，不查找用户目录下的 Python/Conda，也不选择命名环境。环境缺失时给出首次安装命令。Python 子进程通过 `sys.executable` 继承正在运行的本地解释器。
+
+配置、示例命令和 Agent 文件位置使用相对 Qprint 根目录的路径。操作系统内部的路径解析与边界检查仍使用运行时计算的路径，不硬编码安装盘符。发行包包含 `environment.yml` 和 Agent 技能，排除 `.conda`；用户在新的安装位置重新创建环境。
+
 ## 系统结构
 
 形式化验证已拆分为项目边界、原生配置解析、artifact 获取、环境组装、语言适配器、进程执行及报告存储；具体职责与调用规则见[项目解析与版本修复](docs/formal-resolution.md)。独立项目入口是 `formal_service.py`，Blueprint 入口仍为 `verification.py`。

@@ -31,16 +31,16 @@ Qprint/
 首批目录项针对 **Windows x64**：Lean **4.19.0**、Agda **2.8.0**、Cubical **0.9**（提交 `b150186d2544e7efeddd31e5d14a8b9ecbb100f7`）。其他平台或版本不会自动选择“最近”版本，须先增加经校验的目录项。
 
 ```powershell
-conda run -n qprint python -m qprint toolchain list
-conda run -n qprint python -m qprint toolchain install lean-4.19.0-windows-x64
-conda run -n qprint python -m qprint toolchain install agda-2.8.0-windows-x64
-conda run -n qprint python -m qprint toolchain install cubical-0.9
+.\.conda\python.exe -m qprint toolchain list
+.\.conda\python.exe -m qprint toolchain install lean-4.19.0-windows-x64
+.\.conda\python.exe -m qprint toolchain install agda-2.8.0-windows-x64
+.\.conda\python.exe -m qprint toolchain install cubical-0.9
 ```
 
 首次安装会访问目录项固定的官方 HTTPS 地址；需网络。已下载的归档可离线安装：
 
 ```powershell
-conda run -n qprint python -m qprint toolchain install agda-2.8.0-windows-x64 --archive D:/downloads/Agda-v2.8.0-win64.zip
+.\.conda\python.exe -m qprint toolchain install agda-2.8.0-windows-x64 --archive downloads/Agda-v2.8.0-win64.zip
 ```
 
 `--archive` 也必须匹配固定 SHA-256。下载以流方式写入磁盘，最多 2 GiB；ZIP 最多 100,000 项、总解压 8 GiB，拒绝路径逃逸、链接、特殊文件、重复大小写路径和保留安装记录名。校验和解压在暂存目录完成；工具链执行版本检查，Agda 额外执行 `--setup`，成功后原子发布。失败清理暂存；既有匹配安装直接复用，未经管理或记录不符的目录拒绝覆盖。
@@ -49,7 +49,7 @@ conda run -n qprint python -m qprint toolchain install agda-2.8.0-windows-x64 --
 
 Agda 的 `Agda_datadir` 和 `AGDA_DIR` 在子进程内指向现有的托管 `data/`。安装时先创建此目录，再执行 `--setup`，防止工具回退到用户目录。保留编译器/库许可证；Agda 许可证位于 [toolchain-licenses](../qprint/toolchain-licenses/agda-2.8.0.txt)。
 
-删除使用同一目录项 ID：`conda run -n qprint python -m qprint toolchain remove cubical-0.9`。只删除带匹配记录的精确安装目录，检查最终路径和链接，不自动删除其使用项目或其他版本。先停止正在使用它的验证；没有引用计数或运行任务取消。安装/删除通过 `.qprint/toolchain-manager.lock` 串行化；崩溃遗留锁需确认无安装进程后手动清理。
+删除使用同一目录项 ID：`.\.conda\python.exe -m qprint toolchain remove cubical-0.9`。只删除带匹配记录的精确安装目录，检查最终路径和链接，不自动删除其使用项目或其他版本。先停止正在使用它的验证；没有引用计数或运行任务取消。安装/删除通过 `.qprint/toolchain-manager.lock` 串行化；崩溃遗留锁需确认无安装进程后手动清理。
 
 ## 子项目只声明需求
 
@@ -100,8 +100,8 @@ flowchart LR
 显式验证先尝试补齐支持的缺失版本；离线模式、无法取得精确版本或安装不完整时报告错误。只有显式 `--allow-system-toolchains` 才允许尝试 PATH 编译器，且运行版本检查，Lean 还检查 Lake 匹配版本；Agda 的系统回退要求该外部安装本身已配置运行数据。该模式不属于离线托管包的可移植性保证。
 
 ```powershell
-conda run -n qprint python -m qprint verify --workspace examples/verification
-conda run -n qprint python -m qprint serve --workspace examples/verification --allow-verification
+.\.conda\python.exe -m qprint verify --workspace examples/verification
+.\.conda\python.exe -m qprint serve --workspace examples/verification --allow-verification
 # 也可用 ./start.ps1 -Workspace examples/verification -AllowVerification
 ```
 
@@ -114,11 +114,11 @@ conda run -n qprint python -m qprint serve --workspace examples/verification --a
 ```powershell
 ./scripts/build-release.ps1
 ./scripts/build-release.ps1 -Full
-# 对应：conda run -n qprint python tools/build_release.py [--full]
+# 对应：.\.conda\python.exe tools/build_release.py [--full]
 ```
 
 输出 `dist/Qprint-0.1.0-windows-x64-light.zip` 或 `...-full.zip`，内部根目录为 `Qprint/`。light 包含程序、文档和独立验证示例；full 额外包含清单指定的 Lean、Agda、Cubical 和安装记录/许可证。full 缺任何一项会失败，不生成冒充完整的包。不覆盖已有 ZIP。排除 Git、缓存、用户导入仓库、Agda 接口和 Lake 构建目录；包含 `release-info.json` 说明内容。
 
-**当前 ZIP 不包含 Python/Conda 运行时或 Python wheel 依赖集合。** 仍需已有 `qprint` 环境及 Python 依赖；Python 冻结/独立运行时是后续工作。本次 full 的离线验证指：已有 Python 环境后，无需联网安装形式化编译器/示例依赖。默认 demo 不在发行包时，CLI 和启动脚本使用 `examples/verification`。
+**当前 ZIP 不包含 Python/Conda 运行时或 Python wheel 依赖集合。** 包内包含 `environment.yml`；首次解压后在 Qprint 根目录运行 `conda env create -p .\.conda -f environment.yml` 创建本地环境。`.conda` 不随 ZIP 分发；Python 冻结/独立运行时是后续工作。本次 full 的离线验证指：已有 Python 环境后，无需联网安装形式化编译器/示例依赖。默认 demo 不在发行包时，CLI 和启动脚本使用 `examples/verification`。
 
 版本来源：[Lean 4.19.0](https://github.com/leanprover/lean4/releases/tag/v4.19.0)、[Agda 2.8.0](https://github.com/agda/agda/releases/tag/v2.8.0)、[Cubical 0.9 兼容表](https://github.com/agda/cubical/tree/v0.9)、[Agda 运行数据选项](https://agda.readthedocs.io/en/v2.8.0/tools/command-line-options.html)。

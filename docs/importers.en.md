@@ -9,7 +9,7 @@ Implementation: [importers.py](../qprint/importers.py). Tests: [test_importers.p
 Imports accept public GitHub repository root URLs, optionally ending in `.git`, not blob/tree pages. Pass a branch, tag, or SHA separately as `ref`; omission resolves the default branch through GitHub. There is no account login or private-repository credential flow.
 
 ```powershell
-conda run -n qprint python -m qprint import-code https://github.com/CMU-HoTT/serre-finiteness --language agda --dest serre-finiteness --workspace D:/my-math
+.\.conda\python.exe -m qprint import-code https://github.com/CMU-HoTT/serre-finiteness --language agda --dest serre-finiteness --workspace my-math
 ```
 
 The archive is extracted into `agda/serre-finiteness/`; `language` can also be lean or coq. The entire repository is retained, including code, licenses, configuration, and other files, without filtering by language extension. The result contains `path`, `files`, and `ref`. A `.qprint-source.json` file records type, URL, ref, resolved full commit, archive SHA-256, and UTC download time.
@@ -19,7 +19,7 @@ The archive is extracted into `agda/serre-finiteness/`; `language` can also be l
 Imports accept modern/legacy arXiv IDs, optional version suffixes, and HTTPS abs/pdf/src/e-print URLs. Both PDF and source are downloaded. Source formats include zip, tar/tar.gz, a single gzipped TeX file, and UTF-8 TeX.
 
 ```powershell
-conda run -n qprint python -m qprint import-paper 1603.04246 --dest Geometry --name Via16SpherePacking --workspace D:/my-math
+.\.conda\python.exe -m qprint import-paper 1603.04246 --dest Geometry --name Via16SpherePacking --workspace my-math
 ```
 
 Outputs are `pdf/Geometry/Via16SpherePacking.pdf` and `tex/Geometry/Via16SpherePacking/`. Multi-file source retains internal relative paths and includes provenance. The result contains `pdf`, `tex`, `files`, and `id`. Supply a basename for `name`, without directories or a `.pdf` suffix. An empty `dest` selects the root category.

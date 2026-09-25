@@ -46,9 +46,9 @@ Lock/recipe files share this schema. Each dependency supplies one full 40-charac
 ## Commands
 
 ```powershell
-conda run -n qprint python -m qprint formal resolve --project PROJECT --language agda
-conda run -n qprint python -m qprint formal verify --project PROJECT --language agda --timeout 600
-conda run -n qprint python -m qprint formal verify --project PROJECT --language agda --entry Summary.agda --offline
+.\.conda\python.exe -m qprint formal resolve --project PROJECT --language agda
+.\.conda\python.exe -m qprint formal verify --project PROJECT --language agda --timeout 600
+.\.conda\python.exe -m qprint formal verify --project PROJECT --language agda --entry Summary.agda --offline
 ```
 
 CLI and post-download verification default to `--entry-strategy auto`: native Lake default targets, or the first unique Agda source-root entry named `AllModulesIndex`, `Everything`, `index`, `Index`, or `Main`. Without an Agda entry, all files are checked individually. Use `--entry-strategy all` for explicit all-file checking; the Python service retains its `all` default for compatibility. Supported suffixes are `.agda`, `.lagda`, `.lagda.tex`, `.lagda.md`, `.lagda.rst`, `.lagda.org`, `.lagda.typ`, and `.lean`. The complete literate suffix is removed when deriving module names: `Compact.lagda.md` imports `Compact`, not `Compact.lagda`. See [Agda literate formats](https://agda.readthedocs.io/en/v2.8.0/tools/literate-programming.html).

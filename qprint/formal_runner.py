@@ -64,9 +64,15 @@ def run_command(stage: str, command: list[str], cwd: Path, timeout: float, *, en
                 result.status = "passed" if result.returncode == 0 else "failed"
             except subprocess.TimeoutExpired:
                 if os.name == "nt":
-                    # Use the OS utility by absolute path, not a project executable.
-                    taskkill = Path(os.environ.get("SystemRoot", r"C:\Windows")) / "System32/taskkill.exe"
                     try:
+                        # Resolve the OS utility through Windows, without a fixed
+                        # system drive or a PATH lookup in an untrusted project.
+                        import ctypes
+                        directory = ctypes.create_unicode_buffer(32768)
+                        length = ctypes.windll.kernel32.GetSystemDirectoryW(directory, len(directory))
+                        if not 0 < length < len(directory):
+                            raise OSError("Cannot resolve Windows system directory")
+                        taskkill = Path(directory.value) / "taskkill.exe"
                         subprocess.run([str(taskkill), "/PID", str(process.pid), "/T", "/F"],
                                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                                        timeout=5, creationflags=subprocess.CREATE_NO_WINDOW)

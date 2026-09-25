@@ -14,27 +14,28 @@
 ## 从 Qprint 文件夹启动
 
 在 Qprint 文件夹启动 Hermes、OpenCode、DeepSeek Harness，或在 ChatGPT、Codex、Claude Code 中打开此文件夹。
-宿主首次准备环境：
+用户首次在 Anaconda Prompt / Miniconda Prompt 中进入 Qprint 根目录，准备环境：
 
 ```powershell
-conda env create -p ./.conda -f environment.yml
-conda run -p ./.conda qprint serve --workspace examples/demo
+conda init powershell
+conda env create -p .\.conda -f environment.yml
+.\.conda\python.exe -m qprint serve --workspace examples/demo
 ```
 
-若宿主已把 qprint CLI 放在 PATH，agent 只需：
+以后 agent 保持 Qprint 根目录，直接使用本地解释器：
 
 ```text
-qprint agent state
-qprint agent open NODE_ID
-qprint agent source NODE_ID --source tex --max-lines 100
-qprint agent dependencies NODE_ID --depth 2
-qprint agent backlinks NODE_ID
-qprint agent context NODE_ID --token-budget 6000
+.\.conda\python.exe -m qprint agent state
+.\.conda\python.exe -m qprint agent open NODE_ID
+.\.conda\python.exe -m qprint agent source NODE_ID --source tex --max-lines 100
+.\.conda\python.exe -m qprint agent dependencies NODE_ID --depth 2
+.\.conda\python.exe -m qprint agent backlinks NODE_ID
+.\.conda\python.exe -m qprint agent context NODE_ID --token-budget 6000
 ```
 
-CLI 不在 PATH 时使用 `conda run -p ./.conda qprint agent state`，无需 activate。
-开发仓库若已明确指定 `conda run -n qprint`，可继续使用该环境。
-每次新开 PowerShell 都可直接运行 `conda run -n qprint qprint agent state`，无需先 activate，
+无需 `conda activate`、全局 PATH 或 PowerShell profile 初始化；不回退到命名环境。
+Conda 可用时也可使用 `conda run -p .\.conda python -m qprint agent state`。
+每次新开 PowerShell 都可直接运行 `.\.conda\python.exe -m qprint agent state`，无需先 activate，
 也无需继承启动 UI 的终端变量。UI 服务启动时自动准备索引并发布 workspace；无需手动执行首次 index。
 运行命令、skill、来源引用与工具文件字段都使用相对 Qprint 文件夹的路径。
 这里必须是**启动当前 UI 的同一个 Qprint 文件夹**；安装在 Conda 环境中的 `qprint`
@@ -47,7 +48,7 @@ CLI 不在 PATH 时使用 `conda run -p ./.conda qprint agent state`，无需 ac
 UI 自动生成页签 session，点击节点、选择文本或切回页签时上报状态。
 Qprint 根目录的 `.qprint/runtime/navigation.json` 记录相对 workspace 和当前 session；
 该指针使用原子替换发布，不要求 agent 读取状态文件或自己选择 session。
-`qprint agent state` 以及后续查询默认跟随它，无需 `--workspace` 或 `--session`。
+`.\.conda\python.exe -m qprint agent state` 以及后续查询默认跟随它，无需 `--workspace` 或 `--session`。
 显式覆盖仍可用于离线工作，例如 `--workspace examples/demo`；不允许绝对路径或离开 Qprint 文件夹。
 没有 runtime 时只使用当前文件夹，不扫描目录猜测用户正在读哪篇论文。
 尚未启动 UI 且没有索引时，`state` 返回成功的 JSON，包含 `current_node=null`、
@@ -76,13 +77,13 @@ Qprint 根目录的 `.qprint/runtime/navigation.json` 记录相对 workspace 和
 UI 使用受 token/同源保护的 `POST /api/navigator/focus`；`GET /api/navigator/state` 可读取同一状态。
 嵌入式宿主传入 `create_app(workspace, runtime_root=qprint_root)`。
 该写接口和 `set_focus` 不属于 agent 查询工具。
-UI 宿主启动时增量准备索引（包括旧 WAL 存储迁移）；离线维护仍可运行 `qprint index`。
+UI 宿主启动时增量准备索引（包括旧 WAL 存储迁移）；离线维护仍可运行 `.\.conda\python.exe -m qprint index`。
 只读沙箱中保存历史失败会附 `state_warning`，不阻断有效原文查询。
 
 Windows 下顺序启动 Conda；多个已知查询可用单进程批量入口：
 
 ```text
-qprint agent batch --calls '[{"tool":"kb_state","arguments":{}},{"tool":"kb_source","arguments":{"node":"NODE_ID","max_lines":80}}]'
+.\.conda\python.exe -m qprint agent batch --calls '[{"tool":"kb_state","arguments":{}},{"tool":"kb_source","arguments":{"node":"NODE_ID","max_lines":80}}]'
 ```
 
 每批最多 32 个注册查询工具，顺序返回 result/error；部分失败退出码为 1，保留其余结果。
@@ -101,7 +102,7 @@ qprint agent batch --calls '[{"tool":"kb_state","arguments":{}},{"tool":"kb_sour
 | 10 | SQLite 按 session 维护最近 32 个打开的节点，同名 alias 优先唯一 working-set 候选 |
 | 11 | 文件 mtime/size 快速判断，SHA-256 内容确认，节点/片段差量 SQL 更新、embedding 哈希缓存 |
 | 12 | 索引由确定性程序构建，附带 `skills/knowledge-navigator/SKILL.md` 指导 agent 使用 |
-| 13 | Python API、`qprint agent` CLI、JSON tool schemas 与统一 dispatcher |
+| 13 | Python API、`.\.conda\python.exe -m qprint agent` CLI、JSON tool schemas 与统一 dispatcher |
 | 16 | formal symbol → Blueprint → 多层 backlinks → 有界 source 读取 |
 | 17 | `kb_explain_edge` + `explain_link`/`annotate-edge`，保存人工或 agent review 的解释与边来源 |
 
@@ -174,7 +175,7 @@ FTS5 使用 unicode61，适合符号和空格分词；中文自然语言的同�
 
 `open` 返回有限长度导航文本、依赖、source locations 和 formalizations，不自动读文件。
 `source` 才读取指定节点的来源范围，默认最多 120 行/20000 字符，可用 `--lines START END` 取交集。
-读取前比对内容哈希，过期索引报错提示 `qprint index`。
+读取前比对内容哈希，过期索引报错提示 `.\.conda\python.exe -m qprint index`。
 `context` 按当前节点、直接依赖、二层必要定义、最近工作节点选取内容；预算使用
 紧凑 JSON 的 UTF-8 字节数作为保守的 byte-level tokenizer token 上界，包含元数据。
 返回 `token_upper_bound` 和 `truncated`。不是特定模型的精确 token 计数。
@@ -202,7 +203,7 @@ with KnowledgeNavigator("my-math", session="em-review") as kb:
 `tool_definitions()` 返回八个核心工具和 `kb_explain_edge` 的 JSON Schema；
 `call_tool` 是共享 dispatcher，可由 MCP host 或其他 agent host 包装。
 本模块提供传输无关 tool API，不启动独立 MCP server，也不自动安装客户端配置。
-`qprint agent tools` 打印这些 schemas；`agent call TOOL --args JSON` 调用同一实现。
+`.\.conda\python.exe -m qprint agent tools` 打印这些 schemas；`agent call TOOL --args JSON` 调用同一实现。
 
 可选 embedding provider 实现 `model_id` 和 `embed(list[str]) -> list[list[float]]`，
 分别传给 `KnowledgeIndexer(..., embedding_provider=provider)` 与
@@ -214,7 +215,7 @@ with KnowledgeNavigator("my-math", session="em-review") as kb:
 边解释可以由 front matter 的 `reason` 提供，也可在 review 后执行：
 
 ```text
-qprint agent annotate-edge A B --type uses --reason "B identifies the fiber of p_n." --workspace PATH
+.\.conda\python.exe -m qprint agent annotate-edge A B --type uses --reason "B identifies the fiber of p_n." --workspace PATH
 ```
 
 注释保存在 edge_notes，正常增量更新会保留，查询同时返回原始文件和行号。

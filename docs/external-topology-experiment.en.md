@@ -1,5 +1,7 @@
 # External topology experiment (2026-09-21)
 
+> Command examples now use the project-local `.conda` convention. Historical results and timings are unchanged; this command migration does not imply those experiments were rerun.
+
 [中文](external-topology-experiment.md) | [English](external-topology-experiment.en.md)
 
 Two new public projects were downloaded at fixed commits and tested on Windows x64 using Conda `qprint`. Projects and evidence live under the ignored `.qprint/external-topology/` directory. `downloads.json` records official archive URLs, commits, download times and SHA-256 hashes; `source-audit.json` compares source files directly against the downloaded archives.
@@ -26,7 +28,7 @@ Evidence under `agda/.qprint/reports/`:
 - Configuration and source audit: `typetopology-version-helper-audit.json`.
 
 ```powershell
-conda run -n qprint python -m qprint formal verify --project .qprint/external-topology/agda --language agda --entry source/TypeTopology/index.lagda --timeout 600 --offline
+.\.conda\python.exe -m qprint formal verify --project .qprint/external-topology/agda --language agda --entry source/TypeTopology/index.lagda --timeout 600 --offline
 ```
 
 ## Lean results and preparation
@@ -48,7 +50,7 @@ Three initial cache connections stalled, and decompression identified one additi
 Reproduce after preparation:
 
 ```powershell
-conda run -n qprint python -m qprint formal verify --project .qprint/external-topology/lean --language lean --timeout 600 --offline
+.\.conda\python.exe -m qprint formal verify --project .qprint/external-topology/lean --language lean --timeout 600 --offline
 ```
 
 The local `verify_lean.ps1` additionally sets process-local Git ownership trust for the test directory and a local cache path, accommodating ownership differences between the sandbox and user accounts.

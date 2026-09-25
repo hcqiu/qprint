@@ -46,10 +46,10 @@ lock/recipe 使用相同结构。依赖需 `revision`（完整 40 字符 Git 提
 ## 使用
 
 ```powershell
-conda run -n qprint python -m qprint formal resolve --project PROJECT --language agda
-conda run -n qprint python -m qprint formal verify --project PROJECT --language agda --timeout 600
-conda run -n qprint python -m qprint formal verify --project PROJECT --language agda --entry Summary.agda --offline
-conda run -n qprint python -m qprint formal verify --project PROJECT --language agda --entry Maps.agda --declaration identity
+.\.conda\python.exe -m qprint formal resolve --project PROJECT --language agda
+.\.conda\python.exe -m qprint formal verify --project PROJECT --language agda --timeout 600
+.\.conda\python.exe -m qprint formal verify --project PROJECT --language agda --entry Summary.agda --offline
+.\.conda\python.exe -m qprint formal verify --project PROJECT --language agda --entry Maps.agda --declaration identity
 ```
 
 CLI 与下载后验证默认使用 `--entry-strategy auto`：Lean 执行 `lake build` 的默认目标；Agda 在源根依次查找唯一的 `AllModulesIndex`、`Everything`、`index`、`Index`、`Main`，无此入口则逐文件检查。`--entry-strategy all` 显式选择所有源文件，Python `formal_project()` 为兼容旧调用仍默认 `all`。支持的源码后缀包括 `.agda`、`.lagda`、`.lagda.tex`、`.lagda.md`、`.lagda.rst`、`.lagda.org`、`.lagda.typ` 和 `.lean`。文学化源码的整个后缀会从模块名中移除，不会误把 `Compact.lagda.md` 导入为 `Compact.lagda`。[Agda 文学化编程格式](https://agda.readthedocs.io/en/v2.8.0/tools/literate-programming.html)。

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "source_paths": [
     "qprint", "docs", "examples/verification", "tools", "tests", "skills/formalization-version-helper", "skills/formalization-runtime-helper", "skills/tex-to-blueprint",
-    "scripts/build-release.ps1", "release-manifest.json", "pyproject.toml",
+    "skills/knowledge-navigator", "scripts/build-release.ps1", "release-manifest.json", "pyproject.toml", "environment.yml",
     "requirements-lock.txt", "LICENSE", "COMMERCIAL-LICENSE.md", "THIRD-PARTY-NOTICES.md", "README.md", "README.en.md", "ARCHITECTURE.md",
     "ARCHITECTURE.en.md", "PRODUCT.md", "PRODUCT.en.md", "TODO.md", "TODO.en.md",
     "AGENTS.md", "start.ps1", "Qprint功能需求.md", "blueprint分级指南.md"

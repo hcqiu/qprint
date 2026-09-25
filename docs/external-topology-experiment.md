@@ -1,5 +1,7 @@
 # 外部拓扑项目实测（2026-09-21）
 
+> 文中命令已更新为项目内 `.conda` 的复现写法；历史结果与耗时保持原样，此次命令迁移不表示重新运行了这些实验。
+
 [中文](external-topology-experiment.md) | [English](external-topology-experiment.en.md)
 
 这次从网上另选两个项目，下载固定提交，在 Windows x64、Conda `qprint` 下测试。项目与报告位于 `.qprint/external-topology/`，不提交 Git。`downloads.json` 记录官方归档 URL、提交、下载时间和 SHA-256；`source-audit.json` 将实际源码逐文件与下载归档比对。
@@ -26,7 +28,7 @@
 - helper 配置及源码哈希审计：`typetopology-version-helper-audit.json`。
 
 ```powershell
-conda run -n qprint python -m qprint formal verify --project .qprint/external-topology/agda --language agda --entry source/TypeTopology/index.lagda --timeout 600 --offline
+.\.conda\python.exe -m qprint formal verify --project .qprint/external-topology/agda --language agda --entry source/TypeTopology/index.lagda --timeout 600 --offline
 ```
 
 ## Lean 结果与环境准备
@@ -48,7 +50,7 @@ Mathlib 官方 `lake exe cache get` 还要求 ProofWidgets 发布标签。实验
 准备完成后的重现命令：
 
 ```powershell
-conda run -n qprint python -m qprint formal verify --project .qprint/external-topology/lean --language lean --timeout 600 --offline
+.\.conda\python.exe -m qprint formal verify --project .qprint/external-topology/lean --language lean --timeout 600 --offline
 ```
 
 本机实验另留 `verify_lean.ps1`，仅对当前子进程设置测试目录的 Git 所有者信任与本地缓存路径，处理 sandbox/用户账户切换产生的目录所有者差异。

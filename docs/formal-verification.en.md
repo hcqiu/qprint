@@ -61,9 +61,9 @@ Binding syntax is unchanged. For example, `file: my-agda-repo/src/Topology/Maps.
 ## CLI
 
 ```powershell
-conda run -n qprint python -m qprint verify --workspace D:/my-math
-conda run -n qprint python -m qprint verify --workspace D:/my-math --language lean
-conda run -n qprint python -m qprint verify --workspace D:/my-math --node "Topology/Notes#My theorem" --timeout 180
+.\.conda\python.exe -m qprint verify --workspace my-math
+.\.conda\python.exe -m qprint verify --workspace my-math --language lean
+.\.conda\python.exe -m qprint verify --workspace my-math --node "Topology/Notes#My theorem" --timeout 180
 ```
 
 Combine `--node` and `--language` as needed. JSON goes to stdout. Exit `0` requires every selected binding to pass and no index errors. Failed checks, missing tools, unsupported adapters, empty selections, and errors exit `1`. Request-level errors, including invalid configuration and unknown nodes, go to stderr. `check` still checks indexes only. Timeout is 1–3600 seconds, default 120, **per toolchain stage**, not per batch.
@@ -75,7 +75,7 @@ CLI JSON escapes non-ASCII characters as `\u...` to survive Windows/Conda captur
 HTTP execution is disabled by default because verification executes toolchain code from the workspace. Enable it for a trusted workspace:
 
 ```powershell
-conda run -n qprint python -m qprint serve --workspace D:/my-math --allow-verification
+.\.conda\python.exe -m qprint serve --workspace my-math --allow-verification
 ```
 
 `GET /api/project` includes `verification_enabled`. Submit explicitly with the same-origin write token:

@@ -9,7 +9,7 @@ conda env create -p .\.conda -f environment.yml
     ↓
 不执行 conda activate
     ↓
-conda run -p .\.conda python ...
+conda run -p .\.conda python ... 或 .\.conda\python.exe ...
 
 # knowledge navigator agent
 
@@ -27,7 +27,7 @@ Qprint runtime （实时更新）
    └── session = ...
            ▲
            │
-    qprint agent state
+    .\.conda\python.exe -m qprint agent state
            ▲
            │
   Codex / Claude / Hermes / OpenCode
@@ -35,6 +35,6 @@ Qprint runtime （实时更新）
 用户说的“这里”到底是哪？
 
 它直接读取：
-qprint agent state
+.\.conda\python.exe -m qprint agent state
 
-agent能接触到的一切skill里写的、tool返回的，都是相对路径。
+agent能接触到的一切skill里写的、tool返回的，agent运行的命令，都是相对路径。

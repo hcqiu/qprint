@@ -146,17 +146,13 @@ def test_first_launch_bootstraps_state_for_new_processes(tmp_path):
         assert state['index_status'] == 'ready' and state['current_node'] is None
 
 
-@pytest.mark.skipif(not shutil.which('powershell') or not shutil.which('conda'), reason='PowerShell and Conda required')
-def test_new_powershell_conda_run_follows_ui(tmp_path):
-    root = tmp_path / 'Qprint'
+def test_new_powershell_local_python_follows_ui(local_python_shell):
+    root, run_shell = local_python_shell
     workspace = root / 'examples/demo'
     make_workspace(workspace, indexed=False)
 
     def new_shell():
-        result = subprocess.run(
-            ['powershell', '-NoProfile', '-NonInteractive', '-Command',
-             'conda run -n qprint qprint agent state; exit $LASTEXITCODE'],
-            cwd=root, capture_output=True, text=True, timeout=90)
+        result = run_shell(r'.\.conda\python.exe -m qprint agent state; exit $LASTEXITCODE')
         assert result.returncode == 0, result.stderr
         assert str(root) not in result.stdout
         return json.loads(result.stdout)

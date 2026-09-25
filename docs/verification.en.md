@@ -1,5 +1,7 @@
 # Qprint v1 acceptance record
 
+> Command examples now use the project-local `.conda` convention. Historical results and timings are unchanged; this command migration does not imply those experiments were rerun.
+
 [中文](verification.md) | [English](verification.en.md) · [Documentation](index.en.md)
 
 The following records describe checks executed on their stated dates. This bilingual documentation update does not rerun or reassert those business tests. v1 means the initial product scope; the Python package version is `0.1.0`.
@@ -38,9 +40,9 @@ The subsequent modular extension passed 136 regressions and a fresh-agent versio
 
 Installed in gitignored stores: Lean 4.19.0, Agda 2.8.0, and Cubical 0.9 pinned to `b150186d2544e7efeddd31e5d14a8b9ecbb100f7`. Existing imported material was not moved. Added manager/resolver/context, project requirements, receipts, and explicit light/full release manifests.
 
-Executed `conda run -n qprint pytest -q --basetemp D:/Qprint_v2/.qprint/tests-toolchain-release-final --tb=short`: **115 passed, 2 warnings, no skips**, 6.85 seconds. The existing dependency deprecations remain. Coverage includes exact versions, floating/conflicting/rc rejection, explicit PATH fallback, isolated Agda libraries/data, hashes/archives/atomic installs/removal, discovery, ZIP input rules, and real compilers.
+Executed `.\.conda\python.exe -m pytest -q --basetemp .qprint/tests-toolchain-release-final --tb=short`: **115 passed, 2 warnings, no skips**, 6.85 seconds. The existing dependency deprecations remain. Coverage includes exact versions, floating/conflicting/rc rejection, explicit PATH fallback, isolated Agda libraries/data, hashes/archives/atomic installs/removal, discovery, ZIP input rules, and real compilers.
 
-`conda run -n qprint python -m qprint verify --workspace examples/verification` passed Lean build/environment lookup and Agda/Cubical typechecking/declaration probes. Real missing-declaration tests failed as expected. Initial global Cubical flags broke primitive full/erased mode boundaries; native library scope is now preserved, mode is assigned to probes, and all interfaces are rechecked. The example regression passes.
+`.\.conda\python.exe -m qprint verify --workspace examples/verification` passed Lean build/environment lookup and Agda/Cubical typechecking/declaration probes. Real missing-declaration tests failed as expected. Initial global Cubical flags broke primitive full/erased mode boundaries; native library scope is now preserved, mode is assigned to probes, and all interfaces are rechecked. The example regression passes.
 
 Built an approximately 502 MB full test ZIP and extracted it into `.qprint/relocated full environment/Qprint`. Both languages verified successfully using the extracted code; compiler/include paths all pointed inside the new directory. The archive used the existing Conda environment and did not bundle Python. Git ignore checks passed for compilers/Cubical, and local links in 36 Markdown documents passed. No frontend changes were made. See [toolchains](toolchains.en.md) for installation, relocation, and packaging boundaries.
 
@@ -51,8 +53,8 @@ Added Lean / Agda adapters, unified stage reports, CLI, opt-in background API, p
 Executed:
 
 ```powershell
-conda run -n qprint pytest -q --basetemp D:/Qprint_v2/.qprint/tests-verification-final --tb=short
-conda run -n qprint python -m qprint verify --workspace examples/demo --language agda
+.\.conda\python.exe -m pytest -q --basetemp .qprint/tests-verification-final --tb=short
+.\.conda\python.exe -m qprint verify --workspace examples/demo --language agda
 ```
 
 Python results: **85 passed, 2 skipped, 2 warnings**, 1.73 seconds. New coverage includes command/probe construction, failed-stage short circuiting, valid lines with nonexistent declarations, missing tools, timeouts, bounded logs, configuration/path restrictions, probe injection, source changes, API token/Origin/enablement/queues, CLI exit codes, and unchanged author progress. The two dependency deprecations match the historical record.
@@ -66,7 +68,7 @@ The [blueprint granularity guide](../blueprint分级指南.md) was implemented w
 Automated checks:
 
 ```powershell
-conda run -n qprint pytest -q --basetemp D:/Qprint_v2/.qprint/tests-granularity-final --tb=short
+.\.conda\python.exe -m pytest -q --basetemp .qprint/tests-granularity-final --tb=short
 node --test tests/graph_view.test.mjs
 node --check qprint/static/app.js
 node --check qprint/static/graph.js
@@ -93,7 +95,7 @@ Date: 2026-09-18. Environment: Windows, Conda `qprint`, Python 3.12.14.
 Command:
 
 ```powershell
-conda run -n qprint pytest -q --basetemp D:/Qprint_v2/.qprint/tests-final --tb=short
+.\.conda\python.exe -m pytest -q --basetemp .qprint/tests-final --tb=short
 ```
 
 Result: **47 passed, 2 warnings**, in 1.29 seconds.
@@ -130,7 +132,7 @@ Checks were performed against the local service at `http://127.0.0.1:8765`:
 
 ## Real network imports
 
-`conda run -n qprint python tools/smoke_imports.py` downloaded into `.qprint/network-smoke-*`, without changing demo content.
+`.\.conda\python.exe tools/smoke_imports.py` downloaded into `.qprint/network-smoke-*`, without changing demo content.
 
 | Source | Result |
 | --- | --- |

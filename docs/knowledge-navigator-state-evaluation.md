@@ -1,5 +1,7 @@
 # Knowledge Navigator 当前状态与修复后重测
 
+> 文中命令已更新为项目内 `.conda` 的复现写法；历史结果与耗时保持原样，此次命令迁移不表示重新运行了这些实验。
+
 > 历史运行记录；机器路径已去标识化。当前命令与自动 runtime 约定见 [使用说明](knowledge-navigator.md)。
 
 本轮在原有双论文测试题面和评分点不变的基础上，增加宿主页面状态输入。
@@ -97,10 +99,10 @@ agent prompt 不提供节点 ID、项目名、评分点或其他 agent 的结果
 
 保持当前节点发布在宿主侧：网页使用 `?navigator_session=TASK`，查询使用 `--session TASK`。
 若重放测试，应创建新 session 并按清单的隐藏 node 发布焦点，单独把 `question` 交给新 agent。
-不得把完整测试清单交给受测 agent。对旧 WAL 索引，主持端先运行一次 `qprint index`。
+不得把完整测试清单交给受测 agent。对旧 WAL 索引，主持端先运行一次 `.\.conda\python.exe -m qprint index`。
 
 ```powershell
-conda run -n qprint python tools/collect_knowledge_navigator_eval.py `
+.\.conda\python.exe tools/collect_knowledge_navigator_eval.py `
   --cases tests/scenarios/knowledge_navigator_state.json `
   --logs HOST_PATH `
   --output .qprint/knowledge-navigator-evaluation/2026-09-24-v2/results.raw.json `

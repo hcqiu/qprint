@@ -20,29 +20,31 @@
 
 ## 快速启动
 
-在项目根目录运行（Python 3.12+，使用 `qprint` Conda 环境）：
+首次安装：在 **Anaconda Prompt / Miniconda Prompt** 中进入 Qprint 根目录，执行：
 
-```powershell
-conda run -n qprint python -m pip install -e ".[dev]"
-conda run -n qprint python -m qprint serve --workspace examples/demo --port 8765
+```text
+conda init powershell
+conda env create -p .\.conda -f environment.yml
 ```
 
-打开 <http://127.0.0.1:8765>。默认仅监听本机。示例包含 10 个节点、12 条关系、1 篇 TeX 笔记及三种语言的代码片段。
-
-如果 PowerShell 找不到 `conda`，可以运行 `./start.ps1`；脚本会查找 PATH 和用户目录下的 Anaconda / Miniconda。或使用完整路径：
+`environment.yml` 会安装 Python 3.12+、项目和开发依赖。以后在 Qprint 根目录打开 PowerShell 或 Agent，直接运行：
 
 ```powershell
-& "$env:USERPROFILE\anaconda3\Scripts\conda.exe" run -n qprint python -m qprint serve --workspace examples/demo
+.\.conda\python.exe -m qprint serve --workspace examples/demo --port 8765
 ```
+
+也可运行 `.\start.ps1`。打开 <http://127.0.0.1:8765>；默认仅监听本机。脚本使用项目内 `.conda`，缺少环境时会提示首次安装命令。
+
+Agent 不执行 `conda activate`，也不需要 Conda 位于 PATH 或加载 PowerShell profile。若 Conda 可用，等价写法为 `conda run -p .\.conda python -m qprint agent state`。命令和路径均相对 Qprint 根目录；迁移安装位置时重新创建 `.conda`，不复制旧环境。
 
 依赖版本快照在 `requirements-lock.txt`，需要复现当前测试环境时，先安装该文件再安装项目：
 
 ```powershell
-conda run -n qprint python -m pip install -r requirements-lock.txt
-conda run -n qprint python -m pip install -e . --no-deps
+.\.conda\python.exe -m pip install -r requirements-lock.txt
+.\.conda\python.exe -m pip install -e . --no-deps
 ```
 
-KaTeX JS、CSS、字体和许可证已保存在 `qprint/static/vendor/katex/`，阅读与图谱不依赖 CDN。重新获取固定版本资源可运行 `conda run -n qprint python tools/vendor_assets.py`，脚本验证 npm 提供的 SHA-512 integrity。
+KaTeX JS、CSS、字体和许可证已保存在 `qprint/static/vendor/katex/`，阅读与图谱不依赖 CDN。重新获取固定版本资源可运行 `.\.conda\python.exe tools/vendor_assets.py`，脚本验证 npm 提供的 SHA-512 integrity。
 
 ## 使用自己的工作区
 
@@ -57,8 +59,8 @@ my-math/
 ```
 
 ```powershell
-conda run -n qprint python -m qprint serve --workspace D:/my-math
-conda run -n qprint python -m qprint check --workspace D:/my-math
+.\.conda\python.exe -m qprint serve --workspace my-math
+.\.conda\python.exe -m qprint check --workspace my-math
 ```
 
 目录可为空，标准库节点不必有论文附件。文件在外部修改后点击“刷新”；应用不会后台改写文件。
@@ -138,8 +140,8 @@ The next mathematical object begins here.
 界面的“导入资料”与以下 CLI 使用同一个下载器。GitHub 接受仓库根地址，branch / tag / SHA 单独传入；默认分支会自动读取。
 
 ```powershell
-conda run -n qprint python -m qprint import-code https://github.com/CMU-HoTT/serre-finiteness --language agda --dest serre-finiteness --workspace D:/my-math
-conda run -n qprint python -m qprint import-paper 1603.04246 --dest Geometry --name Via16SpherePacking --workspace D:/my-math
+.\.conda\python.exe -m qprint import-code https://github.com/CMU-HoTT/serre-finiteness --language agda --dest serre-finiteness --workspace my-math
+.\.conda\python.exe -m qprint import-paper 1603.04246 --dest Geometry --name Via16SpherePacking --workspace my-math
 ```
 
 论文 PDF 保存为 `pdf/Geometry/Via16SpherePacking.pdf`，多文件源码保存在 `tex/Geometry/Via16SpherePacking/`，保持内部相对路径；下载器不会擅自给论文添加 blueprint 标记。导入后按需要创建同名 Markdown，并以实际源码路径绑定节点。
@@ -149,16 +151,16 @@ conda run -n qprint python -m qprint import-paper 1603.04246 --dest Geometry --n
 ## 测试与开发
 
 ```powershell
-conda run -n qprint pytest -q
+.\.conda\python.exe -m pytest -q
 node --test tests/graph_view.test.mjs
-conda run -n qprint python -m qprint check --workspace examples/demo
+.\.conda\python.exe -m qprint check --workspace examples/demo
 ```
 
 受限的 Windows 运行环境若无法访问系统 pytest 临时目录，可指定项目内新建的临时目录：
 
 ```powershell
 New-Item -ItemType Directory .qprint -Force
-conda run -n qprint pytest -q --basetemp .qprint/test-local
+.\.conda\python.exe -m pytest -q --basetemp .qprint/test-local
 ```
 
 注意 pytest 会清理其 `--basetemp` 目录，务必只指定测试专用目录。
@@ -167,13 +169,13 @@ conda run -n qprint pytest -q --basetemp .qprint/test-local
 
 ## 形式化验证
 
-独立项目使用 `conda run -n qprint python -m qprint formal verify --project PROJECT --language agda --timeout 600`，默认覆盖全部模块。原生配置解析、自动安装、带时间的错误报告和版本修复 skill 见[项目解析文档](docs/formal-resolution.md)。
+独立项目使用 `.\.conda\python.exe -m qprint formal verify --project PROJECT --language agda --timeout 600`，默认覆盖全部模块。原生配置解析、自动安装、带时间的错误报告和版本修复 skill 见[项目解析文档](docs/formal-resolution.md)。
 
 2026-09-21 起，编译器和库安装在 Qprint 根目录的 `toolchains/`、`packages/`（Git 忽略）。子项目优先使用原生配置，并由 `.qprint-formal.yaml` 补充 Agda 版本；管理命令及 light/full ZIP 打包见[工具链文档](docs/toolchains.md)。已提供独立的真实验证示例：
 
 ```powershell
-conda run -n qprint python -m qprint toolchain list
-conda run -n qprint python -m qprint verify --workspace examples/verification
+.\.conda\python.exe -m qprint toolchain list
+.\.conda\python.exe -m qprint verify --workspace examples/verification
 ```
 
 Full ZIP 包含指定形式化环境，但当前仍需已有 Python/Conda 环境。
@@ -181,7 +183,7 @@ Full ZIP 包含指定形式化环境，但当前仍需已有 Python/Conda 环境
 新增[统一形式化验证适配层](docs/formal-verification.md)：Lean 构建与声明存在性检查、Agda 类型检查与声明解析，Coq 明确返回未支持。显式验证自动补齐支持的固定版本（`--offline` 禁止下载），例如：
 
 ```powershell
-conda run -n qprint python -m qprint verify --workspace D:/my-math --language lean
+.\.conda\python.exe -m qprint verify --workspace my-math --language lean
 ```
 
 可选 `--node "路径#标题"` 和 `--timeout 180`。输出独立 JSON 报告，不改写作者 `status`。HTTP 入口为 `POST /api/verify`，需以 `serve --allow-verification` 启用可信工作区的执行。阅读和保存不自动验证；GitHub 导入的“下载后验证”默认开启。Agda 默认 `safe: inherit`，尊重上游 OPTIONS；安全审计需显式 `formal audit`。自动恢复及两个受限 helper 见[解析文档](docs/formal-resolution.md)。

@@ -1,5 +1,7 @@
 # Knowledge Navigator 双论文盲测
 
+> 文中命令已更新为项目内 `.conda` 的复现写法；历史结果与耗时保持原样，此次命令迁移不表示重新运行了这些实验。
+
 > 历史运行记录；机器路径已去标识化。当前命令与自动 runtime 约定见 [使用说明](knowledge-navigator.md)。
 
 后续的当前状态接口、运行问题修复和全新代理重测见[第二轮报告](knowledge-navigator-state-evaluation.md)。
@@ -100,7 +102,7 @@ skill 路径、Conda 入口、Navigator workspace/session 和读取边界。
 每例使用新的 Navigator session；不预先把来源节点加入 working set。
 
 agent 只能直接读取 `skills/knowledge-navigator/SKILL.md`，其余资料只能经
-`qprint agent` 查询获得。禁止直接读取/搜索 TeX、Markdown、源码、测试清单，
+`.\.conda\python.exe -m qprint agent` 查询获得。禁止直接读取/搜索 TeX、Markdown、源码、测试清单，
 禁止 SQL、内部 Python API、网络、浏览器、索引重建和边注释写入。
 Navigator 自身维护该例 working set 属于正常查询行为。
 工具能力并未在平台层裁剪，因此边界合规通过实际调用记录审计，不宣称物理隔离。
@@ -161,7 +163,7 @@ Navigator 命令次数按实际 shell 返回计数，包含失败重试及 `agen
 只抽取与指定测试 agent recipient 匹配的日志。它不读取加密任务内容，也不自动给数学答案打分。
 
 ```powershell
-conda run -n qprint python tools/collect_knowledge_navigator_eval.py `
+.\.conda\python.exe tools/collect_knowledge_navigator_eval.py `
   --logs HOST_PATH `
   --output .qprint/knowledge-navigator-evaluation/2026-09-24/results.raw.json `
   --evidence .qprint/knowledge-navigator-evaluation/2026-09-24/tool-outputs `

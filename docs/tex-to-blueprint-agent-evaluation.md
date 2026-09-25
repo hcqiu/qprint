@@ -1,5 +1,7 @@
 # 独立 skill 双论文验收
 
+> 文中命令已更新为项目内 `.conda` 的复现写法；历史结果与耗时保持原样，此次命令迁移不表示重新运行了这些实验。
+
 本轮使用全新下载的论文，而不是上一轮机械标注的结构烟雾测试副本。
 
 ## 输入隔离
@@ -11,7 +13,7 @@
 | arXiv 2003.03925v6 | `--dest Topology/Lin20K3 --name Lin20K3` | `tex/Topology/Lin20K3` |
 | arXiv 2510.12394v2 | `--dest Topology/KPT25TwoStabilizations --name KPT25TwoStabilizations` | `tex/Topology/KPT25TwoStabilizations` |
 
-下载均通过 `conda run -n qprint python -m qprint import-paper` 完成，同时获取 PDF、完整 TeX 源码和来源记录。工作区分别位于 `.qprint/blueprint-skill-evaluation/basic` 与 `stress`，互不读取对方的论文资料。skill 的固定说明、格式文档、转换/检索/校验脚本和运行库全部位于 skill 内。
+下载均通过 `.\.conda\python.exe -m qprint import-paper` 完成，同时获取 PDF、完整 TeX 源码和来源记录。工作区分别位于 `.qprint/blueprint-skill-evaluation/basic` 与 `stress`，互不读取对方的论文资料。skill 的固定说明、格式文档、转换/检索/校验脚本和运行库全部位于 skill 内。
 
 ## 初步案例
 

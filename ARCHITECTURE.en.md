@@ -4,6 +4,14 @@
 
 This document covers `0.1.0` and the graph granularity extension. Qprint consists of a local Python service, a browser frontend without a build step, and an ordinary file workspace. It has no database.
 
+## Local Python environment and startup boundary
+
+The Qprint root is the working directory for users and agents. For first-time setup, run `conda init powershell` and then `conda env create -p .\.conda -f environment.yml` in Anaconda Prompt / Miniconda Prompt. The environment file installs Qprint and development dependencies into this installation's `.conda`.
+
+All subsequent entry points use `.\.conda\python.exe`; `conda run -p .\.conda python ...` is equivalent when Conda is available. Startup scripts, release scripts and repository skills do not activate environments, depend on profiles/global PATH, search user installations, or select named environments. Missing environments produce the setup command. Python subprocesses inherit the running local interpreter via `sys.executable`.
+
+Configuration, command examples and agent file locations use paths relative to the Qprint root. Internal filesystem resolution and boundary checks still use dynamically resolved paths without hardcoded installation drives. Releases include `environment.yml` and agent skills but exclude `.conda`; recreate the environment at each new installation location.
+
 ## System structure
 
 Formal verification separates project boundaries, native requirements, artifact acquisition, environment assembly, language adapters, process execution and report storage. See [project resolution](docs/formal-resolution.en.md) for responsibilities. `formal_service.py` handles independent projects; `verification.py` retains the Blueprint entry point.

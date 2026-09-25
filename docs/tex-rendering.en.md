@@ -63,4 +63,4 @@ Bibliographic navigation and Blueprint dependencies remain separate: `\cite` ope
 
 `bpnode` and `bpdesc` are hidden in rendered paper content; descriptions become Blueprint prose. `uses` produces inline dependency links while preserving existing `ref` and `cite`. Links inside math appear after the formula so KaTeX receives clean input. Resolution prefers explicit node IDs, same-file TeX anchors, declared dependencies, then globally unique aliases. Missing or ambiguous targets remain visible with warnings. URLs and labels are escaped.
 
-Use the [tex-to-blueprint skill](../skills/tex-to-blueprint/SKILL.md) for annotation, generation and mathematical review. Run `conda run -n qprint python -m qprint.tex_to_blueprint` or the skill's `scripts/convert.py` entry point. See [workflow and validation](tex-to-blueprint.en.md).
+Use the [tex-to-blueprint skill](../skills/tex-to-blueprint/SKILL.md) for annotation, generation and mathematical review. Run `.\.conda\python.exe -m qprint.tex_to_blueprint` or the skill's `scripts/convert.py` entry point. See [workflow and validation](tex-to-blueprint.en.md).

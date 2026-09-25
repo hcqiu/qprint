@@ -1,5 +1,7 @@
 # Serre finiteness: verification and version repair experiment
 
+> Command examples now use the project-local `.conda` convention. Historical results and timings are unchanged; this command migration does not imply those experiments were rerun.
+
 Executed on 2026-09-21, Windows x64, Conda `qprint`, Agda 2.8.0. The isolated project at `.qprint/formal-experiment/serre-finiteness` contains 35 Agda files whose hashes match the original demo project. Original proof sources were preserved.
 
 Native `.agda-lib` and README evidence produced `.qprint-formal.yaml`, selecting Agda 2.8.0 and Cubical commit `d0b9c7b0e9e4f816422c3447d7983b03274dd829`. The artifact provider registered a matching existing installation without downloading again.
@@ -31,7 +33,7 @@ Evidence under the experimental project's `.qprint/reports/`:
 Reports are gitignored historical evidence; output tails are capped at 32 KiB with truncation flags. Reproduce with:
 
 ```powershell
-conda run -n qprint python -m qprint formal verify --project .qprint/formal-experiment/serre-finiteness --language agda --timeout 600 --offline
+.\.conda\python.exe -m qprint formal verify --project .qprint/formal-experiment/serre-finiteness --language agda --timeout 600 --offline
 ```
 
 Final regression: **136 passed, 2 existing dependency deprecation warnings, no skips, 6.93 seconds**, using `.qprint/tests-formal-modular-final`. Skill validation passed; both agents exercised the helper script. Related documentation had 126 valid local links. Acquisition, hashes, official asset validation and offline behavior have automated tests; this live experiment reused installations. Historical Release ZIPs were not rebuilt. See [project resolution](formal-resolution.en.md) for supported boundaries.

@@ -2,29 +2,32 @@
 
 [中文](development.md) | [English](development.en.md) · [Documentation](index.en.md)
 
-See [pyproject.toml](../pyproject.toml) for dependencies and [AGENTS.md](../AGENTS.md) for repository rules. Python 3.12+ runs in the `qprint` Conda environment. The frontend has no build dependencies; JS tests need a Node.js installation supporting `node --test`.
+See [pyproject.toml](../pyproject.toml) for dependencies and [AGENTS.md](../AGENTS.md) for repository rules. Python 3.12+ runs in the project-local `.conda` prefix. The frontend has no build dependencies; JS tests need a Node.js installation supporting `node --test`.
 
 ## Installation and startup
 
-Run from the repository root. Run the first command only if the environment does not exist:
+For first-time setup, open **Anaconda Prompt / Miniconda Prompt**, change to the Qprint root folder, and run:
 
-```powershell
-conda create -n qprint python=3.12
-conda run -n qprint python -m pip install -e ".[dev]"
-conda run -n qprint python -m qprint serve --workspace examples/demo --port 8765
+```text
+conda init powershell
+conda env create -p .\.conda -f environment.yml
 ```
 
-Open <http://127.0.0.1:8765>. `start.ps1` accepts `-Workspace` and `-Port`, searching PATH and the user's Anaconda/Miniconda installation for conda. It does not create environments or install dependencies. If PowerShell cannot find conda, use its actual installation path:
+`environment.yml` installs Python 3.12+, Qprint, and development dependencies. After setup, open PowerShell or your agent in the Qprint root and run:
 
 ```powershell
-& "$env:USERPROFILE\anaconda3\Scripts\conda.exe" run -n qprint python -m qprint check --workspace examples/demo
+.\.conda\python.exe -m qprint serve --workspace examples/demo --port 8765
 ```
+
+Alternatively, run `.\start.ps1`. Open <http://127.0.0.1:8765>; the server listens locally by default. The script uses the project's `.conda` and reports the setup command if it is missing.
+
+Agents do not run `conda activate`; Conda need not be on PATH and PowerShell profiles need not load. When Conda is available, `conda run -p .\.conda python -m qprint agent state` is equivalent. Commands and paths are relative to the Qprint root. Recreate `.conda` after relocating an installation rather than copying the old environment.
 
 To reproduce the recorded dependency versions:
 
 ```powershell
-conda run -n qprint python -m pip install -r requirements-lock.txt
-conda run -n qprint python -m pip install -e . --no-deps
+.\.conda\python.exe -m pip install -r requirements-lock.txt
+.\.conda\python.exe -m pip install -e . --no-deps
 ```
 
 ## CLI
@@ -40,16 +43,16 @@ conda run -n qprint python -m pip install -e . --no-deps
 | `import-code URL` | Required `--language`, `--dest`; optional `--ref`, `--workspace` |
 | `import-paper ID` | Required `--dest`, `--name`; optional `--workspace` |
 
-Use the prefix `conda run -n qprint python -m qprint`. The default workspace is `examples/demo` relative to the current directory. Imports synchronously print JSON or errors; `serve` runs continuously. Installation also provides a `qprint` entry point, but repository examples consistently use module invocation.
+Use the prefix `.\.conda\python.exe -m qprint`. The default workspace is `examples/demo` relative to the current directory. Imports synchronously print JSON or errors; `serve` runs continuously. Installation also provides a `qprint` entry point, but repository examples consistently use module invocation.
 
 ## Automated checks
 
 ```powershell
-conda run -n qprint pytest -q
+.\.conda\python.exe -m pytest -q
 node --test tests/graph_view.test.mjs
 node --check qprint/static/app.js
 node --check qprint/static/graph.js
-conda run -n qprint python -m qprint check --workspace examples/demo
+.\.conda\python.exe -m qprint check --workspace examples/demo
 ```
 
 | File | Main coverage |
@@ -65,7 +68,7 @@ If Windows restricts the system temporary directory, use a **test-only** directo
 
 ```powershell
 New-Item -ItemType Directory .qprint -Force
-conda run -n qprint pytest -q --basetemp .qprint/test-local
+.\.conda\python.exe -m pytest -q --basetemp .qprint/test-local
 ```
 
 pytest cleans `--basetemp`; never point it at user material. Run relevant regressions for parser/business changes. Layout and interaction changes require browser checks, not merely JS syntax validation. Historical results are in [verification](verification.en.md); their counts are not results from a new run.
@@ -75,7 +78,7 @@ pytest cleans `--basetemp`; never point it at user material. Run relevant regres
 KaTeX `0.16.22` JS, CSS, fonts, LICENSE, and provenance live in `qprint/static/vendor/katex/` and ship as Python package data. Read [vendor_assets.py](../tools/vendor_assets.py) before refreshing assets. It downloads the pinned version and verifies npm SHA-512 integrity:
 
 ```powershell
-conda run -n qprint python tools/vendor_assets.py
+.\.conda\python.exe tools/vendor_assets.py
 ```
 
 [smoke_imports.py](../tools/smoke_imports.py) downloads public examples into `.qprint/network-smoke-*` and records results. It is separate from offline tests and depends on source sites and network availability.

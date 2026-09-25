@@ -9,7 +9,7 @@
 接受公共 GitHub 仓库根地址，可带 `.git`，不接受 blob/tree 页面。branch、tag 或 SHA 使用独立 `ref`；省略时查询 GitHub 默认分支。无账户登录和私有仓库凭据流程。
 
 ```powershell
-conda run -n qprint python -m qprint import-code https://github.com/CMU-HoTT/serre-finiteness --language agda --dest serre-finiteness --workspace D:/my-math
+.\.conda\python.exe -m qprint import-code https://github.com/CMU-HoTT/serre-finiteness --language agda --dest serre-finiteness --workspace my-math
 ```
 
 归档展开到 `agda/serre-finiteness/`；`language` 也可为 lean 或 coq。保留整个仓库中的代码、许可证、配置及其他文件，不只筛选语言扩展名。返回 `path`、`files`、`ref`，并在目标目录写 `.qprint-source.json`，记录类型、URL、ref、解析出的完整 commit、归档 SHA-256 和 UTC 下载时间。
@@ -19,7 +19,7 @@ conda run -n qprint python -m qprint import-code https://github.com/CMU-HoTT/ser
 接受新版/旧版 arXiv ID、可选版本后缀，以及 HTTPS abs/pdf/src/e-print URL。下载 PDF 与源码，源码支持 zip、tar/tar.gz、单个 gzip TeX 或 UTF-8 TeX。
 
 ```powershell
-conda run -n qprint python -m qprint import-paper 1603.04246 --dest Geometry --name Via16SpherePacking --workspace D:/my-math
+.\.conda\python.exe -m qprint import-paper 1603.04246 --dest Geometry --name Via16SpherePacking --workspace my-math
 ```
 
 结果为 `pdf/Geometry/Via16SpherePacking.pdf` 和 `tex/Geometry/Via16SpherePacking/`。多文件源码保留内部相对目录；源码目录含来源记录。返回 `pdf`、`tex`、`files`、`id`。`name` 只填 basename，不含目录或 `.pdf` 后缀；`dest` 可为空字符串以使用根分类。

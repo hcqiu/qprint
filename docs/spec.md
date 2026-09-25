@@ -98,7 +98,7 @@ HTML 由 plasTeX 解析 DOM 再通过受控适配器输出段落、标题、定�
 * `python -m qprint import-code URL --language agda --dest serre-finiteness [--ref main] --workspace PATH`。
 * `python -m qprint import-paper ID --dest Topology --name Lin20K3 --workspace PATH`。
 
-默认工作区为 `examples/demo`；指定路径时只加载该目录。Python 命令统一通过 `conda run -n qprint` 执行。
+默认工作区为 `examples/demo`；指定路径时只加载该目录。Python 命令统一通过 `.\.conda\python.exe` 执行；首次安装在 Qprint 根目录运行 `conda env create -p .\.conda -f environment.yml`，以后不 activate。
 
 ## 7. 验收与交付
 

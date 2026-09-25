@@ -1,5 +1,7 @@
 # Qprint v1 验收记录
 
+> 文中命令已更新为项目内 `.conda` 的复现写法；历史结果与耗时保持原样，此次命令迁移不表示重新运行了这些实验。
+
 [中文](verification.md) | [English](verification.en.md) · [文档目录](index.md)
 
 下列内容是各标注日期的实测记录，不表示本次双语文档整理重新执行了这些业务测试。v1 指首版产品，Python 包版本为 `0.1.0`。
@@ -38,9 +40,9 @@ Conda `qprint` 全量 pytest：**176 passed**，两个既有 FastAPI/Starlette �
 
 已安装到 Git 忽略目录：Lean 4.19.0、Agda 2.8.0、Cubical 0.9（固定提交 `b150186d2544e7efeddd31e5d14a8b9ecbb100f7`）。原有用户导入目录未迁移。实现 manager、resolver、执行上下文、项目声明、安装记录及 light/full Release 清单。
 
-执行 `conda run -n qprint pytest -q --basetemp D:/Qprint_v2/.qprint/tests-toolchain-release-final --tb=short`：**115 passed、2 warnings，无跳过**，6.85 秒。原有两条第三方弃用提示仍存在。新增验证包括多版本选择、浮动/冲突/rc 版本拒绝、显式 PATH 回退、Agda 库和数据目录隔离、哈希/归档/原子安装/删除保护、自动发现、两种 ZIP 输入规则及真实工具链。
+执行 `.\.conda\python.exe -m pytest -q --basetemp .qprint/tests-toolchain-release-final --tb=short`：**115 passed、2 warnings，无跳过**，6.85 秒。原有两条第三方弃用提示仍存在。新增验证包括多版本选择、浮动/冲突/rc 版本拒绝、显式 PATH 回退、Agda 库和数据目录隔离、哈希/归档/原子安装/删除保护、自动发现、两种 ZIP 输入规则及真实工具链。
 
-`conda run -n qprint python -m qprint verify --workspace examples/verification` 实测 Lean 构建与环境声明查询、Agda/Cubical 类型检查与声明探针全部通过。不存在声明的真实工具链测试能正确失败。Agda 最初遇到全局 Cubical 参数破坏内置模块 full/erased 模式边界的问题；现已保留库选项作用域、在探针中设置模式，并重查全部接口，示例回归通过。
+`.\.conda\python.exe -m qprint verify --workspace examples/verification` 实测 Lean 构建与环境声明查询、Agda/Cubical 类型检查与声明探针全部通过。不存在声明的真实工具链测试能正确失败。Agda 最初遇到全局 Cubical 参数破坏内置模块 full/erased 模式边界的问题；现已保留库选项作用域、在探针中设置模式，并重查全部接口，示例回归通过。
 
 实际构建了约 502 MB 的 full 测试 ZIP，解压到 `.qprint/relocated full environment/Qprint`，从解压后的代码重新验证两种语言成功；报告中的 compiler/include 路径均在新目录内，不依赖原安装路径。测试产物不包含 Python 运行时，使用已有 Conda 环境。`git check-ignore` 确认编译器及 Cubical 库被忽略；36 份 Markdown 本地链接检查通过。本次无前端改动。安装、移植和打包边界详见[工具链文档](toolchains.md)。
 
@@ -51,8 +53,8 @@ Conda `qprint` 全量 pytest：**176 passed**，两个既有 FastAPI/Starlette �
 执行：
 
 ```powershell
-conda run -n qprint pytest -q --basetemp D:/Qprint_v2/.qprint/tests-verification-final --tb=short
-conda run -n qprint python -m qprint verify --workspace examples/demo --language agda
+.\.conda\python.exe -m pytest -q --basetemp .qprint/tests-verification-final --tb=short
+.\.conda\python.exe -m qprint verify --workspace examples/demo --language agda
 ```
 
 Python 结果：**85 passed、2 skipped、2 warnings**，耗时 1.73 秒。新增测试覆盖命令与探针构造、失败阶段短路、正确行号配错误声明、缺少工具、超时、限长日志、配置与路径限制、探针注入、源码变化、API token/Origin/执行开关/队列、CLI 退出码及作者状态不变。两条第三方弃用提示与历史记录相同。
@@ -66,7 +68,7 @@ Python 结果：**85 passed、2 skipped、2 warnings**，耗时 1.73 秒。新�
 自动验证：
 
 ```powershell
-conda run -n qprint pytest -q --basetemp D:/Qprint_v2/.qprint/tests-granularity-final --tb=short
+.\.conda\python.exe -m pytest -q --basetemp .qprint/tests-granularity-final --tb=short
 node --test tests/graph_view.test.mjs
 node --check qprint/static/app.js
 node --check qprint/static/graph.js
@@ -93,7 +95,7 @@ node --check qprint/static/graph.js
 执行：
 
 ```powershell
-conda run -n qprint pytest -q --basetemp D:/Qprint_v2/.qprint/tests-final --tb=short
+.\.conda\python.exe -m pytest -q --basetemp .qprint/tests-final --tb=short
 ```
 
 结果：**47 passed，2 warnings**，测试耗时 1.29 秒。
@@ -130,7 +132,7 @@ conda run -n qprint pytest -q --basetemp D:/Qprint_v2/.qprint/tests-final --tb=s
 
 ## 真实网络导入
 
-运行 `conda run -n qprint python tools/smoke_imports.py`。测试下载保存至 `.qprint/network-smoke-*`，未改动 demo 内容。
+运行 `.\.conda\python.exe tools/smoke_imports.py`。测试下载保存至 `.qprint/network-smoke-*`，未改动 demo 内容。
 
 | 来源 | 结果 |
 | --- | --- |

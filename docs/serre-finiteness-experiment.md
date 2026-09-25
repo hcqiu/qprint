@@ -1,5 +1,7 @@
 # Serre finiteness：模块化验证与版本修复实验
 
+> 文中命令已更新为项目内 `.conda` 的复现写法；历史结果与耗时保持原样，此次命令迁移不表示重新运行了这些实验。
+
 日期：2026-09-21。Windows x64，Conda `qprint`，Agda 2.8.0。实验副本：`.qprint/formal-experiment/serre-finiteness`；其 35 个 `.agda` 文件与 `examples/demo/agda/Topology/serre-finiteness` 的 SHA-256 全部一致。原目录与证明源码均未修改。
 
 ## 过程与结果
@@ -37,9 +39,9 @@
 ## 复现与回归
 
 ```powershell
-conda run -n qprint python -m qprint formal verify --project .qprint/formal-experiment/serre-finiteness --language agda --timeout 600 --offline
+.\.conda\python.exe -m qprint formal verify --project .qprint/formal-experiment/serre-finiteness --language agda --timeout 600 --offline
 ```
 
 普通项目可省略 `--offline`，自动补齐支持的固定版本。本实验复用已安装编译器/库；下载、哈希记录、安装复用、官方资产 digest 检查及离线不联网有自动化测试。
 
-最终执行 `conda run -n qprint pytest -q --basetemp D:/Qprint_v2/.qprint/tests-formal-modular-final --tb=short`：**136 passed，2 个既有依赖弃用警告，无跳过，6.93 秒**。Skill 的 `quick_validate.py` 检查通过，helper 脚本由两个独立 agent 实际执行；相关文档 126 个本地链接无断链。本次未重新生成历史 Release ZIP。模块说明见[项目解析与版本修复](formal-resolution.md)。
+最终执行 `.\.conda\python.exe -m pytest -q --basetemp .qprint/tests-formal-modular-final --tb=short`：**136 passed，2 个既有依赖弃用警告，无跳过，6.93 秒**。Skill 的 `quick_validate.py` 检查通过，helper 脚本由两个独立 agent 实际执行；相关文档 126 个本地链接无断链。本次未重新生成历史 Release ZIP。模块说明见[项目解析与版本修复](formal-resolution.md)。

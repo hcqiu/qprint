@@ -20,29 +20,31 @@ The current package version is `0.1.0`. Documentation describes implemented beha
 
 ## Quick start
 
-Run from the repository root with Python 3.12+ in the `qprint` Conda environment:
+For first-time setup, open **Anaconda Prompt / Miniconda Prompt**, change to the Qprint root folder, and run:
 
-```powershell
-conda run -n qprint python -m pip install -e ".[dev]"
-conda run -n qprint python -m qprint serve --workspace examples/demo --port 8765
+```text
+conda init powershell
+conda env create -p .\.conda -f environment.yml
 ```
 
-Open <http://127.0.0.1:8765>. The server listens locally by default. The demo contains 10 nodes, 12 relations, one TeX note, and code snippets in three languages.
-
-If PowerShell cannot find `conda`, run `./start.ps1`, which searches PATH and the user's Anaconda / Miniconda directories, or use the full path:
+`environment.yml` installs Python 3.12+, Qprint, and development dependencies. After setup, open PowerShell or your agent in the Qprint root and run:
 
 ```powershell
-& "$env:USERPROFILE\anaconda3\Scripts\conda.exe" run -n qprint python -m qprint serve --workspace examples/demo
+.\.conda\python.exe -m qprint serve --workspace examples/demo --port 8765
 ```
+
+Alternatively, run `.\start.ps1`. Open <http://127.0.0.1:8765>; the server listens locally by default. The script uses the project's `.conda` and reports the setup command if it is missing.
+
+Agents do not run `conda activate`; Conda need not be on PATH and PowerShell profiles need not load. When Conda is available, `conda run -p .\.conda python -m qprint agent state` is equivalent. Commands and paths are relative to the Qprint root. Recreate `.conda` after relocating an installation rather than copying the old environment.
 
 The dependency snapshot is in `requirements-lock.txt`. To reproduce the recorded environment, install it before the project:
 
 ```powershell
-conda run -n qprint python -m pip install -r requirements-lock.txt
-conda run -n qprint python -m pip install -e . --no-deps
+.\.conda\python.exe -m pip install -r requirements-lock.txt
+.\.conda\python.exe -m pip install -e . --no-deps
 ```
 
-KaTeX JS, CSS, fonts, and license are vendored in `qprint/static/vendor/katex/`. Reading and graphs require no CDN. `conda run -n qprint python tools/vendor_assets.py` refreshes the pinned assets and verifies npm SHA-512 integrity.
+KaTeX JS, CSS, fonts, and license are vendored in `qprint/static/vendor/katex/`. Reading and graphs require no CDN. `.\.conda\python.exe tools/vendor_assets.py` refreshes the pinned assets and verifies npm SHA-512 integrity.
 
 ## Use your own workspace
 
@@ -57,8 +59,8 @@ my-math/
 ```
 
 ```powershell
-conda run -n qprint python -m qprint serve --workspace D:/my-math
-conda run -n qprint python -m qprint check --workspace D:/my-math
+.\.conda\python.exe -m qprint serve --workspace my-math
+.\.conda\python.exe -m qprint check --workspace my-math
 ```
 
 Directories may be empty. Library notes need not have paper attachments. Refresh after external edits; the application does not rewrite files in the background.
@@ -138,8 +140,8 @@ Scrolling again after reaching a content boundary switches to the next/previous 
 The UI and CLI share a downloader. GitHub input is a repository root URL; branch/tag/SHA is a separate argument. The default branch is discovered automatically.
 
 ```powershell
-conda run -n qprint python -m qprint import-code https://github.com/CMU-HoTT/serre-finiteness --language agda --dest serre-finiteness --workspace D:/my-math
-conda run -n qprint python -m qprint import-paper 1603.04246 --dest Geometry --name Via16SpherePacking --workspace D:/my-math
+.\.conda\python.exe -m qprint import-code https://github.com/CMU-HoTT/serre-finiteness --language agda --dest serre-finiteness --workspace my-math
+.\.conda\python.exe -m qprint import-paper 1603.04246 --dest Geometry --name Via16SpherePacking --workspace my-math
 ```
 
 The PDF is saved to `pdf/Geometry/Via16SpherePacking.pdf`, with multi-file source under `tex/Geometry/Via16SpherePacking/`, retaining internal paths. The downloader does not insert blueprint markers. Create Markdown and bind nodes to actual source paths afterward.
@@ -149,16 +151,16 @@ Existing destinations are not overwritten. Limits are 100 MiB per download and 3
 ## Tests and development
 
 ```powershell
-conda run -n qprint pytest -q
+.\.conda\python.exe -m pytest -q
 node --test tests/graph_view.test.mjs
-conda run -n qprint python -m qprint check --workspace examples/demo
+.\.conda\python.exe -m qprint check --workspace examples/demo
 ```
 
 If Windows restricts pytest's system temporary directory, use a new test-only workspace directory:
 
 ```powershell
 New-Item -ItemType Directory .qprint -Force
-conda run -n qprint pytest -q --basetemp .qprint/test-local
+.\.conda\python.exe -m pytest -q --basetemp .qprint/test-local
 ```
 
 pytest cleans its `--basetemp` directory; only use a dedicated test directory.
@@ -171,13 +173,13 @@ plasTeX rendering supports common paper structures and mathematics but does not 
 
 ## Formal verification
 
-For an independent project, use `conda run -n qprint python -m qprint formal verify --project PROJECT --language agda --timeout 600`; all modules are selected by default. Native resolution, automatic installation, timestamped reports and the version helper skill are documented in [project resolution](docs/formal-resolution.en.md).
+For an independent project, use `.\.conda\python.exe -m qprint formal verify --project PROJECT --language agda --timeout 600`; all modules are selected by default. Native resolution, automatic installation, timestamped reports and the version helper skill are documented in [project resolution](docs/formal-resolution.en.md).
 
 Since 2026-09-21, compilers/libraries live in gitignored `toolchains/` and `packages/` under Qprint. Projects prefer native configuration, with `.qprint-formal.yaml` filling missing Agda pins. See [managed toolchains](docs/toolchains.en.md) for commands and light/full ZIP packaging. A real verification example is provided:
 
 ```powershell
-conda run -n qprint python -m qprint toolchain list
-conda run -n qprint python -m qprint verify --workspace examples/verification
+.\.conda\python.exe -m qprint toolchain list
+.\.conda\python.exe -m qprint verify --workspace examples/verification
 ```
 
 Full ZIPs include the specified formal environment; an existing Python/Conda environment is still required.
@@ -185,7 +187,7 @@ Full ZIPs include the specified formal environment; an existing Python/Conda env
 The [unified adapter layer](docs/formal-verification.en.md) provides Lean builds/declaration checks and Agda typechecking/name resolution. Coq explicitly returns unsupported. Explicit verification acquires supported missing exact versions unless `--offline` is selected:
 
 ```powershell
-conda run -n qprint python -m qprint verify --workspace D:/my-math --language lean
+.\.conda\python.exe -m qprint verify --workspace my-math --language lean
 ```
 
 Optional flags include `--node "path#heading"` and `--timeout 180`. JSON results remain separate from author `status`. HTTP uses `POST /api/verify`, enabled through `serve --allow-verification` for trusted workspaces. Reading and saving never trigger verification; GitHub imports verify by default. Agda defaults to `safe: inherit`, preserving upstream OPTIONS; use `formal audit` for explicit safety requirements. See [automatic recovery and helper boundaries](docs/formal-resolution.en.md).

@@ -219,7 +219,7 @@ def test_release_manifest_separates_sources_from_ignored_stores(tmp_path, monkey
             build_release(tmp_path, output, full=full, manifest=manifest)
 
 
-@pytest.mark.parametrize("path", ["../outside", ".qprint", "toolchains", "packages", ".git"])
+@pytest.mark.parametrize("path", ["../outside", ".qprint", ".conda", "toolchains", "packages", ".git"])
 def test_release_rejects_private_or_escaping_sources(tmp_path, path):
     with pytest.raises(WorkspaceError):
         build_release(tmp_path, tmp_path / "out.zip", manifest={"schema_version": 1, "version": "test", "source_paths": [path]})

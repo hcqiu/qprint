@@ -1,6 +1,8 @@
 # Qprint runtime 与相对路径回归验证
 
-本次入口约定：在 Qprint 文件夹启动或打开 agent，执行 `qprint agent state`。
+> 文中命令已更新为项目内 `.conda` 的复现写法；历史结果与耗时保持原样，此次命令迁移不表示重新运行了这些实验。
+
+本次入口约定：在 Qprint 文件夹启动或打开 agent，执行 `.\.conda\python.exe -m qprint agent state`。
 UI 发布当前 workspace、节点、文档、selection、session；查询无需 agent 猜测或手动拼接参数。
 当前使用说明见 [Knowledge Navigator](knowledge-navigator.md)。
 
@@ -27,7 +29,7 @@ Python 跳过项为环境不支持的符号链接测试。首次相关测试出�
 原始本地运行日志仍保留。旧记录不作为当前 agent 的启动模板。
 `tests/scenarios` 的题面与评分点不变，启动约定已改为根目录、相对路径和自动 runtime。
 
-宿主首次准备本地环境可执行 `conda env create -p ./.conda -f environment.yml`。
+宿主首次准备本地环境可执行 `conda env create -p .\.conda -f environment.yml`。
 已运行的 Qprint 服务需要重启以加载新的 runtime 同步接口。
 
 ## 新 PowerShell 启动回归
@@ -44,7 +46,7 @@ Python 跳过项为环境不支持的符号链接测试。首次相关测试出�
 
 本轮全量 Python 测试 **302 passed，1 skipped**。新增测试实际创建
 `powershell -NoProfile -NonInteractive` 进程并执行
-`conda run -n qprint qprint agent state`，验证未启动 UI、首次无索引启动、
+`.\.conda\python.exe -m qprint agent state`，验证未启动 UI、首次无索引启动、
 两次节点/session 切换。另覆盖索引丢失时仍可读快照、重启后自动恢复索引，
 以及新进程无需 workspace/session 参数即可读取 source。PowerShell 启动脚本语法检查通过。
 页面状态由服务 API 发布，未进行真实浏览器点击测试。

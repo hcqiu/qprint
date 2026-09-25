@@ -85,17 +85,17 @@ https://github.com/nodummd/nodum
 
 ## Python environment
 
-This project uses the Conda environment `qprint`.
+This project uses the project-local Conda prefix `.conda`. Run from the Qprint root without activation; see AGENTS.md for first-time setup.
 
 For Python commands, use:
 
-conda run -n qprint python ...
+.\.conda\python.exe ...
 
 For pip:
 
-conda run -n qprint python -m pip ...
+.\.conda\python.exe -m pip ...
 
 For tests:
 
-conda run -n qprint pytest
+.\.conda\python.exe -m pytest
 

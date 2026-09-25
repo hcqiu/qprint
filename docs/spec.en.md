@@ -91,10 +91,10 @@ Do not overwrite existing targets. Limits are 100 MiB per download and 300 MiB /
 - GET `/api/tex?path=...`: full TeX source and outline.
 - POST `/api/reload`: rebuild indexes.
 - POST `/api/import`, GET `/api/jobs/{id}`: create imports and inspect results.
-- `conda run -n qprint python -m qprint serve --workspace PATH --port 8765`.
-- `conda run -n qprint python -m qprint check --workspace PATH`: print diagnostics and exit 1 for errors.
-- `conda run -n qprint python -m qprint import-code URL --language agda --dest serre-finiteness [--ref main] --workspace PATH`.
-- `conda run -n qprint python -m qprint import-paper ID --dest Topology --name Lin20K3 --workspace PATH`.
+- `.\.conda\python.exe -m qprint serve --workspace PATH --port 8765`.
+- `.\.conda\python.exe -m qprint check --workspace PATH`: print diagnostics and exit 1 for errors.
+- `.\.conda\python.exe -m qprint import-code URL --language agda --dest serre-finiteness [--ref main] --workspace PATH`.
+- `.\.conda\python.exe -m qprint import-paper ID --dest Topology --name Lin20K3 --workspace PATH`.
 
 The default workspace is `examples/demo`; specifying a path loads only that directory. Python commands use the `qprint` Conda environment. See [API details](server-api.en.md) for payloads and errors.
 
