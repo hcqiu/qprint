@@ -1,0 +1,158 @@
+[
+  {
+    "path": "examples/demo/blueprint/Topology/Lin20K3/bauer-furuta-construction.md",
+    "sha256": "E21434BE843AA1EB3C01DB8495A4269BA23F05AB926140587490743A5254D8A7"
+  },
+  {
+    "path": "examples/demo/blueprint/Topology/Lin20K3/characteristic-homomorphism.md",
+    "sha256": "0BB221701899E5A82C2312BB6D21FE3CC26DF58D5C6812B937022FA83306C4E8"
+  },
+  {
+    "path": "examples/demo/blueprint/Topology/Lin20K3/equivariant-foundations.md",
+    "sha256": "936B9F82499BD66634492CA6D012AF44580155EC0A53E3029529F6BFFE2502C3"
+  },
+  {
+    "path": "examples/demo/blueprint/Topology/Lin20K3/index.md",
+    "sha256": "661B6B03B0B4D592EAB183572AF6FFCCA6E9EA797EA0D2D15AEACADACFFF3114"
+  },
+  {
+    "path": "examples/demo/blueprint/Topology/Lin20K3/key-homotopy-proposition.md",
+    "sha256": "F7A29B364C5D3FF40E6D0B7445C22B46C083D72A211242BC215D0830FA6F764D"
+  },
+  {
+    "path": "examples/demo/blueprint/Topology/Lin20K3/main-theorem.md",
+    "sha256": "DB84446521F3EB871AB35225E7EEF08F307A785307D78D640702733D0CF00CE7"
+  },
+  {
+    "path": "examples/demo/blueprint/Topology/Lin20K3/review.md",
+    "sha256": "E24CD85F164401D12BCD53A209268E307859B9F6B5C432E1301C5602094D4DEB"
+  },
+  {
+    "path": "examples/demo/blueprint/Topology/Lin20K3/spin-families.md",
+    "sha256": "FC8AB533600FD0F524B51B82862E4BA3D366DD8BD3E9E68EBFA7309D386A68AF"
+  },
+  {
+    "path": "examples/demo/blueprint/Topology/Lin20K3/stabilization-formula.md",
+    "sha256": "3932208B2D9CD2E31DB2B11EFAE283D8ECD428FD26EB34F31550CB80FD94DB77"
+  },
+  {
+    "path": "examples/demo/blueprint/Topology/KPT25TwoStabilizations/01-lattice-foundations.md",
+    "sha256": "D376846AE2AEC4E2EF0E8D7B3136698C7D1BB933769BAE0EF779C0F85F164A0A"
+  },
+  {
+    "path": "examples/demo/blueprint/Topology/KPT25TwoStabilizations/02-pin-spectrum.md",
+    "sha256": "856643C94EB28AB38F7E496B3FE101213AAE0AB48822916D1BF9531B81C9B668"
+  },
+  {
+    "path": "examples/demo/blueprint/Topology/KPT25TwoStabilizations/03-family-local-category.md",
+    "sha256": "FDED3F2940A624D1C331536D6535D875366F28B674303901EA50DEB0BBC9CAD0"
+  },
+  {
+    "path": "examples/demo/blueprint/Topology/KPT25TwoStabilizations/04-coherent-bauer-furuta.md",
+    "sha256": "6394822A6DCF886759BD05DF0FFA040BC3E5891462BB3DAD67E2BA3ED98BC839"
+  },
+  {
+    "path": "examples/demo/blueprint/Topology/KPT25TwoStabilizations/05-circle-cyclic-swf.md",
+    "sha256": "D51F8ECB24DA225CE0719A6F6A8A25CA21F4A2195806E4081841126F65118EC4"
+  },
+  {
+    "path": "examples/demo/blueprint/Topology/KPT25TwoStabilizations/06-bauer-furuta-gluing.md",
+    "sha256": "24848E862A61CE8E5110D819D7FE375A90AE640E4758C647C4BAB03370B1EDD4"
+  },
+  {
+    "path": "examples/demo/blueprint/Topology/KPT25TwoStabilizations/07-sphere-adjunction.md",
+    "sha256": "BF06E3DC4B17E4E32F7F8A698AFFA863F10B0CC112B5C3BB5BFEE7CBF9821BC0"
+  },
+  {
+    "path": "examples/demo/blueprint/Topology/KPT25TwoStabilizations/08-equivariant-spin-c.md",
+    "sha256": "5E2D86697D3D7AAC736D4D92852A15506E5F75315657342790C91D2BEB19ADDE"
+  },
+  {
+    "path": "examples/demo/blueprint/Topology/KPT25TwoStabilizations/09-labelled-roots.md",
+    "sha256": "4719ACA0A2C7BECF5A99073A11E87C8A345CB382275A74DA8C2DFA3A2639CEDC"
+  },
+  {
+    "path": "examples/demo/blueprint/Topology/KPT25TwoStabilizations/10-lattice-comparison.md",
+    "sha256": "C2ABE32207469D3C6411EC3056EEAB786EA48B7488A93C7BA2AE1474BEBA1D42"
+  },
+  {
+    "path": "examples/demo/blueprint/Topology/KPT25TwoStabilizations/11-circle-lattice-cochains.md",
+    "sha256": "13A5F16A77EC6D4E5821335D5774C9EE246F59473F9486DB3AB4C56723FD9181"
+  },
+  {
+    "path": "examples/demo/blueprint/Topology/KPT25TwoStabilizations/12-circle-examples.md",
+    "sha256": "771E01980E288D1F578A277F618845B01EEBA85B1145DE8254363373FA82B00A"
+  },
+  {
+    "path": "examples/demo/blueprint/Topology/KPT25TwoStabilizations/13-circle-chain-local-equivalence.md",
+    "sha256": "2628476C16FECCB787DEC946A469AACD88CBA7E494E1145A7BC6B4F3D8AECD29"
+  },
+  {
+    "path": "examples/demo/blueprint/Topology/KPT25TwoStabilizations/14-large-prime-formula.md",
+    "sha256": "16189C1A22A756ABA0BD29F0C7A900C18F4EA2A54CF87AEBD287F579C2D94B9F"
+  },
+  {
+    "path": "examples/demo/blueprint/Topology/KPT25TwoStabilizations/15-canonical-reflection.md",
+    "sha256": "B6AEA3350F3A4F808CF3645235C86D1974D01037AA371E93A12F484DA5E35122"
+  },
+  {
+    "path": "examples/demo/blueprint/Topology/KPT25TwoStabilizations/16-pin-lattice-spectrum.md",
+    "sha256": "064AE5635B5471F6370C28FF34481B2783DA577AE425051822EBEAAE78095296"
+  },
+  {
+    "path": "examples/demo/blueprint/Topology/KPT25TwoStabilizations/17-weak-lifting.md",
+    "sha256": "81450096D1FD5068D94DEA0FB15E4D8811DE6DB89005F4EB1FE00D29AB2FB872"
+  },
+  {
+    "path": "examples/demo/blueprint/Topology/KPT25TwoStabilizations/18-pin-lattice-cochains.md",
+    "sha256": "AF516ED9E6A79A39413B2E243A55A6663BA7499076F269CA8244A87EE5634E15"
+  },
+  {
+    "path": "examples/demo/blueprint/Topology/KPT25TwoStabilizations/19-pin-chain-local-maps.md",
+    "sha256": "D5EC2232507EAF238A60134F0C2089D84A9CD4D76258BEBC0389A8E416BFF5F2"
+  },
+  {
+    "path": "examples/demo/blueprint/Topology/KPT25TwoStabilizations/20-sigma-3-5-19-module.md",
+    "sha256": "400BA064E08DEC03AEB3FD4D3D3FCFCC2112B4EBCCD769A0F498B7591D0A9E82"
+  },
+  {
+    "path": "examples/demo/blueprint/Topology/KPT25TwoStabilizations/21-connected-sum-duplication.md",
+    "sha256": "A3EA6C150C41D225CDBBA38E8505AB40F49166C95FA55D717EB64DB50B52ACDC"
+  },
+  {
+    "path": "examples/demo/blueprint/Topology/KPT25TwoStabilizations/22-topology-to-algebra.md",
+    "sha256": "C6475C5F15521CF66E79C54614291ECDBBAA233C06BE8E75BF71C1F4EAA10439"
+  },
+  {
+    "path": "examples/demo/blueprint/Topology/KPT25TwoStabilizations/23-two-stabilization-obstruction.md",
+    "sha256": "CBD1015A190936A912C550918951E8B28A93E03281CDC75523B1B41FD8FB8B91"
+  },
+  {
+    "path": "examples/demo/blueprint/Topology/KPT25TwoStabilizations/24-equivariant-index.md",
+    "sha256": "D91874306B17B9945CE2670E064A4DAD4039CD21EB15572D0D5BC3BABD88F414"
+  },
+  {
+    "path": "examples/demo/blueprint/Topology/KPT25TwoStabilizations/25-pin-cochain-algebra.md",
+    "sha256": "8CB4B6D2B3951ADE7B3733A7300149067A324AB553B88846F1FADEF0D2C5C6E3"
+  },
+  {
+    "path": "examples/demo/blueprint/Topology/KPT25TwoStabilizations/26-orbifold-local-bounds.md",
+    "sha256": "41D6D0C321DCF1829480D45E2F49AF25AD1AB257BB449359BE1725846033B120"
+  },
+  {
+    "path": "examples/demo/blueprint/Topology/KPT25TwoStabilizations/index.md",
+    "sha256": "F4D1C37E5BBFD581D6AA8A6BE5715142EFA124A52D7FE6E190DFDA4421B8E469"
+  },
+  {
+    "path": "examples/demo/blueprint/Topology/KPT25TwoStabilizations/review.md",
+    "sha256": "37F6FFEF400B24959D20723A28DC3BC7D14D33F66819F2C535D37FD296FBBCB9"
+  },
+  {
+    "path": "examples/demo/tex/Topology/Lin20K3/main.tex",
+    "sha256": "B7CC6BADA3C110D06F7E5584DFC562775FB11646ED5FF8B0FA782847EAAEC876"
+  },
+  {
+    "path": "examples/demo/tex/Topology/KPT25TwoStabilizations/main.tex",
+    "sha256": "CC728FA9DA753C2430D42A2D8A348E363DFC16A3D98F1998AEDE5CBA79DAB6D8"
+  }
+]

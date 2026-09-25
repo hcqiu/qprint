@@ -20,6 +20,10 @@ from .paths import WorkspaceError, read_text
 from .formal_report_access import report_file, report_links, recent_reports, report_text
 from .workspace import ConflictError, Workspace
 from .verification import verify_bindings
+from .knowledge.navigator import KnowledgeNavigator
+from .knowledge.index import KnowledgeIndexer
+from .knowledge.runtime import publish_runtime, query_target
+from .agent_paths import relative_output
 
 
 class DocumentUpdate(BaseModel):
@@ -45,9 +49,20 @@ class VerificationRequest(BaseModel):
     timeout: float = Field(default=120, ge=1, le=3600, allow_inf_nan=False)
 
 
+class NavigatorFocus(BaseModel):
+    session: str = Field(default="default", min_length=1, max_length=200)
+    node_id: str | None = Field(default=None, max_length=2048)
+    view: Literal["rendered", "tex", "edit", "graph", "references", "paper"] = "rendered"
+    selection: str = Field(default="", max_length=2000)
+    document: str | None = Field(default=None, max_length=2048)
+
+
 def create_app(root: Path, *, allow_verification: bool = False, toolchain_home: Path | None = None,
-               allow_system_toolchains: bool = False) -> FastAPI:
+               allow_system_toolchains: bool = False, runtime_root: Path | None = None) -> FastAPI:
     workspace = Workspace(root)
+    runtime_root = Path(runtime_root).resolve() if runtime_root is not None else workspace.root
+    if not workspace.root.is_relative_to(runtime_root):
+        raise WorkspaceError("workspace must stay inside the Qprint folder")
     token = secrets.token_urlsafe(32)
     executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="qprint-import")
     verification_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="qprint-verify")
@@ -56,6 +71,10 @@ def create_app(root: Path, *, allow_verification: bool = False, toolchain_home: 
 
     @asynccontextmanager
     async def lifespan(app):
+        # Bootstrap belongs to the host, never to agent query processes. Publish
+        # before any browser click so a fresh shell can discover the workspace.
+        KnowledgeIndexer(workspace.root).update()
+        publish_runtime(runtime_root, workspace.root, "host-" + uuid.uuid4().hex)
         yield
         executor.shutdown(wait=False, cancel_futures=True)
         verification_executor.shutdown(wait=False, cancel_futures=True)
@@ -84,7 +103,7 @@ def create_app(root: Path, *, allow_verification: bool = False, toolchain_home: 
 
     @app.exception_handler(WorkspaceError)
     async def invalid(request, exc):
-        return JSONResponse({"detail": str(exc)}, status_code=409 if isinstance(exc, ConflictError) else 400)
+        return JSONResponse({"detail": relative_output(str(exc), runtime_root)}, status_code=409 if isinstance(exc, ConflictError) else 400)
 
     @app.exception_handler(FileNotFoundError)
     async def missing(request, exc):
@@ -92,7 +111,24 @@ def create_app(root: Path, *, allow_verification: bool = False, toolchain_home: 
 
     @app.get("/api/project")
     def project():
-        return {**workspace.project(), "token": token, "verification_enabled": allow_verification}
+        return {**workspace.project(), "token": token, "verification_enabled": allow_verification,
+                "navigator_available": (workspace.root / ".qprint/index/knowledge.sqlite").is_file()}
+
+    @app.get("/api/navigator/state")
+    def navigator_state(session: str | None = None, limit: int = 8):
+        _, session = query_target(runtime_root, workspace.root.relative_to(runtime_root).as_posix(), session)
+        with KnowledgeNavigator(workspace.root, session=session, runtime_root=runtime_root) as nav:
+            return relative_output(nav.kb_state(limit), runtime_root)
+
+    @app.post("/api/navigator/focus")
+    def navigator_focus(payload: NavigatorFocus):
+        # Validate against the visible workspace as well as the canonical index.
+        if payload.node_id is not None and payload.node_id not in workspace.nodes:
+            raise HTTPException(404, "节点不存在")
+        with KnowledgeNavigator(workspace.root, session=payload.session, runtime_root=runtime_root) as nav:
+            state = nav.set_focus(payload.node_id, view=payload.view, selection=payload.selection, origin="browser", document=payload.document)
+            publish_runtime(runtime_root, workspace.root, payload.session)
+            return relative_output(state, runtime_root)
 
     @app.get("/api/formal-reports")
     def reports():

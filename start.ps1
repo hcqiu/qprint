@@ -1,8 +1,8 @@
 param(
-    [string]$Workspace = "$PSScriptRoot/examples/demo",
+    [string]$Workspace = 'examples/demo',
     [int]$Port = 8765,
     [switch]$AllowVerification,
-    [string]$ToolchainHome = $PSScriptRoot,
+    [string]$ToolchainHome = '.',
     [switch]$AllowSystemToolchains
 )
 $ErrorActionPreference = 'Stop'
@@ -19,8 +19,8 @@ if (-not $qprintConda) { throw 'Conda not found. Run from Anaconda PowerShell Pr
 $env:PYTHONIOENCODING = 'utf-8'
 Push-Location $PSScriptRoot
 try {
-    if ($Workspace -eq "$PSScriptRoot/examples/demo" -and -not (Test-Path -LiteralPath $Workspace)) {
-        $Workspace = "$PSScriptRoot/examples/verification"
+    if ($Workspace -eq 'examples/demo' -and -not (Test-Path -LiteralPath $Workspace)) {
+        $Workspace = 'examples/verification'
     }
     $qprintServeArguments = @('run', '--no-capture-output', '-n', 'qprint', 'python', '-m', 'qprint', 'serve',
         '--workspace', $Workspace, '--port', $Port, '--toolchain-home', $ToolchainHome)

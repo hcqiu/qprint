@@ -1,0 +1,6 @@
+# knowledge Navigator测试用例撰写指南
+在每一个测试用例中，agent位于一个特定的文件夹，它可在该文件夹运行knowledge Navigator的各种工具，并已经配备了knowledge Navigator的skill。
+
+在测试中，用户已经打开了某个节点，他的浏览器界面上显示了该节点对应的tex渲染界面。然后他复制界面上的一句话或者一个词给 Agent，并进行一句简短的提问。agent应该可通过knowledge Navigator工具查看当前状态（节点等信息）。除此之外没有prompt给agent。
+
+测试目标为agent在只查看skill、运行knowledge Navigator工具的情况下，良好地解答了用户的问题。若agent使用、查看、修改了超出范围的文件、代码，视为失败。衡量knowledge Navigator skill系统的维度为：解答时间、token消耗。

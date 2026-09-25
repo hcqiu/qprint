@@ -11,7 +11,7 @@ description: 将数学论文 TeX 标注并转换为 Qprint Blueprint，检索已
 
 输入是工作区根目录、当前论文 `tex/` 下的源码目录，以及 `blueprint/` 下的目标项目目录。论文对应 PDF、引用文件和 `.qprint-source.json` 属于当前项目材料，可以读取。先阅读 [Blueprint 格式](references/blueprint-format.md)。按论文规模分段阅读源文，记录已阅读范围，完成全文而非仅处理摘要或抽样。
 
-以下 `SKILL_DIR` 替换为本文件所在目录的绝对路径。脚本使用随 skill 打包的运行库，不依赖当前目录或已安装的 qprint 包。运行环境为 Conda `qprint`，需要 PyYAML、markdown-it-py、plasTeX。Windows 上若 `conda` 不在 PATH，可查找并使用已有的 `%USERPROFILE%/anaconda3/Scripts/conda.exe`，仍须 `run -n qprint`；UTF-8 输出可设置当前进程的 `PYTHONIOENCODING=utf-8`、`PYTHONUTF8=1`。并行运行 Conda 时，可为各任务设置当前项目内独立的 TMP/TEMP 临时目录，避免共享临时文件冲突。无需安装或修改全局配置。
+在 Qprint 文件夹启动 agent，并保持该工作目录。以下 `SKILL_DIR` 为相对路径 `skills/tex-to-blueprint`；工作区、输入文件、输出文件和引用也都使用相对 Qprint 文件夹的路径，不查找机器上的 Python/Conda 安装路径。宿主准备好本地环境后可用 `conda run -p ./.conda python ...`；若仓库明确指定现有命名环境，则遵循该约定。工具不可用时报告环境尚未准备好。UTF-8 输出可设置当前进程的 `PYTHONIOENCODING=utf-8`、`PYTHONUTF8=1`。顺序启动 Conda，不修改全局配置。
 
 只修改当前项目的 TeX（含引用文件）与 Blueprint；临时辅助脚本/报告放在当前项目目录中。其他项目仅通过 search 脚本检索 Markdown，不读取或修改其 TeX 或证明代码。无需修改 skill 的脚本；如工具失效，报告具体输入和错误。不要用批量正则抽取代替数学理解，可以在理解后用辅助脚本落盘已确定的标注。
 

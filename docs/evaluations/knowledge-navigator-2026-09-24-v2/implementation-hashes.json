@@ -1,0 +1,46 @@
+[
+  {
+    "path": "qprint/knowledge/cli.py",
+    "sha256": "06db82763bfe3b53dfb24a05c4faeadd8ff7624d9f5b061fbe019a5bc64c1527"
+  },
+  {
+    "path": "qprint/knowledge/index.py",
+    "sha256": "2449f0512811c156b8104d7b86c46b3451bc96af63403b26fc18d816ea9a0647"
+  },
+  {
+    "path": "qprint/knowledge/navigator.py",
+    "sha256": "bd65c5f61e40fff96989cef502c383b0aac2d9a31f94b490accce56da7bbcda1"
+  },
+  {
+    "path": "qprint/knowledge/parsing.py",
+    "sha256": "58ca5581017ab4f55bd1a8264c37ccd4f5080413fddc964039e1e11029b08309"
+  },
+  {
+    "path": "qprint/knowledge/state.py",
+    "sha256": "f4427c44e8c2e3e4f45e8aa4662581b49f5ceb14149c86f5881b9cf7b3fce775"
+  },
+  {
+    "path": "qprint/knowledge/tools.py",
+    "sha256": "f79016753529c711bd812dcc3d83886a042e94d525af6c0732f412355501b452"
+  },
+  {
+    "path": "qprint/knowledge/__init__.py",
+    "sha256": "93ce1e228ea2bfc35d50d53b47a586ff8586b08d6435f530bf3980f89e74e3c9"
+  },
+  {
+    "path": "skills/knowledge-navigator/SKILL.md",
+    "sha256": "5746d8aa9fceef57a5a25e8c3703616f62bff9a9aa6e73025cdb8a92937bdb70"
+  },
+  {
+    "path": "qprint/server.py",
+    "sha256": "125ed6d5b95ddd93062ba6a333b143f9641423af79e8aa0d30a38efed70c94a8"
+  },
+  {
+    "path": "qprint/static/app.js",
+    "sha256": "4994267c460681b653cc9c6d50f2bd172f9bec709b8ceda5c5be46af2af1bed9"
+  },
+  {
+    "path": "qprint/static/navigator-state.js",
+    "sha256": "bbf0c2e1c84d4d794a65e29d79dd236c728149ca8017185dbe7af0857352adb2"
+  }
+]

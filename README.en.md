@@ -14,6 +14,7 @@ The current package version is `0.1.0`. Documentation describes implemented beha
 | [ARCHITECTURE.en.md](ARCHITECTURE.en.md) | Module responsibilities, data flows, technical decisions |
 | [TODO.en.md](TODO.en.md) | Implemented baseline, follow-up work, acceptance conditions |
 | [docs/index.en.md](docs/index.en.md) | Module documents and bilingual navigation |
+| [Knowledge Navigator](docs/knowledge-navigator.en.md) | Incremental agent indexes, symbol navigation, dependencies and context tools |
 | [docs/spec.en.md](docs/spec.en.md) | Development specification and acceptance contract |
 | [docs/verification.en.md](docs/verification.en.md) | Executed verification and known limitations |
 
@@ -124,7 +125,8 @@ Graph **granularity** has three levels: Blueprint nodes (level-one headings), Mi
 - Project detection: `<directory-name>.md` or `index.md` is an index, with the named file taking precedence. A file belongs to its nearest indexed ancestor, allowing arbitrary subfolders. Without an indexed ancestor, its immediate parent directory is used. Files directly under blueprint belong to the root group.
 - Milestone graphs merge references between each directed file pair. They include prose and metadata wikilinks such as `[[path#heading]]`, `[[path]]`, aliases, and Markdown relative links such as `[text](../Other.md#heading)`. Example code, inline code, HTML comments, and external links are excluded. Node-level `uses` / `inspired_by` retain their original meaning.
 - Project graphs merge references between projects, including references in index Markdown. References within the same project create no project self-loop.
-- **Scope** selects all or current project, with a project selector. Node level defaults to current project. Project level always uses all scope and disables scope selection.
+- **Scope** manually selects all (the entire `blueprint/`), current project, or current Milestone (one Markdown file). The default is current project, with initial project/file context taken from the reader node. Selectors let you choose a project and its file. Scope is independent of granularity and survives level changes; it remains selectable at project level. Milestone scope shows only that file's nodes and internal edges at node level, the file itself at file level, and its owning project at project level.
+- Entering current-Milestone scope automatically selects the file of the graph's current Blueprint node, falling back to the reader node. From project granularity, it expands to that file's Blueprint nodes. Scope changes clear the old neighborhood filter. Users can still select another file afterward.
 - Double-clicking a project opens the all-scope Milestone graph and highlights its files in gold. Double-clicking a Milestone opens its project's node graph and highlights all headings in that file. Double-clicking a Blueprint node opens its content and code. Drill-down clears old filters so members remain visible.
 
 Indexes remain ordinary Markdown. Those without headings still appear in file graphs; those with headings also create nodes. Use the index naming convention for files whose arbitrary names cannot otherwise be recognized as indexes. No extra metadata is necessary.

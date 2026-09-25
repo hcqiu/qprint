@@ -39,7 +39,7 @@ Creating files, renaming them, and reorganizing directories currently require an
 | Knowledge organization | Multiple nodes per Markdown file, wikilinks, dependencies and inspiration, backlinks, diagnostics |
 | Paper reading | TeX section tree, anchor fragments, bounded plasTeX rendering, local KaTeX, source view |
 | Code navigation | Three languages, multiple declarations, explicit line ranges, heuristic lookup, HTTPS source links |
-| Graphs | Node/file/project granularity, current-project/all scope, drill-down member highlights, force/layered layouts, cycles |
+| Graphs | Node/file/project granularity with independent all/current-project/current-Milestone scope, drill-down member highlights, force/layered layouts, cycles |
 | Interaction | Search, collapsible sidebars, narrow layouts, node deep links, previous/next navigation, boundary scrolling |
 | Editing | Whole-file Markdown saves, syntax validation, revision conflicts, index rebuilds after saves |
 | Imports | Public GitHub repositories, arXiv PDF and source pairs, provenance records, background job status |

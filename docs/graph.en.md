@@ -41,7 +41,17 @@ A file/project is `complete` only if every member is complete. Empty groups or g
 
 ## Scope and drill-down
 
-Node level defaults to the current project. File level allows current-project or all scope. Project level always shows all projects and disables scope selection. The initial project comes from the reader's selected node and can be changed explicitly. Scoped graphs retain only edges with both endpoints in scope.
+Entering current-Milestone scope first follows the selected Blueprint node in the graph, then falls back to the reader node, updating both project and file. Only when neither is valid does it retain a manual file or use a valid fallback. Once inside this scope, users can still choose another file; ordinary refresh does not force it back to the reader file. Scope changes clear the previous one-hop filter and aggregate highlights. Entering Milestone scope from project granularity automatically expands to Blueprint nodes instead of leaving the same project bubble visible. Granularity can still be changed manually afterward.
+
+Since 2026-09-25, three scopes can be selected manually at every granularity. Changing granularity preserves scope; the initial default remains current project.
+
+| Scope | Node granularity | File granularity | Project granularity |
+| --- | --- | --- | --- |
+| All | Every node under `blueprint/` | Every Markdown file | Every project |
+| Current project | Nodes in the selected project | Files in the selected project | The selected project |
+| Current Milestone | Nodes in the selected Markdown file | The selected Markdown file | Its owning project |
+
+Only edges with both endpoints in scope remain. The reader node supplies the initial project and Milestone; selecting another reader node updates context. Projects can be selected manually. Milestone scope adds a file selector within that project, displaying project-relative paths; the context label shows the full path. A manually selected file survives index refresh while it still exists. Changing projects or deleting the file falls back to a valid file in the current project. Empty files show zero nodes, and empty workspaces never substitute unrelated objects.
 
 1. Double-click a project: open the all-scope file graph and highlight every file in that project in gold.
 2. Double-click a file: open the node graph within its owning project and highlight every node in that file; other nodes in that project remain visible.
@@ -51,6 +61,6 @@ Drill-down clears prior kind, status, and neighborhood filters to keep members v
 
 ## Data interface and limits
 
-`/api/project.graph` includes `files`, `projects`, `file_projects`, `node_projects`, `file_edges`, and `project_edges`. Saves and refreshes rebuild them. Frontend `graph-view.js` uses pure functions for level, scope, focus, and member highlights. `graph.js` owns SVG rendering, layouts, and hit regions.
+`/api/project.graph` includes `files`, `projects`, `file_projects`, `node_projects`, `file_edges`, and `project_edges`. Saves and refreshes rebuild them. Frontend `graph-view.js` uses pure functions for level, scope, `projectId` / `milestoneId` context, focus, and member highlights. `graph.js` owns SVG rendering, layouts, and hit regions. All three scopes reuse existing graph data without new on-disk fields or APIs.
 
 Force and layered layouts support dragging, zooming, panning, and keyboard preview/open actions. The URL currently stores the reader node only; graph scope and layout are not persisted. Large-graph performance remains unbenchmarked, and recorded browser acceptance uses a small demo.

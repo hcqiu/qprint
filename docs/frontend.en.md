@@ -32,7 +32,7 @@ Leaving a node with unsaved changes prompts for confirmation. Closing the page u
 
 `graph-view.js` has no DOM dependency and manages granularity, project scope, focus, and member highlighting. `app.js` passes projected and filtered data to the graph and handles previews, drill-down, and reader navigation. `graph.js` owns force/layered layouts, SVG nodes and edges, label hit regions, and keyboard/mouse interactions.
 
-Drill-down highlighting is independent of reader selection. Scope and kind controls are enabled or disabled according to the level. Labels retain a minimum display size while zooming, with larger hit regions. Controls are laid out separately from the canvas. See the [graph module](graph.en.md) for grouping rules.
+Drill-down highlighting is independent of reader selection. Scope always allows all, current project, or current Milestone; Milestone scope shows a file selector, while kind filtering is enabled only at node level. Labels retain a minimum display size while zooming, with larger hit regions. Controls are laid out separately from the canvas. See the [graph module](graph.en.md) for grouping rules.
 
 ## Rendering and verification boundaries
 

@@ -5,11 +5,14 @@ import sys
 
 from .importers import import_code, import_paper
 from .workspace import Workspace
+from .agent_paths import relative_output
 
 
 def main():
     parser = argparse.ArgumentParser(prog="qprint", description="Markdown-first proof navigation IDE")
     commands = parser.add_subparsers(dest="command", required=True)
+    from .knowledge.cli import add_commands
+    add_commands(commands)
     formal = commands.add_parser("formal", help="解析或验证独立形式化项目，自动补齐固定版本依赖")
     formal.add_argument("action", choices=["resolve", "verify", "audit"])
     formal.add_argument("--project", type=Path, required=True)
@@ -59,13 +62,18 @@ def main():
     if args.command == "serve":
         import uvicorn
         from .server import create_app
+        from .knowledge.runtime import relative_workspace
+        args.workspace = relative_workspace(Path.cwd(), args.workspace)
         if not args.workspace.is_dir():
             parser.error(f"工作区不存在: {args.workspace}")
-        uvicorn.run(create_app(args.workspace, allow_verification=args.allow_verification,
+        uvicorn.run(create_app(args.workspace, runtime_root=Path.cwd(), allow_verification=args.allow_verification,
                               toolchain_home=args.toolchain_home, allow_system_toolchains=args.allow_system_toolchains),
                     host="127.0.0.1", port=args.port)
         return
     try:
+        if args.command in {"index", "watch", "agent"}:
+            from .knowledge.cli import run
+            return run(args)
         if args.command == "formal":
             from .formal_service import formal_project
             report = formal_project(args.project, args.language, action=args.action, entries=args.entry,
@@ -119,7 +127,7 @@ def main():
         if args.command == "import-code" and args.verify_after_download:
             return 0 if result["verification"]["status"] == "passed" else 1
     except Exception as exc:
-        print(str(exc), file=sys.stderr)
+        print(relative_output(str(exc)), file=sys.stderr)
         return 1
     return 0
 

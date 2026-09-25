@@ -4,6 +4,16 @@
 
 下列内容是各标注日期的实测记录，不表示本次双语文档整理重新执行了这些业务测试。v1 指首版产品，Python 包版本为 `0.1.0`。
 
+## 2026-09-25：三种图谱展示范围
+
+后续修复验收：范围切换事件现在调用统一的 `changeGraphScope`，以图中选中节点/阅读节点重新选择 Milestone，更新跨项目归属并保留焦点；项目颗粒度切入 Milestone 时展开节点，关闭旧邻域筛选。`node --test tests/graph_view.test.mjs` **16 项通过**，两个 JS 模块语法检查通过。浏览器实际切换 Topology 当前项目（8 节点 / 10 边）到 Maps.md（3 节点 / 3 边）；手选 Notes 后重新进入 Milestone 自动回到阅读节点 Continuous 所在 Maps；图中选中 Identity map 后切换自动选择 Notes（5 节点 / 5 边）并保留选中；项目颗粒度的单个项目圆点正确展开为 Maps 的 3 个节点。未记录 JavaScript error。本次未重跑 Python 套件。
+
+新增“当前 Milestone”范围及文件选择器；全范围、当前项目、当前 Milestone 与颗粒度独立，项目级不再锁定全范围。初始文件来自阅读节点，手选文件可在刷新后保留；项目切换、删除和空文件有明确回退。
+
+执行 `node --test tests/graph_view.test.mjs`：**11 项通过**；`node --check qprint/static/app.js` 和 `node --check qprint/static/graph-view.js` 通过。覆盖单文件节点/内部边、全范围恢复、各颗粒度保留范围、阅读和手选上下文、删除/空文件，以及既有两级下钻高亮。本次未修改 Python 逻辑，未重跑 Python 套件。
+
+本地浏览器实测当前工作区：全范围 267 节点 / 560 边；`Topology/KPT25TwoStabilizations` 项目 216 节点 / 468 边；`01-lattice-foundations.md` 为 12 节点 / 16 边，切到 `02-pin-spectrum.md` 为 10 节点 / 11 边。保持 Milestone 范围切到项目颗粒度显示 1 项目；手选全范围恢复 4 项目。重载后初始化正常，窄窗口文件选择器显示项目相对文件名；本次检查未记录浏览器 JavaScript error。以上计数对应当前资料快照，不是固定示例基线。
+
 ## 2026-09-22：FLT3 报告与旧版工具链
 
 下载器复现旧 Lean 发布物无 digest 的失败，确认原始报告已保存但缺少浏览器入口。新增报告查看/下载/持久历史、异常与保存失败呈现，以及旧工具链、旧 Lake 包名/Git 元数据和缓存目录兼容。FLT3 原生默认目标实际构建通过，源码和原生配置哈希未变。详见 [FLT3 实验](flt3-experiment.md)。全量 Python **216 passed**（两个既有提示），Node **12 passed**。浏览器点击真实历史报告成功显示错误和诊断。

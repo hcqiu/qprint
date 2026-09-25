@@ -25,6 +25,7 @@ Start with README to use the application and PRODUCT to understand its purpose. 
 | [Blueprint](blueprint.en.md) | Node structure, metadata, links, authoring examples | [Blueprint](blueprint.md) |
 | [Workspace](workspace.en.md) | File layout, paths, indexing, diagnostics, saves | [工作区](workspace.md) |
 | [Graphs](graph.en.md) | Project detection, reference aggregation, scope, drill-down | [知识图谱](graph.md) |
+| [Knowledge Navigator](knowledge-navigator.en.md) | SQLite/FTS5 indexing, agent tools and session context | [Knowledge Navigator](knowledge-navigator.md) |
 | [TeX rendering](tex-rendering.en.md) | Anchors, sections, fragments, rendering, fallbacks | [TeX 渲染](tex-rendering.md) |
 | [TeX → Blueprint](tex-to-blueprint.en.md) | Annotation, generation, review and real-paper tests | [TeX → Blueprint](tex-to-blueprint.md) |
 | [Formal code](formal-code.en.md) | Lean / Agda / Coq bindings and lookup | [形式化代码](formal-code.md) |

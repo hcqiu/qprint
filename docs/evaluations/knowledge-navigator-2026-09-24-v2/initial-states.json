@@ -1,0 +1,671 @@
+[
+  {
+    "run_id": "V2L1",
+    "ui_node_id": "Topology/Lin20K3/equivariant-foundations#def: pin-universe",
+    "state": {
+      "workspace": "./examples/demo",
+      "session": "state-20260924-V2L1",
+      "current_node": {
+        "id": "Topology/Lin20K3/main/def: pin-universe",
+        "title": "def: pin-universe",
+        "description": "Fix $G=\\mathrm{Pin}(2)=S^1\\cup jS^1$, a complete universe, the trivial representation $\\mathbb R$, the sign representation $\\widetilde{\\mathbb R}$, and the quaternionic representation $\\mathbb H$; let $H$ be $G$, $S^1$, or the trivial group.",
+        "kind": "definition",
+        "project": "Topology/Lin20K3",
+        "source_locations": [
+          {
+            "end_line": 11,
+            "file": "blueprint/Topology/Lin20K3/equivariant-foundations.md",
+            "kind": "definition",
+            "start_line": 1
+          },
+          {
+            "end_line": 152,
+            "file": "tex/Topology/Lin20K3/main.tex",
+            "kind": "statement",
+            "start_line": 139
+          }
+        ],
+        "formalizations": []
+      },
+      "current_project": "Topology/Lin20K3",
+      "focus_origin": "browser",
+      "view": "rendered",
+      "selection": "complete",
+      "focus_updated_ns": 1790249243769733600,
+      "stale_focus": false,
+      "stale_node_id": null,
+      "recent_nodes": [
+        {
+          "id": "Topology/Lin20K3/main/def: pin-universe",
+          "title": "def: pin-universe",
+          "description": "Fix $G=\\mathrm{Pin}(2)=S^1\\cup jS^1$, a complete universe, the trivial representation $\\mathbb R$, the sign representation $\\widetilde{\\mathbb R}$, and the quaternionic representation $\\mathbb H$; let $H$ be $G$, $S^1$, or the trivial group.",
+          "kind": "definition",
+          "project": "Topology/Lin20K3",
+          "source_locations": [
+            {
+              "end_line": 11,
+              "file": "blueprint/Topology/Lin20K3/equivariant-foundations.md",
+              "kind": "definition",
+              "start_line": 1
+            },
+            {
+              "end_line": 152,
+              "file": "tex/Topology/Lin20K3/main.tex",
+              "kind": "statement",
+              "start_line": 139
+            }
+          ],
+          "formalizations": [],
+          "visited_ns": 1790249243769733600
+        }
+      ],
+      "recent_truncated": false,
+      "projects": [
+        "Algebra",
+        "Topology",
+        "Topology/KPT25TwoStabilizations",
+        "Topology/Lin20K3"
+      ],
+      "index": {
+        "indexed": "1",
+        "indexer_version": "1"
+      }
+    }
+  },
+  {
+    "run_id": "V2L2",
+    "ui_node_id": "Topology/Lin20K3/stabilization-formula#lem: twisted family",
+    "state": {
+      "workspace": "./examples/demo",
+      "session": "state-20260924-V2L2",
+      "current_node": {
+        "id": "Topology/Lin20K3/main/lem: twisted family",
+        "title": "lem: twisted family",
+        "description": "For the twisted product spin family, the nonequivariant invariant is $\\eta\\,\\mathrm{BF}(M)$ when $\\sigma(M)\\equiv16\\pmod{32}$, and zero when $32\\mid\\sigma(M)$ (Kronheimer--Mrowka).",
+        "kind": "theorem",
+        "project": "Topology/Lin20K3",
+        "source_locations": [
+          {
+            "end_line": 28,
+            "file": "blueprint/Topology/Lin20K3/stabilization-formula.md",
+            "kind": "theorem",
+            "start_line": 15
+          },
+          {
+            "end_line": 635,
+            "file": "tex/Topology/Lin20K3/main.tex",
+            "kind": "statement",
+            "start_line": 619
+          }
+        ],
+        "formalizations": []
+      },
+      "current_project": "Topology/Lin20K3",
+      "focus_origin": "browser",
+      "view": "rendered",
+      "selection": "twisted spin structure",
+      "focus_updated_ns": 1790249243776741100,
+      "stale_focus": false,
+      "stale_node_id": null,
+      "recent_nodes": [
+        {
+          "id": "Topology/Lin20K3/main/lem: twisted family",
+          "title": "lem: twisted family",
+          "description": "For the twisted product spin family, the nonequivariant invariant is $\\eta\\,\\mathrm{BF}(M)$ when $\\sigma(M)\\equiv16\\pmod{32}$, and zero when $32\\mid\\sigma(M)$ (Kronheimer--Mrowka).",
+          "kind": "theorem",
+          "project": "Topology/Lin20K3",
+          "source_locations": [
+            {
+              "end_line": 28,
+              "file": "blueprint/Topology/Lin20K3/stabilization-formula.md",
+              "kind": "theorem",
+              "start_line": 15
+            },
+            {
+              "end_line": 635,
+              "file": "tex/Topology/Lin20K3/main.tex",
+              "kind": "statement",
+              "start_line": 619
+            }
+          ],
+          "formalizations": [],
+          "visited_ns": 1790249243776741100
+        }
+      ],
+      "recent_truncated": false,
+      "projects": [
+        "Algebra",
+        "Topology",
+        "Topology/KPT25TwoStabilizations",
+        "Topology/Lin20K3"
+      ],
+      "index": {
+        "indexed": "1",
+        "indexer_version": "1"
+      }
+    }
+  },
+  {
+    "run_id": "V2L3",
+    "ui_node_id": "Topology/Lin20K3/stabilization-formula#cor: stablization BF",
+    "state": {
+      "workspace": "./examples/demo",
+      "session": "state-20260924-V2L3",
+      "current_node": {
+        "id": "Topology/Lin20K3/main/cor: stablization BF",
+        "title": "cor: stablization BF",
+        "description": "Connected sum with either spin family on $(S^2\\times S^2)\\times S^1$ multiplies $\\mathrm{BF}^G(N)$ by $e_{\\widetilde{\\mathbb R}}$.",
+        "kind": "theorem",
+        "project": "Topology/Lin20K3",
+        "source_locations": [
+          {
+            "end_line": 82,
+            "file": "blueprint/Topology/Lin20K3/stabilization-formula.md",
+            "kind": "theorem",
+            "start_line": 70
+          },
+          {
+            "end_line": 699,
+            "file": "tex/Topology/Lin20K3/main.tex",
+            "kind": "proof",
+            "start_line": 683
+          }
+        ],
+        "formalizations": []
+      },
+      "current_project": "Topology/Lin20K3",
+      "focus_origin": "browser",
+      "view": "rendered",
+      "selection": "BFᴳ(N,s) · e_R̃",
+      "focus_updated_ns": 1790249243782096500,
+      "stale_focus": false,
+      "stale_node_id": null,
+      "recent_nodes": [
+        {
+          "id": "Topology/Lin20K3/main/cor: stablization BF",
+          "title": "cor: stablization BF",
+          "description": "Connected sum with either spin family on $(S^2\\times S^2)\\times S^1$ multiplies $\\mathrm{BF}^G(N)$ by $e_{\\widetilde{\\mathbb R}}$.",
+          "kind": "theorem",
+          "project": "Topology/Lin20K3",
+          "source_locations": [
+            {
+              "end_line": 82,
+              "file": "blueprint/Topology/Lin20K3/stabilization-formula.md",
+              "kind": "theorem",
+              "start_line": 70
+            },
+            {
+              "end_line": 699,
+              "file": "tex/Topology/Lin20K3/main.tex",
+              "kind": "proof",
+              "start_line": 683
+            }
+          ],
+          "formalizations": [],
+          "visited_ns": 1790249243782096500
+        }
+      ],
+      "recent_truncated": false,
+      "projects": [
+        "Algebra",
+        "Topology",
+        "Topology/KPT25TwoStabilizations",
+        "Topology/Lin20K3"
+      ],
+      "index": {
+        "indexed": "1",
+        "indexer_version": "1"
+      }
+    }
+  },
+  {
+    "run_id": "V2L4",
+    "ui_node_id": "Topology/Lin20K3/main-theorem#thm: main",
+    "state": {
+      "workspace": "./examples/demo",
+      "session": "state-20260924-V2L4",
+      "current_node": {
+        "id": "Topology/Lin20K3/main/thm: main",
+        "title": "thm: main",
+        "description": "The Dehn twist along the separating neck sphere in $K3\\#K3$ is not smoothly isotopic to the identity even after one connected sum with $S^2\\times S^2$.\n\nBoth spin structures of the stabilized mapping torus have nonzero $G$-equivariant invariant: the product formula makes the characteristic degree vanish, Euler-class vanishing would force restriction to vanish, and Kronheimer--Mrowka compute the nonequivariant class as $\\eta^3\\ne0$. This contradicts product-family vanishing.\n\n## Proof strategy\n\nThe mapping torus of the neck twist is the spin connected sum of a product K3 family and a twisted K3 family. Its two spin structures become the two product/twisted arrangements after stabilization. For either arrangement write the unstabilized invariant as $\\alpha$. The connected-sum product has characteristic degree zero by the product-vanishing lemma; the stabilized invariant is $\\alpha e_{\\widetilde{\\mathbb R}}$. If it vanished, the key proposition would force its $S^1$ restriction, and hence its nonequivariant restriction, to vanish. Kronheimer--Mrowka Proposition 5.1 gives the latter as $\\eta^3\\ne0\\in\\pi_3^S$, with the two definitions identified by the framed-cobordism lemma. Thus both ",
+        "kind": "theorem",
+        "project": "Topology/Lin20K3",
+        "source_locations": [
+          {
+            "end_line": 36,
+            "file": "blueprint/Topology/Lin20K3/main-theorem.md",
+            "kind": "theorem",
+            "start_line": 12
+          },
+          {
+            "end_line": 125,
+            "file": "tex/Topology/Lin20K3/main.tex",
+            "kind": "statement",
+            "start_line": 104
+          },
+          {
+            "end_line": 797,
+            "file": "tex/Topology/Lin20K3/main.tex",
+            "kind": "statement",
+            "start_line": 766
+          }
+        ],
+        "formalizations": []
+      },
+      "current_project": "Topology/Lin20K3",
+      "focus_origin": "browser",
+      "view": "rendered",
+      "selection": "not smoothly isotopic to the identity map even after a single stabilization",
+      "focus_updated_ns": 1790249243788074700,
+      "stale_focus": false,
+      "stale_node_id": null,
+      "recent_nodes": [
+        {
+          "id": "Topology/Lin20K3/main/thm: main",
+          "title": "thm: main",
+          "description": "The Dehn twist along the separating neck sphere in $K3\\#K3$ is not smoothly isotopic to the identity even after one connected sum with $S^2\\times S^2$.\n\nBoth spin structures of the stabilized mapping torus have nonzero $G$-equivariant invariant: the product formula makes the characteristic degree vanish, Euler-class vanishing would force restriction to vanish, and Kronheimer--Mrowka compute the nonequivariant class as $\\eta^3\\ne0$. This contradicts product-family vanishing.\n\n## Proof strategy\n\nThe mapping torus of the neck twist is the spin connected sum of a product K3 family and a twisted K3 family. Its two spin structures become the two product/twisted arrangements after stabilization. For either arrangement write the unstabilized invariant as $\\alpha$. The connected-sum product has characteristic degree zero by the product-vanishing lemma; the stabilized invariant is $\\alpha e_{\\widetilde{\\mathbb R}}$. If it vanished, the key proposition would force its $S^1$ restriction, and hence its nonequivariant restriction, to vanish. Kronheimer--Mrowka Proposition 5.1 gives the latter as $\\eta^3\\ne0\\in\\pi_3^S$, with the two definitions identified by the framed-cobordism lemma. Thus both ",
+          "kind": "theorem",
+          "project": "Topology/Lin20K3",
+          "source_locations": [
+            {
+              "end_line": 36,
+              "file": "blueprint/Topology/Lin20K3/main-theorem.md",
+              "kind": "theorem",
+              "start_line": 12
+            },
+            {
+              "end_line": 125,
+              "file": "tex/Topology/Lin20K3/main.tex",
+              "kind": "statement",
+              "start_line": 104
+            },
+            {
+              "end_line": 797,
+              "file": "tex/Topology/Lin20K3/main.tex",
+              "kind": "statement",
+              "start_line": 766
+            }
+          ],
+          "formalizations": [],
+          "visited_ns": 1790249243788074700
+        }
+      ],
+      "recent_truncated": false,
+      "projects": [
+        "Algebra",
+        "Topology",
+        "Topology/KPT25TwoStabilizations",
+        "Topology/Lin20K3"
+      ],
+      "index": {
+        "indexed": "1",
+        "indexer_version": "1"
+      }
+    }
+  },
+  {
+    "run_id": "V2K1",
+    "ui_node_id": "Topology/KPT25TwoStabilizations/03-family-local-category#def:family-local-map-level",
+    "state": {
+      "workspace": "./examples/demo",
+      "session": "state-20260924-V2K1",
+      "current_node": {
+        "id": "Topology/KPT25TwoStabilizations/main/def:family-local-map-level",
+        "title": "def:family-local-map-level",
+        "description": "A family local map of level $k$ has the prescribed codimension-$k$ behavior on its fixed subbundles.",
+        "kind": "definition",
+        "project": "Topology/KPT25TwoStabilizations",
+        "source_locations": [
+          {
+            "end_line": 64,
+            "file": "blueprint/Topology/KPT25TwoStabilizations/03-family-local-category.md",
+            "kind": "definition",
+            "start_line": 52
+          },
+          {
+            "end_line": 1617,
+            "file": "tex/Topology/KPT25TwoStabilizations/main.tex",
+            "kind": "statement",
+            "start_line": 1590
+          }
+        ],
+        "formalizations": []
+      },
+      "current_project": "Topology/KPT25TwoStabilizations",
+      "focus_origin": "browser",
+      "view": "rendered",
+      "selection": "local of level k",
+      "focus_updated_ns": 1790249243793567500,
+      "stale_focus": false,
+      "stale_node_id": null,
+      "recent_nodes": [
+        {
+          "id": "Topology/KPT25TwoStabilizations/main/def:family-local-map-level",
+          "title": "def:family-local-map-level",
+          "description": "A family local map of level $k$ has the prescribed codimension-$k$ behavior on its fixed subbundles.",
+          "kind": "definition",
+          "project": "Topology/KPT25TwoStabilizations",
+          "source_locations": [
+            {
+              "end_line": 64,
+              "file": "blueprint/Topology/KPT25TwoStabilizations/03-family-local-category.md",
+              "kind": "definition",
+              "start_line": 52
+            },
+            {
+              "end_line": 1617,
+              "file": "tex/Topology/KPT25TwoStabilizations/main.tex",
+              "kind": "statement",
+              "start_line": 1590
+            }
+          ],
+          "formalizations": [],
+          "visited_ns": 1790249243793567500
+        }
+      ],
+      "recent_truncated": false,
+      "projects": [
+        "Algebra",
+        "Topology",
+        "Topology/KPT25TwoStabilizations",
+        "Topology/Lin20K3"
+      ],
+      "index": {
+        "indexed": "1",
+        "indexer_version": "1"
+      }
+    }
+  },
+  {
+    "run_id": "V2K2",
+    "ui_node_id": "Topology/KPT25TwoStabilizations/21-connected-sum-duplication#lem: topological obstruction by duplicating",
+    "state": {
+      "workspace": "./examples/demo",
+      "session": "state-20260924-V2K2",
+      "current_node": {
+        "id": "Topology/KPT25TwoStabilizations/main/lem: topological obstruction by duplicating",
+        "title": "lem: topological obstruction by duplicating",
+        "description": "For simply connected $X$, triviality of a boundary twist power after the prescribed stabilization implies triviality of the boundary product on an even connected sum of copies of $X$ with the same stabilization.",
+        "kind": "lemma",
+        "project": "Topology/KPT25TwoStabilizations",
+        "source_locations": [
+          {
+            "end_line": 64,
+            "file": "blueprint/Topology/KPT25TwoStabilizations/21-connected-sum-duplication.md",
+            "kind": "lemma",
+            "start_line": 51
+          },
+          {
+            "end_line": 9020,
+            "file": "tex/Topology/KPT25TwoStabilizations/main.tex",
+            "kind": "proof",
+            "start_line": 8900
+          }
+        ],
+        "formalizations": []
+      },
+      "current_project": "Topology/KPT25TwoStabilizations",
+      "focus_origin": "browser",
+      "view": "rendered",
+      "selection": "X^{#2n} # Z",
+      "focus_updated_ns": 1790249243798971300,
+      "stale_focus": false,
+      "stale_node_id": null,
+      "recent_nodes": [
+        {
+          "id": "Topology/KPT25TwoStabilizations/main/lem: topological obstruction by duplicating",
+          "title": "lem: topological obstruction by duplicating",
+          "description": "For simply connected $X$, triviality of a boundary twist power after the prescribed stabilization implies triviality of the boundary product on an even connected sum of copies of $X$ with the same stabilization.",
+          "kind": "lemma",
+          "project": "Topology/KPT25TwoStabilizations",
+          "source_locations": [
+            {
+              "end_line": 64,
+              "file": "blueprint/Topology/KPT25TwoStabilizations/21-connected-sum-duplication.md",
+              "kind": "lemma",
+              "start_line": 51
+            },
+            {
+              "end_line": 9020,
+              "file": "tex/Topology/KPT25TwoStabilizations/main.tex",
+              "kind": "proof",
+              "start_line": 8900
+            }
+          ],
+          "formalizations": [],
+          "visited_ns": 1790249243798971300
+        }
+      ],
+      "recent_truncated": false,
+      "projects": [
+        "Algebra",
+        "Topology",
+        "Topology/KPT25TwoStabilizations",
+        "Topology/Lin20K3"
+      ],
+      "index": {
+        "indexed": "1",
+        "indexer_version": "1"
+      }
+    }
+  },
+  {
+    "run_id": "V2K3",
+    "ui_node_id": "Topology/KPT25TwoStabilizations/23-two-stabilization-obstruction#cor: no map of level 2 in 4 copies",
+    "state": {
+      "workspace": "./examples/demo",
+      "session": "state-20260924-V2K3",
+      "current_node": {
+        "id": "Topology/KPT25TwoStabilizations/main/cor: no map of level 2 in 4 copies",
+        "title": "cor: no map of level 2 in 4 copies",
+        "description": "There is no level-two local map $\\mathfrak R\\to M^{\\otimes4}$, by postcomposing a hypothetical map with the level-zero projection on one tensor factor.",
+        "kind": "theorem",
+        "project": "Topology/KPT25TwoStabilizations",
+        "source_locations": [
+          {
+            "end_line": 79,
+            "file": "blueprint/Topology/KPT25TwoStabilizations/23-two-stabilization-obstruction.md",
+            "kind": "theorem",
+            "start_line": 66
+          },
+          {
+            "end_line": 9277,
+            "file": "tex/Topology/KPT25TwoStabilizations/main.tex",
+            "kind": "proof",
+            "start_line": 9265
+          }
+        ],
+        "formalizations": []
+      },
+      "current_project": "Topology/KPT25TwoStabilizations",
+      "focus_origin": "browser",
+      "view": "rendered",
+      "selection": "There does not exist a local map f: ℜ → M⊗M⊗M⊗M of level 2.",
+      "focus_updated_ns": 1790249243804366900,
+      "stale_focus": false,
+      "stale_node_id": null,
+      "recent_nodes": [
+        {
+          "id": "Topology/KPT25TwoStabilizations/main/cor: no map of level 2 in 4 copies",
+          "title": "cor: no map of level 2 in 4 copies",
+          "description": "There is no level-two local map $\\mathfrak R\\to M^{\\otimes4}$, by postcomposing a hypothetical map with the level-zero projection on one tensor factor.",
+          "kind": "theorem",
+          "project": "Topology/KPT25TwoStabilizations",
+          "source_locations": [
+            {
+              "end_line": 79,
+              "file": "blueprint/Topology/KPT25TwoStabilizations/23-two-stabilization-obstruction.md",
+              "kind": "theorem",
+              "start_line": 66
+            },
+            {
+              "end_line": 9277,
+              "file": "tex/Topology/KPT25TwoStabilizations/main.tex",
+              "kind": "proof",
+              "start_line": 9265
+            }
+          ],
+          "formalizations": [],
+          "visited_ns": 1790249243804366900
+        }
+      ],
+      "recent_truncated": false,
+      "projects": [
+        "Algebra",
+        "Topology",
+        "Topology/KPT25TwoStabilizations",
+        "Topology/Lin20K3"
+      ],
+      "index": {
+        "indexed": "1",
+        "indexer_version": "1"
+      }
+    }
+  },
+  {
+    "run_id": "V2K4",
+    "ui_node_id": "Topology/KPT25TwoStabilizations/23-two-stabilization-obstruction#rmk:algebraic",
+    "state": {
+      "workspace": "./examples/demo",
+      "session": "state-20260924-V2K4",
+      "current_node": {
+        "id": "Topology/KPT25TwoStabilizations/main/rmk:algebraic",
+        "title": "rmk:algebraic",
+        "description": "Two tensor copies admit a level-two map from the product of the level-one inclusions, whereas three are algebraically obstructed; the topological duplication requires an even number, hence four.",
+        "kind": "other",
+        "project": "Topology/KPT25TwoStabilizations",
+        "source_locations": [
+          {
+            "end_line": 93,
+            "file": "blueprint/Topology/KPT25TwoStabilizations/23-two-stabilization-obstruction.md",
+            "kind": "other",
+            "start_line": 80
+          },
+          {
+            "end_line": 9325,
+            "file": "tex/Topology/KPT25TwoStabilizations/main.tex",
+            "kind": "proof",
+            "start_line": 9280
+          }
+        ],
+        "formalizations": []
+      },
+      "current_project": "Topology/KPT25TwoStabilizations",
+      "focus_origin": "browser",
+      "view": "rendered",
+      "selection": "at least three copies of M",
+      "focus_updated_ns": 1790249243810371700,
+      "stale_focus": false,
+      "stale_node_id": null,
+      "recent_nodes": [
+        {
+          "id": "Topology/KPT25TwoStabilizations/main/rmk:algebraic",
+          "title": "rmk:algebraic",
+          "description": "Two tensor copies admit a level-two map from the product of the level-one inclusions, whereas three are algebraically obstructed; the topological duplication requires an even number, hence four.",
+          "kind": "other",
+          "project": "Topology/KPT25TwoStabilizations",
+          "source_locations": [
+            {
+              "end_line": 93,
+              "file": "blueprint/Topology/KPT25TwoStabilizations/23-two-stabilization-obstruction.md",
+              "kind": "other",
+              "start_line": 80
+            },
+            {
+              "end_line": 9325,
+              "file": "tex/Topology/KPT25TwoStabilizations/main.tex",
+              "kind": "proof",
+              "start_line": 9280
+            }
+          ],
+          "formalizations": [],
+          "visited_ns": 1790249243810371700
+        }
+      ],
+      "recent_truncated": false,
+      "projects": [
+        "Algebra",
+        "Topology",
+        "Topology/KPT25TwoStabilizations",
+        "Topology/Lin20K3"
+      ],
+      "index": {
+        "indexed": "1",
+        "indexer_version": "1"
+      }
+    }
+  },
+  {
+    "run_id": "V2K2R",
+    "ui_node_id": "Topology/KPT25TwoStabilizations/21-connected-sum-duplication#lem: topological obstruction by duplicating",
+    "state": {
+      "workspace": "./examples/demo",
+      "session": "state-20260924-V2K2R",
+      "current_node": {
+        "id": "Topology/KPT25TwoStabilizations/main/lem: topological obstruction by duplicating",
+        "title": "lem: topological obstruction by duplicating",
+        "description": "For simply connected $X$, triviality of a boundary twist power after the prescribed stabilization implies triviality of the boundary product on an even connected sum of copies of $X$ with the same stabilization.",
+        "kind": "lemma",
+        "project": "Topology/KPT25TwoStabilizations",
+        "source_locations": [
+          {
+            "end_line": 64,
+            "file": "blueprint/Topology/KPT25TwoStabilizations/21-connected-sum-duplication.md",
+            "kind": "lemma",
+            "start_line": 51
+          },
+          {
+            "end_line": 9020,
+            "file": "tex/Topology/KPT25TwoStabilizations/main.tex",
+            "kind": "proof",
+            "start_line": 8900
+          }
+        ],
+        "formalizations": []
+      },
+      "current_project": "Topology/KPT25TwoStabilizations",
+      "focus_origin": "browser",
+      "view": "rendered",
+      "selection": "X^{#2n} # Z",
+      "focus_updated_ns": 1790250061499775900,
+      "stale_focus": false,
+      "stale_node_id": null,
+      "recent_nodes": [
+        {
+          "id": "Topology/KPT25TwoStabilizations/main/lem: topological obstruction by duplicating",
+          "title": "lem: topological obstruction by duplicating",
+          "description": "For simply connected $X$, triviality of a boundary twist power after the prescribed stabilization implies triviality of the boundary product on an even connected sum of copies of $X$ with the same stabilization.",
+          "kind": "lemma",
+          "project": "Topology/KPT25TwoStabilizations",
+          "source_locations": [
+            {
+              "end_line": 64,
+              "file": "blueprint/Topology/KPT25TwoStabilizations/21-connected-sum-duplication.md",
+              "kind": "lemma",
+              "start_line": 51
+            },
+            {
+              "end_line": 9020,
+              "file": "tex/Topology/KPT25TwoStabilizations/main.tex",
+              "kind": "proof",
+              "start_line": 8900
+            }
+          ],
+          "formalizations": [],
+          "visited_ns": 1790250061499775900
+        }
+      ],
+      "recent_truncated": false,
+      "projects": [
+        "Algebra",
+        "Topology",
+        "Topology/KPT25TwoStabilizations",
+        "Topology/Lin20K3"
+      ],
+      "index": {
+        "indexed": "1",
+        "indexer_version": "1"
+      }
+    }
+  }
+]

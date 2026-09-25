@@ -6,6 +6,8 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from qprint.formal_service import formal_project
+from qprint.agent_paths import relative_output
+from qprint.knowledge.runtime import relative_workspace
 
 
 def main():
@@ -16,6 +18,8 @@ def main():
     parser.add_argument("--timeout", type=float)
     parser.add_argument("--offline", action="store_true")
     args = parser.parse_args()
+    for path in (args.report, args.project, args.home):
+        relative_workspace(Path.cwd(), path)
     data = json.loads(args.report.read_text(encoding="utf-8-sig"))
     request = data["request"]
     project, home = args.project.resolve(), args.home.resolve()
@@ -28,12 +32,12 @@ def main():
                "safe": request.get("safe"), "entry_strategy": request.get("entry_strategy", "all"),
                "allow_system": request.get("allow_system", False)}
     resolution = formal_project(project, request["language"], action="resolve", **options)
-    print(json.dumps({"resolve": resolution["status"], "report": resolution["report_path"]}), flush=True)
+    print(json.dumps(relative_output({"resolve": resolution["status"], "report": resolution["report_path"]})), flush=True)
     if resolution["status"] != "resolved":
         return 1
     verified = formal_project(project, request["language"], action="audit" if request.get("action") == "audit" else "verify", entries=request.get("entries"),
                               declaration=request.get("declaration"), **options)
-    print(json.dumps({"verify": verified["status"], "report": verified["report_path"]}), flush=True)
+    print(json.dumps(relative_output({"verify": verified["status"], "report": verified["report_path"]})), flush=True)
     return 0 if verified["status"] == "passed" else 1
 
 

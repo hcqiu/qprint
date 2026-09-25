@@ -4,6 +4,16 @@
 
 The following records describe checks executed on their stated dates. This bilingual documentation update does not rerun or reassert those business tests. v1 means the initial product scope; the Python package version is `0.1.0`.
 
+## 2026-09-25: three graph scopes
+
+Follow-up fix: scope events now call `changeGraphScope`, resolving the Milestone from the selected graph node or reader node, synchronizing cross-project ownership and retaining focus. Entering Milestone scope from project granularity expands nodes and clears the old neighborhood filter. `node --test tests/graph_view.test.mjs`: **16 passed**; both JS module syntax checks passed. Browser checks switched Topology current project (8 nodes / 10 edges) to Maps.md (3 nodes / 3 edges). After manually choosing Notes, reentering Milestone returned to reader node Continuous's Maps file. Selecting Identity map in the graph then switching scope selected Notes (5 nodes / 5 edges) and retained node selection. A single project bubble expanded to Maps' 3 nodes. No JavaScript errors were recorded. The Python suite was not rerun for this fix.
+
+Added current-Milestone scope and a file selector. All, current project, and current Milestone are independent of granularity; project level no longer forces all scope. Initial file context comes from the reader, manual selection survives refresh, and project changes, deletion, and empty files have safe fallbacks.
+
+`node --test tests/graph_view.test.mjs`: **11 passed**. Syntax checks passed for `qprint/static/app.js` and `qprint/static/graph-view.js`. Coverage includes file-local nodes/internal edges, all-scope restoration, scope retention across levels, reader/manual context, deletion/empty files, and existing drill-down highlights. Python logic was unchanged and the Python suite was not rerun for this change.
+
+Local browser checks on the current workspace: all scope showed 267 nodes / 560 edges; `Topology/KPT25TwoStabilizations` showed 216 nodes / 468 edges; `01-lattice-foundations.md` showed 12 nodes / 16 edges, and selecting `02-pin-spectrum.md` showed 10 nodes / 11 edges. Switching to project granularity retained Milestone scope and showed 1 project; manually selecting all restored 4 projects. Initialization after reload worked; the narrow-window file selector displayed project-relative filenames. No browser JavaScript errors were recorded during this check. These counts describe the current material snapshot, not a fixed demo baseline.
+
 ## 2026-09-22: FLT3 reports and legacy toolchains
 
 The downloader reproduced the missing legacy release digest failure; the original report existed but had no browser entry point. Added readable/downloadable persistent reports, explicit exception/storage failures, legacy compiler acquisition, Lake name/Git metadata and cache-directory compatibility. FLT3 native default targets passed with original source/configuration hashes preserved. See the [FLT3 experiment](flt3-experiment.en.md). Full Python suite: **216 passed**, with two existing warnings; Node: **12 passed**. Clicking an actual history report in the browser displayed its error and diagnosis.

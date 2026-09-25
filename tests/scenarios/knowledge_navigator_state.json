@@ -1,0 +1,202 @@
+{
+  "version": 3,
+  "guide": "产品经理prompt/knowledge_navigator测试.md",
+  "workspace": "examples/demo",
+  "skill": "skills/knowledge-navigator/SKILL.md",
+  "agent_environment_template": "在 Qprint 文件夹启动，保持当前目录。读取 skills/knowledge-navigator/SKILL.md；只使用 qprint agent 查询工具。由 runtime 自动提供当前 workspace、节点、文档、selection 和 session，不自行设置它们。所有命令、返回的文件位置和答案引用都使用相对 Qprint 文件夹的路径。禁止直接读其他源文件/代码、SQL、内部 API、网络、浏览器、其他 agent/协调工具和索引维护命令。只回答下面用户的问题。\n用户消息：{question}",
+  "runtime": {
+    "initial_cwd": ".",
+    "corrected_cwd": ".",
+    "conda_environment": "qprint",
+    "index_prebuilt": true,
+    "session_pattern": "state-20260924-<RUN_ID>",
+    "direct_read_allowlist": [
+      "skills/knowledge-navigator/SKILL.md"
+    ],
+    "allowed_data_access": "qprint agent read/query commands only",
+    "forbidden": [
+      "direct source/code reads",
+      "filesystem search",
+      "SQL/internal Python API",
+      "network/browser",
+      "agent coordination",
+      "index/watch/annotate-edge"
+    ],
+    "launcher": "qprint",
+    "automatic_workspace_and_session": true
+  },
+  "isolation": {
+    "fork_turns": "none",
+    "fresh_session_per_case": true,
+    "provide_current_node": false,
+    "provide_project": false,
+    "provide_rubric": false,
+    "host_publishes_current_node": true
+  },
+  "cases": [
+    {
+      "id": "V2L1",
+      "project": "Lin20K3",
+      "node": "Topology/Lin20K3/main/def: pin-universe",
+      "question": "“complete”：这里的 universe 为什么要假设 complete？",
+      "rubric": [
+        "解释包含每个不可约 G 表示的无限多个副本",
+        "说明用于直接应用 May 的结果、免于额外条件核查",
+        "指出论文的 isotropy 仅 G、S¹、{e}，脚注说指定 incomplete universe 亦足够；不把 complete 说成数学上绝对必要"
+      ],
+      "lines": [
+        [
+          139,
+          152
+        ]
+      ],
+      "original_case_id": "L1"
+    },
+    {
+      "id": "V2L2",
+      "project": "Lin20K3",
+      "node": "Topology/Lin20K3/main/lem: twisted family",
+      "question": "“twisted spin structure”：这里的 η·BF(M) 公式也适用于 Pin(2) 等变情形吗？",
+      "rubric": [
+        "明确所引公式仅 nonequivariant BF^{e}",
+        "分辨 sigma≡16 mod32 得 ηBF 与32|sigma 得0",
+        "指出原文只表示希望推广到 G/Pin(2) 与 S¹；不能宣称本文已经证明等变版本"
+      ],
+      "lines": [
+        [
+          619,
+          635
+        ]
+      ],
+      "original_case_id": "L2"
+    },
+    {
+      "id": "V2L3",
+      "project": "Lin20K3",
+      "node": "Topology/Lin20K3/main/cor: stablization BF",
+      "question": "“BFᴳ(N,s) · e_R̃”：为什么稳定化后多出的是这个 Euler class？",
+      "rubric": [
+        "由 family connected-sum product formula 得乘 BF^G(S²×S²)",
+        "S²×S² 的 G-equivariant BF 是 e_Rtilde，表为S⁰→S^Rtilde",
+        "product spin formula 与 twisted spin formula 区分，后一项用S²×S²两spin family同构的引理"
+      ],
+      "lines": [
+        [
+          683,
+          699
+        ]
+      ],
+      "original_case_id": "L3"
+    },
+    {
+      "id": "V2L4",
+      "project": "Lin20K3",
+      "node": "Topology/Lin20K3/main/thm: main",
+      "question": "“not smoothly isotopic to the identity map even after a single stabilization”：为什么这里一定要用 Pin(2)，只用 S¹ 不行吗？",
+      "rubric": [
+        "S¹ restriction 下 Euler class 消失，故稳定化后 S¹ BF 看不到此非平凡性",
+        "Pin(2) invariant 可保持非零，利用关键命题、SW characteristic degree0和假设αe=0推出ResS1 α=0",
+        "再限制nonequivariant与η³≠0矛盾；不误称所有 S¹ 工具都不可能有用"
+      ],
+      "lines": [
+        [
+          104,
+          125
+        ],
+        [
+          766,
+          797
+        ]
+      ],
+      "original_case_id": "L4"
+    },
+    {
+      "id": "V2K1",
+      "project": "KPT25TwoStabilizations",
+      "node": "Topology/KPT25TwoStabilizations/main/def:family-local-map-level",
+      "question": "“local of level k”：这个 k 具体量的是什么？",
+      "rubric": [
+        "k=rank F0−rank E0，固定点侧的余维",
+        "E0⊂F0为Z2向量子丛，商纤维是Rtilde^k",
+        "经fiberwise homotopy equivalences，f在S¹固定点上的映射对应包含E0+→F0+，不是任意degree或base dimension"
+      ],
+      "lines": [
+        [
+          1590,
+          1617
+        ]
+      ],
+      "original_case_id": "K1"
+    },
+    {
+      "id": "V2K2",
+      "project": "KPT25TwoStabilizations",
+      "node": "Topology/KPT25TwoStabilizations/main/lem: topological obstruction by duplicating",
+      "question": "“X^{#2n} # Z”：为什么复制了 2n 份 X，却不需要复制 2n 份 Z？",
+      "rubric": [
+        "使用同一个Z在不同Xi之间重定位附着位置，逐个消去twist",
+        "Z由S²×S²或±CP²连通和，相关punctured summand boundary twists可延拓，因此f→f#idZ不依附着位置",
+        "偶数球洞twists乘积同痕平凡 + Ruberman，用于把整体boundary twist化为内侧各twist乘积；不说无需任何稳定化"
+      ],
+      "lines": [
+        [
+          8900,
+          8990
+        ]
+      ],
+      "original_case_id": "K2"
+    },
+    {
+      "id": "V2K3",
+      "project": "KPT25TwoStabilizations",
+      "node": "Topology/KPT25TwoStabilizations/main/cor: no map of level 2 in 4 copies",
+      "question": "“There does not exist a local map f: ℜ → M⊗M⊗M⊗M of level 2.”：三份的结论怎么推出这里四份的结论？",
+      "rubric": [
+        "假设四份level2 map存在",
+        "取level0 p:M→R，在最后tensor factor后合成id⊗id⊗id⊗p",
+        "由local map合成/2-out-of3保持level2，得到三份不可能map矛盾；不把level0 projection说成level1 inclusion"
+      ],
+      "lines": [
+        [
+          9265,
+          9277
+        ]
+      ],
+      "original_case_id": "K3"
+    },
+    {
+      "id": "V2K4",
+      "project": "KPT25TwoStabilizations",
+      "node": "Topology/KPT25TwoStabilizations/main/rmk:algebraic",
+      "question": "“at least three copies of M”：既然三份就能给出代数障碍，最后为什么用了四份？",
+      "rubric": [
+        "两份存在level1 map的tensor square故level2 map存在",
+        "三份已经代数上排除level2 map",
+        "拓扑duplication要偶数份，满足至少3的最小偶数4；不能声称三份代数障碍不足或三份level2存在"
+      ],
+      "lines": [
+        [
+          9280,
+          9286
+        ],
+        [
+          8900,
+          8945
+        ]
+      ],
+      "original_case_id": "K4"
+    }
+  ],
+  "state_setup": "Host starts Qprint UI for the case workspace and publishes the current node, quotation and a fresh session; the agent discovers all of these with qprint agent state.",
+  "follow_up_runs": [
+    {
+      "id": "V2K2R",
+      "case_id": "V2K2",
+      "session": "state-20260924-V2K2R",
+      "fork_turns": "none",
+      "change": "Only three generic skill lines about preserving proof justifications and exact mathematical relations; same question and rubric",
+      "skill_snapshot": "docs/evaluations/knowledge-navigator-2026-09-24-v2/skill-refined.snapshot.md"
+    }
+  ],
+  "historical_results_note": "Existing dated evaluation reports describe earlier launch contracts. This version updates only the portable launch contract, not the eight mathematical questions or rubrics."
+}

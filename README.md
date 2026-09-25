@@ -14,6 +14,7 @@
 | [ARCHITECTURE.md](ARCHITECTURE.md) | 模块职责、数据流、技术决策 |
 | [TODO.md](TODO.md) | 已完成基线、后续工作与验收条件 |
 | [docs/index.md](docs/index.md) | 模块文档及中英文导航 |
+| [Knowledge Navigator](docs/knowledge-navigator.md) | Agent 的增量索引、符号跳转、依赖与上下文工具 |
 | [docs/spec.md](docs/spec.md) | 开发规格与验收契约 |
 | [docs/verification.md](docs/verification.md) | 已执行的验证及已知限制 |
 
@@ -124,7 +125,8 @@ The next mathematical object begins here.
 * 项目识别：目录内的 `<目录名>.md` 或 `index.md` 视为索引，同名文件优先。文件归属最近的有索引祖先目录，因而项目内仍可有任意子文件夹；没有这样的索引时，归属文件所在的最小目录。blueprint 根目录直接存放的文件归入“blueprint 根目录”。
 * Milestone 图谱将同一文件内所有指向另一文件的引用合并成一条边。支持正文或节点元数据中的 `[[路径#标题]]`、`[[路径]]`、带别名的 wikilink，以及 Markdown 相对链接 `[文本](../Other.md#标题)`。代码示例、行内代码、HTML 注释和外部网页链接不参与聚合。标题级 `uses` / `inspired_by` 的原有语义保持不变。
 * 项目图谱进一步合并跨项目的文件引用，包括索引 Markdown 中的项目依赖；同一项目内部的引用不产生项目自环。
-* **范围**可选“全范围”或“当前项目”，并可通过项目下拉框切换当前项目。节点级默认当前项目；项目级始终全范围，范围选择器自动禁用。
+* **范围**可手动切换“全范围”（整个 `blueprint/`）、“当前项目”或“当前 Milestone”（单份 Markdown 文件）。默认当前项目，初始项目与 Milestone 来自当前阅读节点；可通过下拉框切换项目及其文件。范围与颗粒度独立，切换颗粒度保留范围，项目级也允许选择范围。Milestone 范围在节点级只显示该文件的节点和内部边，在文件级显示该文件，在项目级显示其所属项目。
+* 切入“当前 Milestone”时，自动选择图中当前 Blueprint 节点所在文件；没有图中选择时使用阅读节点。若此前是项目颗粒度，会展开为该文件的 Blueprint 节点图；旧邻域筛选随范围切换清除。进入后仍可手动选择其他文件。
 * 双击项目进入全范围 Milestone 图谱，并用金色描边高亮该项目的所有文件。双击 Milestone 进入其项目的 Blueprint 节点图谱，高亮该文件的所有一级标题；再次双击 Blueprint 节点打开正文和代码。下钻时清除旧筛选，确保所有成员可见。
 
 索引仍是普通 Markdown：即使没有一级标题，也会出现在文件图谱；若含一级标题，仍按原有规则解析节点。对于名称任意、无法从文件名识别的索引，可使用上述命名约定，无需添加元数据。
