@@ -20,6 +20,7 @@ markdown-it-py==4.2.0
 mdurl==0.1.2
 packaging==26.3
 pillow==12.3.0
+pypdfium2==5.14.0
 plasTeX==3.1
 pluggy==1.6.0
 pydantic==2.13.5

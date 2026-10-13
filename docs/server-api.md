@@ -15,10 +15,12 @@
 | 方法与路径 | 输入 | 成功响应 |
 | --- | --- | --- |
 | GET `/api/project` | 无 | `name`, `nodes`, `edges`, `graph`, `papers`, `diagnostics`, `stats`, `token` |
-| GET `/api/node` | query `id` | Node 字段及 `body_html`, `formal`, `tex_content`, `previous`, `next`, `relations`, `backlinks` |
+| GET `/api/node` | query `id` | Node 字段及 `body_html`, `formal`, `tex_content`, `previous`, `next`, `relations`, `backlinks`, `copy_context` |
+| GET `/api/context` | query `id`（与 `/api/node` 相同） | 预生成的 Level 0 上下文：`version`, `level`, `node`, `title`, `source`, `tex`, `description`, `dependencies`, `dependencies_omitted`, `unresolved_dependencies`, `unresolved_omitted`；未知节点返回 404 |
 | GET `/api/document` | query `path` | `path`, `text`, `revision` |
 | PUT `/api/document` | JSON `path`, `text`, `revision` | 保存后的 `path`, `text`, `revision` |
 | GET `/api/tex` | query `path` | `path`, `source`, `sections` |
+| GET `/api/tex-media/{key}.png` | 64 位十六进制缓存 key | 已渲染图形的 `image/png`；无效 key 或未生成的图片返回 404 |
 | POST `/api/reload` | 无 body | 重建后的 project 数据，不含 token |
 | POST `/api/import` | 下表请求体 | HTTP 202，`id`, `status: queued` |
 | POST `/api/verify` | 可选 `node_id`, `language`, `timeout` | HTTP 202，`id`, `status: queued`；要求启用验证执行 |

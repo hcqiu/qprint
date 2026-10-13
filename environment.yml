@@ -3,5 +3,6 @@ channels:
 dependencies:
   - python>=3.12
   - pip
+  - tectonic>=0.15,<0.18
   - pip:
       - -e .[dev]

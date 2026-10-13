@@ -4,6 +4,7 @@ import {followTexReference} from './tex-references.js';
 import {referencesHash, referencesRoute, referencesMarkup, citationTarget} from './bibliography.js';
 import {createGraphView, syncGraphContext, changeGraphLevel, changeGraphScope, drillGraph, graphProjection} from './graph-view.js';
 import {createFocusPublisher, browserSession} from './navigator-state.js';
+import {copyWithContext} from './clipboard-context.js';
 
 const $=selector=>document.querySelector(selector);
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -119,6 +120,10 @@ async function openReferences(path,key='',from=state.selected,updateHash=true){
 }
 
 let selectionTimer;
+document.addEventListener('copy',event=>copyWithContext(event,{
+  selection:window.getSelection(),content:$('#content'),bundle:state.detail?.copy_context,
+  nodeId:state.detail?.id,enabled:state.view==='reader'&&state.mode!=='edit',activeElement:document.activeElement,
+}));
 document.addEventListener('selectionchange',()=>{clearTimeout(selectionTimer);selectionTimer=setTimeout(()=>{if(state.detail)syncNavigator();},200);});
 
 document.addEventListener('click',guarded(async e=>{const citation=e.target.closest('[data-bibliography]');if(citation){e.preventDefault();await openReferences(citation.dataset.bibliography,citation.dataset.citeKey||'');return;}const texRef=e.target.closest('a.tex-ref');if(texRef){e.preventDefault();await followTexReference(texRef,{currentNode:state.selected,selectNode,openPaper,showReader:()=>setView('reader'),findAnchor:id=>document.getElementById(id)});return;}const node=e.target.closest('[data-node]');if(node){if(await selectNode(node.dataset.node))setView('reader');return;}const paper=e.target.closest('[data-paper]');if(paper){await openPaper(paper.dataset.paper,Number(paper.dataset.line)||1);return;}const binding=e.target.closest('[data-binding]');if(binding){state.binding=Number(binding.dataset.binding);renderFormal();return;}const mode=e.target.closest('[data-mode]');if(mode&&state.detail){if(!canLeave())return;state.dirty=false;state.mode=mode.dataset.mode;await renderContent();return;}const open=e.target.closest('[data-graph-open]');if(open){await openGraphItem(open.dataset.graphOpen);return;}const link=e.target.closest('a.wikilink');if(link){e.preventDefault();if(await selectNode(decodeURIComponent(link.hash.slice(6))))setView('reader');}}));

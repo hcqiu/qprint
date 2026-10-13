@@ -9,10 +9,12 @@ from urllib.parse import quote
 from markdown_it import MarkdownIt
 
 from .blueprint import WIKILINK, parse_markdown, resolve_link, resolve_tex_use, revision
+from .clipboard_context import build_contexts
 from .formal import locate_code
 from .graph_index import build_graph_index
 from .paths import WorkspaceError, read_text, safe_path
 from .tex import TexDocument, render_tex, tex_commands, merge_tex_warnings
+from .tex_media import TexMedia
 
 
 class ConflictError(WorkspaceError):
@@ -23,6 +25,7 @@ class Workspace:
     def __init__(self, root: Path):
         self.root = root.resolve()
         self.lock = RLock()
+        self.media = TexMedia(self.root)
         self.reload()
 
     def reload(self):
@@ -69,6 +72,7 @@ class Workspace:
                         self.diagnostics.append({"severity": "error", "path": node.path, "line": node.line, "message": f"TeX 标签不存在: {node.tex}"})
             self.order = sorted(self.locations, key=lambda key: (self.locations[key][0], next(a["start"] for a in self.tex[self.locations[key][0]].anchors if a["label"] == self.locations[key][1])))
             self.graph_index = build_graph_index(self.documents, self.nodes)
+            self.context_bundles = build_contexts(self.nodes, self.locations, self.tex)
 
     def project(self):
         with self.lock:
@@ -108,10 +112,11 @@ class Workspace:
                     except ValueError:
                         references = {}
                     bibliography = self.bibliography(path)
-                    rendered, warnings = render_tex(source, doc.preamble, references,
+                    prepared, media_html, media_warnings = self.media.prepare(source, path, doc.preamble)
+                    rendered, warnings = render_tex(prepared, doc.preamble, references,
                                                     labels=self.tex_labels(path, node_id),
-                                                    bibliography=bibliography["citations"])
-                    self.render_cache[node_id] = rendered, merge_tex_warnings([*bibliography["warnings"], *warnings])
+                                                    bibliography=bibliography["citations"], media=media_html)
+                    self.render_cache[node_id] = rendered, merge_tex_warnings([*bibliography["warnings"], *media_warnings, *warnings])
                 rendered, warnings = self.render_cache[node_id]
                 anchor = next(a for a in doc.anchors if a["label"] == label)
                 result["tex_content"] = {"path": path, "label": label, "line": anchor["line"], "source": source, "html": rendered, "warnings": warnings}
@@ -121,7 +126,12 @@ class Workspace:
                 result["next"] = order[i + 1] if i + 1 < len(order) else None
             result["relations"] = [{"kind": e["kind"], "id": e["source"], "title": self.nodes[e["source"]].title} for e in self.edges if e["target"] == node_id]
             result["backlinks"] = [{"kind": e["kind"], "id": e["target"], "title": self.nodes[e["target"]].title} for e in self.edges if e["source"] == node_id]
+            result["copy_context"] = self.context_bundles[node_id]
             return result
+
+    def copy_context(self, node_id: str):
+        with self.lock:
+            return self.context_bundles[node_id]
 
     def bibliography_files(self, path: str):
         """Only consider BBL files beside this paper, never another project."""
@@ -192,6 +202,7 @@ class Workspace:
                         continue
                     candidates = sorted(owners.get(label, []))
                     targets[label] = {"text": numbers.get(label, {}).get("text", label),
+                                      "kind": numbers.get(label, {}).get("kind", ""),
                                       "path": path, "owners": candidates,
                                       "line": doc.source.count("\n", 0, start + command["start"]) + 1}
             except ValueError:

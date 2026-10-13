@@ -3,7 +3,7 @@ from pathlib import Path
 import shutil
 
 ROOT = Path(__file__).resolve().parents[1]
-MODULES = ("blueprint.py", "paths.py", "graph_index.py", "tex.py", "_tex_worker.py", "tex_to_blueprint.py")
+MODULES = ("blueprint.py", "paths.py", "graph_index.py", "tex.py", "tex_support.py", "_tex_worker.py", "tex_to_blueprint.py")
 
 
 def bundle():

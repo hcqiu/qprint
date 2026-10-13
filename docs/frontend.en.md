@@ -13,6 +13,7 @@ The left panel contains paper outlines, Blueprint nodes, and search. The center 
 | `/` | Focus search outside input controls; search node titles, paths, and bodies |
 | Alt + Left/Right | Visit the previous/next bound node in the same paper |
 | Ctrl/Cmd + S | Save the entire file in Markdown edit mode |
+| Ctrl/Cmd + C / context-menu Copy | Copy a selection in the node reader or TeX view with node context; preserve the selected text verbatim |
 | Scroll again after reaching a content boundary | Switch adjacent nodes with delay/cooldown; disabled in edit mode |
 | Graph click / Space | Preview an object |
 | Graph double-click / Enter | Open a node or drill down at the current level |
@@ -28,6 +29,14 @@ Reading `/api/project` stores the session token; writes include `x-qprint-token`
 
 Leaving a node with unsaved changes prompts for confirmation. Closing the page uses `beforeunload`. There is no autosave, automatic conflict merge, or persistent browser draft storage.
 
+## Clipboard context
+
+`clipboard-context.js` handles native `copy` events in the node reader. Level 0 includes the complete current node TeX, direct dependency names and descriptions, and a short instruction to use Knowledge Navigator if more context is needed. `User question:` comes last, followed by the unchanged browser selection: no formula reconstruction or whitespace rewriting. Markdown editors, search fields, code panels, graph views, and unbound whole-paper views retain ordinary copying.
+
+The backend prebuilds in-memory Context Bundles on workspace load and every reload (including save/import). Node detail includes `copy_context`, so the browser has it before displaying the node. Copy writes synchronously, without fetching, waiting, or querying Navigator. Bundles are replaced with node details; missing context falls back to ordinary copying.
+
+Direct Markdown and TeX `uses` are merged and deduplicated. Level 0 includes no dependency TeX or recursive expansion: at most 20 dependencies, descriptions up to 600 characters, and 8,000 characters total across dependency IDs, titles and descriptions. Inspired-by links are not proof dependencies. Omissions, unresolved references and missing TeX are explicitly marked. Use existing Navigator `resolve`, `open` and `source` commands for Level 1 descriptions and Level 2 source expansion.
+
 ## Graph responsibilities
 
 `graph-view.js` has no DOM dependency and manages granularity, project scope, focus, and member highlighting. `app.js` passes projected and filtered data to the graph and handles previews, drill-down, and reader navigation. `graph.js` owns force/layered layouts, SVG nodes and edges, label hit regions, and keyboard/mouse interactions.
@@ -35,6 +44,20 @@ Leaving a node with unsaved changes prompts for confirmation. Closing the page u
 Drill-down highlighting is independent of reader selection. Scope always allows all, current project, or current Milestone; Milestone scope shows a file selector, while kind filtering is enabled only at node level. Labels retain a minimum display size while zooming, with larger hit regions. Controls are laid out separately from the canvas. See the [graph module](graph.en.md) for grouping rules.
 
 ## Rendering and verification boundaries
+
+The reader supports AMS math environments, table rows/columns/borders, theorem names/numbers, and same-node or cross-node `\Cref` / `\cref` navigation. Large-paper indexing retains counter structure instead of falling back to label names when the full text exceeds the rendering limit. Labels containing underscores are read literally. `comment` environments are excluded from content, annotations and reference indexing. Simple `\def` math aliases are translated to bounded macros; empty array intercolumn spacing and fixed-width boxes in arrow labels receive web-layout approximations.
+
+Bibliographies support AMSRefs `bibdiv` / `biblist` / `\bib` BBL records as well as BibTeX `thebibliography`. Author, title, publication metadata, math and links are preserved. Explicit `label` fields are honored; otherwise the web reader numbers entries in BBL order, consistently across citations and the References page.
+
+`\includegraphics` supports PDF, PNG, JPEG, WebP and GIF (first frame) inside the workspace `tex/` directory, relative to the source file and `\graphicspath`. PDFs show page 1 unless `page=N` is supplied. `tikzpicture`, `tikzcd`, and display-math XY-pic `\xymatrix` / AMSCD diagrams compile independently; images, captions and labels retain their positions. Exchange diagrams include their enclosing formula so arrows, labels and surrounding operations stay together. Images are rasterized to PNG under `.qprint/cache/tex-media/`. A failed graphic shows an expandable source and diagnostic without replacing the surrounding text. Normal reading uses cached TeX packages only and does not download them.
+
+The Conda environment includes Tectonic; Python dependencies include Pillow and pypdfium2. Update existing environments with `conda env update -p .\.conda -f environment.yml`. Warm a paper's graphics from the Qprint root before first use (this downloads required TeX packages):
+
+```powershell
+.\.conda\python.exe -m qprint.tex_media --workspace examples/demo --paper Topology/KPT25TwoStabilizations/main.tex
+```
+
+TikZ uses a restricted standalone preamble with needed simple command definitions and TikZ libraries. Arbitrary file access, dynamic TeX definitions and nested external images are unsupported. Normal compilation has a 30-second timeout. Reload the workspace after editing images or graphics to generate fresh cache entries. Existing `\uses`, `\bpnode` and reference navigation is preserved.
 
 The backend renders Markdown with raw HTML disabled and uses a controlled TeX adapter. The frontend escapes ordinary text. KaTeX and auto-render use local assets and `trust: false`. Static assets come from the same server; ordinary reading requires no CDN.
 

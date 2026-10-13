@@ -155,6 +155,13 @@ def create_app(root: Path, *, allow_verification: bool = False, toolchain_home: 
     def document(path: str):
         return workspace.document(path)
 
+    @app.get("/api/context")
+    def copy_context(id: str):
+        try:
+            return workspace.copy_context(id)
+        except KeyError:
+            raise HTTPException(404, "节点不存在")
+
     @app.put("/api/document")
     def save_document(update: DocumentUpdate):
         return workspace.save_document(update.path, update.text, update.revision)
@@ -166,6 +173,10 @@ def create_app(root: Path, *, allow_verification: bool = False, toolchain_home: 
                 raise HTTPException(404, "TeX 文件不存在")
             doc = workspace.tex[path]
             return {"path": path, "source": doc.source, "sections": doc.sections}
+
+    @app.get("/api/tex-media/{key}.png")
+    def tex_media(key: str):
+        return FileResponse(workspace.media.cached_file(key), media_type="image/png")
 
     @app.get("/api/references")
     def references(path: str):

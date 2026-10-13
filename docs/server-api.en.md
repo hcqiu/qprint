@@ -15,10 +15,12 @@ First GET `/api/project` to obtain `token`. Every non-GET/HEAD/OPTIONS request r
 | Method and path | Input | Successful response |
 | --- | --- | --- |
 | GET `/api/project` | None | `name`, `nodes`, `edges`, `graph`, `papers`, `diagnostics`, `stats`, `token` |
-| GET `/api/node` | Query `id` | Node fields plus `body_html`, `formal`, `tex_content`, `previous`, `next`, `relations`, `backlinks` |
+| GET `/api/node` | Query `id` | Node fields plus `body_html`, `formal`, `tex_content`, `previous`, `next`, `relations`, `backlinks`, `copy_context` |
+| GET `/api/context` | Query `id` (same as `/api/node`) | Prebuilt Level 0 bundle: `version`, `level`, `node`, `title`, `source`, `tex`, `description`, `dependencies`, `dependencies_omitted`, `unresolved_dependencies`, `unresolved_omitted`; unknown nodes return 404 |
 | GET `/api/document` | Query `path` | `path`, `text`, `revision` |
 | PUT `/api/document` | JSON `path`, `text`, `revision` | Saved `path`, `text`, `revision` |
 | GET `/api/tex` | Query `path` | `path`, `source`, `sections` |
+| GET `/api/tex-media/{key}.png` | 64-character hexadecimal cache key | Rendered `image/png`; invalid or missing cache entries return 404 |
 | POST `/api/reload` | No body | Rebuilt project data, without token |
 | POST `/api/import` | Body below | HTTP 202, `id`, `status: queued` |
 | GET `/api/jobs/{id}` | Job ID in path | `id`, `status`, `result`, `error` |

@@ -10,6 +10,7 @@ import subprocess
 import sys
 from threading import RLock
 from urllib.parse import quote
+from .tex_support import amsrefs_bibliography, compact_label_source, simple_definitions, normalize_math
 
 _PARSE_LOCK = RLock()
 _LAYOUT_WARNING = "部分 TeX 排版细节未完整还原（已保留可读内容）: "
@@ -42,7 +43,7 @@ _FLOW_ONLY = {
     "relax", "protect", "leavevmode", "noindent", "unskip",
     "ignorespaces", "nobreak", "nopagebreak", "nolinebreak",
     "newpage", "clearpage", "cleardoublepage", "pagebreak",
-    "samepage", "raggedbottom", "flushbottom", "sloppy", "fussy",
+    "samepage", "raggedbottom", "flushbottom", "sloppy", "fussy", "appendix",
 }
 
 
@@ -52,11 +53,14 @@ def tex_commands(source: str, names: set[str]):
     This is annotation syntax, not TeX expansion. Comments and verbatim are inert.
     """
     masked = mask_comments(source)
+    drawings = list(_tikz_spans(masked)) if "node" in names else []
     pattern = re.compile(r"\\([A-Za-z]+)\*?(?:\s*\[[^\]\n]*\])?\s*\{")
     end = 0
     for match in pattern.finditer(masked):
         if match.start() < end or match[1] not in names:
             continue
+        if match[1] == "node" and any(start <= match.start() < stop for start, stop in drawings):
+            continue  # TikZ's \node is not the legacy Blueprint annotation.
         preceding, cursor = 0, match.start() - 1
         while cursor >= 0 and masked[cursor] == "\\":
             preceding += 1
@@ -80,7 +84,7 @@ def tex_commands(source: str, names: set[str]):
 def mask_comments(source: str) -> str:
     # Preserve offsets so extracted text and line numbers refer to the original.
     masked = list(source)
-    for m in re.finditer(r"\\begin\{(verbatim\*?|lstlisting|minted)\}.*?\\end\{\1\}|\\verb\*?([^\w\s]).*?\2", source, re.S):
+    for m in re.finditer(r"\\begin\{(verbatim\*?|lstlisting|minted|comment)\}.*?\\end\{\1\}|\\verb\*?([^\w\s]).*?\2", source, re.S):
         for i in range(m.start(), m.end()):
             if masked[i] != "\n":
                 masked[i] = " "
@@ -88,6 +92,38 @@ def mask_comments(source: str) -> str:
         for i in range(m.start(1), m.end(1)):
             masked[i] = " "
     return "".join(masked)
+
+
+def _tikz_spans(masked: str):
+    stack = []
+    for match in re.finditer(r"(?<!\\)\\(begin|end)\s*\{(tikzpicture|tikzcd)\}", masked):
+        if match[1] == "begin":
+            stack.append((match[2], match.start()))
+        elif stack and stack[-1][0] == match[2]:
+            _, start = stack.pop()
+            if not stack:
+                yield start, match.end()
+
+
+def tex_graphics(source: str) -> list[dict]:
+    """Locate literal graphics without interpreting TikZ as Blueprint or TeX text."""
+    drawings = list(_tikz_spans(mask_comments(source)))
+    result = [{"kind": "tikz", "start": start, "end": end, "source": source[start:end]}
+              for start, end in drawings]
+    masked = mask_comments(source)
+    math_pattern = r'(?<!\\)\\\[.*?\\\]|(?<!\\)\$\$.*?\$\$|\\begin\{(equation\*?|align\*?|gather\*?)\}.*?\\end\{\1\}'
+    for match in re.finditer(math_pattern, masked, re.S):
+        if re.search(r'\\xymatrix\b|\\begin\{CD\}', match[0]):
+            result = [item for item in result if not match.start() <= item['start'] < match.end()]
+            result.append({'kind': 'diagram', 'start': match.start(), 'end': match.end(), 'source': source[match.start():match.end()]})
+    for command in tex_commands(source, {"includegraphics"}):
+        if any(start <= command["start"] < end for start, end in drawings):
+            continue
+        raw = source[command["start"]:command["end"]]
+        options = re.match(r"\\includegraphics\*?\s*(?:\[([^\]]*)\])?", raw)
+        result.append({**command, "kind": "image", "source": raw,
+                       "options": options[1] or ""})
+    return sorted(result, key=lambda item: item["start"])
 
 
 @dataclass
@@ -166,16 +202,17 @@ def citation_anchor(key: str) -> str:
 
 def render_tex(fragment: str, preamble: str = "", references: dict[str, str] | None = None,
                *, labels: dict | None = None, index_only: bool = False,
-               bibliography: dict | None = None, bibliography_only: bool = False):
+               bibliography: dict | None = None, bibliography_only: bool = False,
+               media: list[str] | None = None):
     """Isolate macro expansion so malformed/recursive TeX cannot hang the server."""
-    if len(fragment) + len(preamble) > 200_000:
+    if len(fragment) + len(preamble) > (2_000_000 if index_only else 200_000):
         return f"<pre>{escape(fragment)}</pre>", ["片段或宏定义过大，已显示原文。"]
     try:
         completed = subprocess.run(
             [sys.executable, "-m", f"{__package__}._tex_worker"],
             input=json.dumps({"fragment": fragment, "preamble": preamble, "references": references or {},
                               "labels": labels, "index_only": index_only,
-                              "bibliography": bibliography, "bibliography_only": bibliography_only}),
+                              "bibliography": bibliography, "bibliography_only": bibliography_only, "media": media}),
             capture_output=True, text=True, encoding="utf-8", timeout=8,
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
             cwd=Path(__file__).resolve().parent.parent,
@@ -192,7 +229,8 @@ def render_tex(fragment: str, preamble: str = "", references: dict[str, str] | N
 
 def _render_tex_dom(fragment: str, preamble: str = "", references: dict[str, str] | None = None,
                     *, labels: dict | None = None, index_only: bool = False,
-                    bibliography: dict | None = None, bibliography_only: bool = False):
+                    bibliography: dict | None = None, bibliography_only: bool = False,
+                    media: list[str] | None = None):
     from plasTeX import Command
     from plasTeX.TeX import TeX
     from plasTeX.Base.LaTeX.Crossref import ref
@@ -201,11 +239,22 @@ def _render_tex_dom(fragment: str, preamble: str = "", references: dict[str, str
 
     warnings = []
     original_fragment = fragment
+    inert = r"\\begin\{(verbatim\*?|lstlisting|minted|comment)\}.*?\\end\{\1\}|\\verb\*?([^\w\s]).*?\2"
+    fragment = re.sub(inert, lambda m: '' if m[1] == 'comment' else m[0], fragment, flags=re.S)
     references = references or {}
     dependencies = []
     label_targets = dict(labels or {})
     emitted_anchors = set()
     try:
+        if bibliography_only and re.search(r"\\bib\s*\{", mask_comments(fragment)):
+            fragment = amsrefs_bibliography(mask_comments(fragment))
+        if index_only:
+            for graphic in reversed(tex_graphics(fragment)):
+                preserved = ''.join(re.findall(r'\\label\s*\{[^{}]*\}', graphic['source']))
+                environment = re.match(r'\\begin\{(equation\*?|align\*?|gather\*?)\}', graphic['source'])
+                if environment:
+                    preserved = r'\begin{' + environment[1] + '} x ' + preserved + r'\end{' + environment[1] + '}'
+                fragment = fragment[:graphic["start"]] + preserved + fragment[graphic["end"]:]
         commands = list(tex_commands(fragment, {"bpnode", "node", "bpdesc", "uses"}))
         for command in reversed(commands):
             replacement = ""
@@ -234,8 +283,44 @@ def _render_tex_dom(fragment: str, preamble: str = "", references: dict[str, str
     class qprintdependency(Command):
         args = "index:str"
 
-    class eqref(ref):
+    class qprintmedia(Command):
+        args = "index:str"
+
+    def media_html(index):
+        try:
+            return (media or [])[int(index)] if int(index) >= 0 else ""
+        except (ValueError, IndexError):
+            return ""
+
+    class LiteralRef(ref):
+        args = 'label:nox'
+
+        def invoke(self, tex):
+            self.parse(tex)
+            self.attributes['label'] = ''.join(str(token) for token in self.attributes['label'])
+
+    class label(Command):
+        args = 'label:nox'
+
+        def invoke(self, tex):
+            self.parse(tex)
+            value = ''.join(str(token) for token in self.attributes['label'])
+            self.attributes['label'] = value
+            self.ownerDocument.context.label(value)
+
+    class eqref(LiteralRef):
         pass
+
+    class cref(LiteralRef):
+        args = '* label:nox'
+
+    class Cref(cref):
+        pass
+
+    class textcolor(Command):
+        args = '[ model:str ] color:str self'
+
+    theorem_titles = dict(re.findall(r'\\newtheorem\*?\s*\{([^}]+)\}(?:\[[^]]*\])?\s*\{([^}]+)\}', preamble))
 
     class ReadingBox(BoxCommand):
         def parse(self, tex):
@@ -250,11 +335,17 @@ def _render_tex_dom(fragment: str, preamble: str = "", references: dict[str, str
         emitted_anchors.add(label)
         return f'<span class="tex-label" id="{tex_label_anchor(label)}"></span>'
 
-    def reference_link(label, equation=False):
+    def reference_link(label, equation=False, clever=None):
+        if clever and ',' in label:
+            return ', '.join(reference_link(value.strip(), clever=clever) for value in label.split(','))
         target = label_targets.get(label)
         text = (target or {}).get("text") or label
         if equation:
             text = f"({text})"
+        if clever and target:
+            kind = target.get('kind', '')
+            if kind:
+                text = (kind if clever == 'Cref' else kind.lower()) + ' ' + text
         if not target or target.get("ambiguous"):
             warnings.append(f"TeX 引用不存在或不唯一: {label}")
             return f'<span class="reference unresolved">{escape(text)}</span>'
@@ -294,13 +385,17 @@ def _render_tex_dom(fragment: str, preamble: str = "", references: dict[str, str
     definitions = []
     for line in preamble.splitlines():
         if re.match(r"\s*\\(?:newcommand|renewcommand|providecommand|newtheorem|DeclareMathOperator)\b", line):
-            if re.search(r"\\(?:bpnode|node|bpdesc|uses|qprintdependency)\b", line):
+            if re.search(r"\\(?:bpnode|node|bpdesc|uses|qprintdependency|qprintmedia)\b", line):
                 continue
             definitions.append(line)
+    aliases = simple_definitions(mask_comments(preamble))
+    definitions.extend(aliases)
     source = "\n".join(definitions) + "\n" + fragment
     forbidden = r"\\(?:input|include|includeonly|usepackage|documentclass|openin|openout|read|write|immediate|special|catcode|csname|def|gdef|edef|xdef|loop|repeat|includegraphics|bibliography)\b"
     if re.search(forbidden, mask_comments(source)):
         return f'<pre class="tex-fallback">{escape(original_fragment)}</pre>', ["此片段包含外部资源或未支持命令，请查看 TeX 原文；未执行这些命令。"]
+    if index_only and len(source) > 100_000:
+        source = '\n'.join(definitions) + '\n' + compact_label_source(mask_comments(fragment), preamble)
     if len(source) > 100_000:
         return f"<pre>{escape(original_fragment)}</pre>", ["片段过大，已显示原文。"]
 
@@ -313,6 +408,8 @@ def _render_tex_dom(fragment: str, preamble: str = "", references: dict[str, str
         name = node.nodeName
         if name in _TEXT_SPACING:
             return _TEXT_SPACING[name]
+        if name in {'ndash', 'textendash'}:
+            return '–'
         if name in _FLOW_ONLY:
             return children(node)
         if name in {"newline", "linebreak", "\\"}:
@@ -342,15 +439,20 @@ def _render_tex_dom(fragment: str, preamble: str = "", references: dict[str, str
             return '<span class="tex-spacing" aria-hidden="true" style="margin-right:-.1667em"></span>'
         if name == "qprintdependency":
             return dependency_links(node.attributes.get("index", ""))
+        if name == "qprintmedia":
+            return media_html(node.attributes.get("index", ""))
         if name == "label":
             return label_anchor(str(node.attributes.get("label", "")))
-        if name in {"ref", "eqref"}:
-            return reference_link(str(node.attributes.get("label", "")), name == "eqref")
+        if name in {"ref", "eqref", "cref", "Cref"}:
+            return reference_link(str(node.attributes.get("label", "")), name == "eqref", name if name in {'cref', 'Cref'} else None)
         if name == "cite":
             note = node.attributes.get("text")
             return citation_links(node.attributes.get("bibkeys", []), children(note) if note is not None else "", node.source)
-        if name in {"math", "displaymath", "equation", "equation*", "align", "align*", "gather", "gather*"}:
-            raw = node.source
+        if name in {"math", "displaymath", "equation", "equation*", "align", "align*", "gather", "gather*", "multline", "multline*", "alignat", "alignat*"}:
+            if node.macroMode == Command.MODE_END:
+                return ''
+            raw = normalize_math(node.source, aliases)
+            raw = re.sub(r'\\vspace\*?\s*\{[^{}]*\}', '', raw)
             links = []
             def remove_dependency(match):
                 links.append(dependency_links(match[1]))
@@ -366,24 +468,60 @@ def _render_tex_dom(fragment: str, preamble: str = "", references: dict[str, str
                 raw = raw[:command["start"]] + raw[command["end"]:]
             links.extend(reversed(cite_links))
             anchors, ref_links = [], []
-            for command in reversed(list(tex_commands(raw, {"label", "ref", "eqref"}))):
+            for command in reversed(list(tex_commands(raw, {"label", "ref", "eqref", "cref", "Cref"}))):
                 label = command["value"]
                 replacement = ""
                 if command["name"] == "label":
                     anchors.append(label_anchor(label))
                 else:
-                    ref_links.append(reference_link(label, command["name"] == "eqref"))
+                    ref_links.append(reference_link(label, command["name"] == "eqref", command['name'] if command['name'] in {'cref', 'Cref'} else None))
                     value = label_targets.get(label, {}).get("text") or "?"
                     # Only generated counter text is fed back into KaTeX.
                     value = re.sub(r"[^\w.:-]", "", value) or "?"
                     replacement = "(" + value + ")" if command["name"] == "eqref" else value
                 raw = raw[:command["start"]] + replacement + raw[command["end"]:]
             links.extend(reversed(ref_links))
+            if r"\qprintmedia" in raw:
+                # Extract diagrams from display math before KaTeX sees them.
+                raw = re.sub(r"^(?:\$\$?|\\\[|\\\(|\\begin\{[^}]+\})\s*", "", raw)
+                raw = re.sub(r"\s*(?:\$\$?|\\\]|\\\)|\\end\{[^}]+\})$", "", raw)
+                parts = re.split(r"\\qprintmedia\s*\{(\d+)\}", raw)
+                rendered = "".join(media_html(part) if i % 2 else
+                                   (f'<span class="math" data-display="{str(name != "math").lower()}" data-tex="{escape(part, quote=True)}">{escape(part)}</span>' if part.strip() else "")
+                                   for i, part in enumerate(parts))
+                return "".join(anchors) + rendered + " ".join(links)
             return "".join(anchors) + f'<span class="math" data-display="{str(name != "math").lower()}" data-tex="{escape(raw, quote=True)}">{escape(raw)}</span>' + " ".join(links)
         if name in {"documentclass", "newcommand", "renewcommand", "providecommand", "newtheorem", "DeclareMathOperator", "bpnode", "node"}:
             return ""
         if name in {"#document", "#document-fragment", "document", "bgroup", "egroup"}:
             return children(node)
+        if name in {"figure", "figure*"}:
+            return f'<figure class="tex-figure">{children(node)}</figure>'
+        if name == "caption":
+            return f'<figcaption>{children(node.attributes.get("self", node))}</figcaption>'
+        if name == "center":
+            return f'<div class="tex-center">{children(node)}</div>'
+        if name == "centering":
+            return children(node)
+        if name in {'tabular', 'tabular*', 'tabularx'}:
+            return '<div class="tex-table-scroll"><table class="tex-table">' + children(node) + '</table></div>'
+        if name == 'ArrayRow':
+            return '<tr>' + children(node) + '</tr>'
+        if name == 'ArrayCell':
+            styles = []
+            for key, value in node.style.items():
+                if key == 'text-align' and value in {'left', 'right', 'center'}:
+                    styles.append(f'{key}:{value}')
+                elif re.fullmatch(r'border-(?:top|bottom|left|right)(?:-(?:style|color|width))?', key) and re.fullmatch(r'[a-z0-9 .]+', str(value)):
+                    styles.append(f'{key}:{value}')
+            colspan = max(1, min(100, int(node.attributes.get('colspan', 1))))
+            return f'<td colspan="{colspan}" style="{";".join(styles)}">{children(node)}</td>'
+        if name in {'hline', 'cline', 'toprule', 'midrule', 'bottomrule'}:
+            return ''  # plasTeX has already transferred rules to cell borders.
+        if name == 'textcolor':
+            color = str(node.attributes.get('color', ''))
+            style = f' style="color:{color}"' if re.fullmatch(r'[a-zA-Z]+|#[0-9a-fA-F]{6}', color) else ''
+            return f'<span{style}>{children(node)}</span>'
         if name in {"section", "subsection", "subsubsection", "chapter"}:
             title = node.attributes.get("title")
             heading = children(title) if hasattr(title, "childNodes") else escape(str(title or ""))
@@ -409,9 +547,16 @@ def _render_tex_dom(fragment: str, preamble: str = "", references: dict[str, str
             title = children(caption) if caption is not None else "Proof"
             return f'<section class="theorem proof"><div class="theorem-label">{title}</div>{children(node)}{qed}</section>'
         if name in {"theorem", "lemma", "definition", "proposition", "corollary", "remark", "conjecture"} or hasattr(node, "thmName"):
-            title = getattr(node, "thmName", name)
+            if node.macroMode == Command.MODE_END:
+                return ''
+            title = getattr(node, 'caption', None) or theorem_titles.get(name, getattr(node, "thmName", name))
             title = title.textContent if hasattr(title, "textContent") else str(title)
-            return f'<section class="theorem"><div class="theorem-label">{escape(title.title())}</div>{children(node)}</section>'
+            own_label = str(getattr(node, 'id', ''))
+            number = label_targets.get(own_label, {}).get('text', '')
+            heading = title.title() + (' ' + number if number and number != own_label else '')
+            caption = node.attributes.get('title')
+            subtitle = (' (' + children(caption) + ')') if hasattr(caption, 'childNodes') and caption.childNodes else ''
+            return f'<section class="theorem"><div class="theorem-label">{escape(heading)}{subtitle}</div>{children(node)}</section>'
         # Preserve plasTeX's text for escaped symbols, spacing and accents
         # before the source fallback.
         text = getattr(node, "str", None)
@@ -427,8 +572,16 @@ def _render_tex_dom(fragment: str, preamble: str = "", references: dict[str, str
     try:
         with _PARSE_LOCK:
             tex = TeX()
+            from plasTeX.Packages import amsmath
+            tex.ownerDocument.context.importMacros(vars(amsmath))
             tex.ownerDocument.context.addGlobal("qprintdependency", qprintdependency)
+            tex.ownerDocument.context.addGlobal("qprintmedia", qprintmedia)
             tex.ownerDocument.context.addGlobal("eqref", eqref)
+            tex.ownerDocument.context.addGlobal("ref", LiteralRef)
+            tex.ownerDocument.context.addGlobal("label", label)
+            tex.ownerDocument.context.addGlobal("cref", cref)
+            tex.ownerDocument.context.addGlobal("Cref", Cref)
+            tex.ownerDocument.context.addGlobal("textcolor", textcolor)
             tex.ownerDocument.context.addGlobal("proof", proof)
             for name in ("hbox", "vbox"):
                 tex.ownerDocument.context.addGlobal(name, type(name, (ReadingBox,), {}))
@@ -460,7 +613,9 @@ def _render_tex_dom(fragment: str, preamble: str = "", references: dict[str, str
             parsed_labels = {}
             for label, target in document.context.labels.items():
                 number = getattr(getattr(target, "ref", None), "textContent", "")
-                parsed_labels[label] = {"text": str(number) or label, "local": True}
+                kind = (getattr(target, 'caption', None) if hasattr(target, 'thmName') else None) or theorem_titles.get(target.nodeName, getattr(target, 'thmName', None))
+                kind = str(getattr(kind, 'textContent', kind) or {'caption': 'Figure', 'equation': 'Equation', 'align': 'Equation', 'gather': 'Equation', 'ArrayCell': 'Equation', 'ArrayRow': 'Equation'}.get(target.nodeName, target.nodeName.title()))
+                parsed_labels[label] = {"text": str(number) or label, "local": True, "kind": kind}
             seen = set()
             for command in tex_commands(fragment, {"label"}):
                 label = command["value"]
