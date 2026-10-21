@@ -10,7 +10,7 @@ import re
 import sqlite3
 from typing import Protocol
 
-from ..paths import WorkspaceError, read_text, safe_path
+from ..paths import WorkspaceError, read_text, safe_path, validate_relative_path
 from .parsing import parse_md, parse_tex
 
 SCHEMA_VERSION = 1
@@ -136,12 +136,32 @@ def _paths(root):
         base = safe_path(root, folder)
         if not base.is_dir():
             continue
-        for directory, dirs, files in os.walk(base, followlinks=False):
-            dirs[:] = sorted(d for d in dirs if d not in ignored and not (Path(directory) / d).is_symlink())
-            for name in sorted(files):
-                if Path(name).suffix.lower() in extensions:
-                    relative = (Path(directory) / name).relative_to(root).as_posix()
-                    yield relative, safe_path(root, relative)
+        # Normal entries inherit their checked parent's containment. Resolving
+        # every ancestor for every file is very expensive on Windows. Only links
+        # and junctions need another realpath check; lexical validation remains.
+        pending = [(folder, base, frozenset({base}))]
+        while pending:
+            parent, directory, ancestors = pending.pop()
+            with os.scandir(directory) as scan:
+                entries = sorted(scan, key=lambda entry: entry.name)
+            children = []
+            for entry in entries:
+                relative = f"{parent}/{entry.name}"
+                if entry.is_dir():
+                    if entry.name in ignored or entry.is_symlink():
+                        continue
+                    validate_relative_path(entry.name)
+                    path = Path(entry.path)
+                    if path.is_junction():
+                        path = safe_path(root, relative)
+                    if path in ancestors:
+                        raise WorkspaceError(f"目录链接形成循环: {relative}")
+                    children.append((relative, path, ancestors | {path}))
+                elif Path(entry.name).suffix.lower() in extensions:
+                    validate_relative_path(entry.name)
+                    path = safe_path(root, relative) if entry.is_symlink() else Path(entry.path)
+                    yield relative, path
+            pending.extend(reversed(children))
 
 
 def _formal_chunk(binding, texts):
@@ -335,7 +355,7 @@ class KnowledgeIndexer:
                     stat = path.stat()
                     previous = old.get(relative)
                     if previous and not refresh and not verify_hashes and (stat.st_mtime_ns, stat.st_size) == (previous["mtime_ns"], previous["size"]):
-                        payloads[relative] = json.loads(previous["payload"])
+                        payloads[relative] = previous["payload"]
                         continue
                     text = read_text(path)
                     file_hash = digest(text)
@@ -356,6 +376,10 @@ class KnowledgeIndexer:
                 report = {"changed_files": changed, "deleted_files": removed, "parsed_files": len(changed),
                           "updated_nodes": 0, "updated_chunks": 0, "embedded_chunks": 0}
                 if changed or removed or not db.execute("SELECT 1 FROM metadata WHERE key='indexed'").fetchone():
+                    # Most restarts have no changes: do not deserialize the entire
+                    # source cache unless rebuilding graph/search contributions.
+                    payloads = {path: json.loads(payload) if isinstance(payload, str) else payload
+                                for path, payload in payloads.items()}
                     nodes, aliases, chunks, edges = assemble(payloads)
                     self._sync(db, nodes, aliases, chunks, edges, report)
                 if self.embedding_provider:

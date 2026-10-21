@@ -6,9 +6,10 @@ export class KnowledgeGraph {
   constructor(svg, onPreview, onOpen) {
     this.svg=svg;this.onPreview=onPreview;this.onOpen=onOpen;this.points=[];this.edges=[];
     this.transform={x:0,y:0,k:1};this.frame=0;this.tick=0;
-    this.svg.addEventListener('wheel',e=>{e.preventDefault();const r=svg.getBoundingClientRect();const x=e.clientX-r.left,y=e.clientY-r.top;const before=this.transform.k;this.transform.k=Math.max(.18,Math.min(4,before*Math.exp(-e.deltaY*.001)));const ratio=this.transform.k/before;this.transform.x=x-(x-this.transform.x)*ratio;this.transform.y=y-(y-this.transform.y)*ratio;this.applyTransform();},{passive:false});
+    this.svg.addEventListener('wheel',e=>{e.preventDefault();this.centeredId=null;const r=svg.getBoundingClientRect();const x=e.clientX-r.left,y=e.clientY-r.top;const before=this.transform.k;this.transform.k=Math.max(.18,Math.min(4,before*Math.exp(-e.deltaY*.001)));const ratio=this.transform.k/before;this.transform.x=x-(x-this.transform.x)*ratio;this.transform.y=y-(y-this.transform.y)*ratio;this.applyTransform();},{passive:false});
     this.svg.addEventListener('pointerdown',e=>{
       if(e.button!==0)return;
+      this.centeredId=null;
       const element=e.target.closest('.graph-node');const point=element?this.points.find(p=>p.id===element.dataset.id):null;
       this.drag={point,x:e.clientX,y:e.clientY,moved:false};this.svg.setPointerCapture(e.pointerId);
     });
@@ -52,6 +53,8 @@ export class KnowledgeGraph {
     if(!count){const t=svgElement('text',{x:'50%',y:'50%','text-anchor':'middle',fill:'#9790aa'});t.textContent='没有符合筛选条件的节点';this.svg.append(t);}
     document.querySelector('#graph-count').textContent=`${count} ${options.unit||'nodes'} · ${this.edges.length} links`;
     this.select(selected);this.draw();this.focus();if(this.layout==='force')this.animate();
+    const preview=options.previewSelected&&this.points.find(p=>p.id===selected);
+    if(preview)this.onPreview(preview);
   }
   layer(){
     // Condense strongly connected components so cycles do not inflate layer depth.
@@ -67,7 +70,12 @@ export class KnowledgeGraph {
   }
   animate(){
     const step=()=>{
-      this.advance();this.draw();if(this.tick<300)this.frame=requestAnimationFrame(step);
+      const centered=this.points.find(p=>p.id===this.centeredId);
+      const x=centered?.x,y=centered?.y;
+      this.advance();this.draw();
+      // Follow layout motion until the user pans, zooms, or selects another node.
+      if(centered){this.transform.x+=(x-centered.x)*this.transform.k;this.transform.y+=(y-centered.y)*this.transform.k;this.applyTransform();}
+      if(this.tick<300)this.frame=requestAnimationFrame(step);
     };this.frame=requestAnimationFrame(step);
   }
   advance(){
@@ -78,7 +86,7 @@ export class KnowledgeGraph {
       for(const e of this.edges){const dx=e.b.x-e.a.x,dy=e.b.y-e.a.y;const length=Math.max(1,Math.hypot(dx,dy));const force=(length-155)*.016*alpha;e.a.vx+=dx/length*force;e.a.vy+=dy/length*force;e.b.vx-=dx/length*force;e.b.vy-=dy/length*force;}
       for(const p of this.points){if(this.drag?.point===p)continue;p.vx=(p.vx-p.x*.0008)*.8;p.vy=(p.vy-p.y*.0008)*.8;p.x+=Math.max(-9,Math.min(9,p.vx));p.y+=Math.max(-9,Math.min(9,p.vy));}
   }
-  select(id){this.selected=id;const neighbors=new Set([id]);for(const e of this.edges){if(e.source===id)neighbors.add(e.target);if(e.target===id)neighbors.add(e.source);e.el.style.opacity=e.source===id||e.target===id?'.9':'.25';}
+  select(id){this.centeredId=null;this.selected=id;const neighbors=new Set([id]);for(const e of this.edges){if(e.source===id)neighbors.add(e.target);if(e.target===id)neighbors.add(e.source);e.el.style.opacity=e.source===id||e.target===id?'.9':'.25';}
     for(const p of this.points){const highlighted=this.highlightIds.has(p.id);p.el.classList.toggle('selected',p.id===id);p.el.classList.toggle('highlighted',highlighted);p.el.style.opacity=highlighted||neighbors.has(p.id)||(!id&&!this.highlightIds.size)?'1':'.4';p.el.querySelector('circle').setAttribute('stroke',highlighted?'#f1d591':p.id===id?'#e2d0ff':color[p.status]+'33');}
   }
   draw(){for(const p of this.points)p.el?.setAttribute('transform',`translate(${p.x},${p.y})`);for(const e of this.edges){if(e.a===e.b){e.el.setAttribute('d',`M ${e.a.x} ${e.a.y-8} C ${e.a.x+60} ${e.a.y-80},${e.a.x-60} ${e.a.y-80},${e.a.x-7} ${e.a.y-5}`);continue;}const dx=e.b.x-e.a.x,dy=e.b.y-e.a.y,d=Math.max(1,Math.hypot(dx,dy));e.el.setAttribute('d',`M ${e.a.x+dx/d*10} ${e.a.y+dy/d*10} L ${e.b.x-dx/d*14} ${e.b.y-dy/d*14}`);}}
@@ -86,6 +94,7 @@ export class KnowledgeGraph {
     const r=this.svg.getBoundingClientRect();if(!r.width||!this.points.length)return;
     const members=this.points.filter(p=>this.highlightIds.has(p.id));
     const selected=this.points.find(p=>p.id===this.selected);
+    this.centeredId=selected?.id??null;
     const xs=this.points.map(p=>p.x),ys=this.points.map(p=>p.y);
     const x=selected?.x??(members.length?members.reduce((sum,p)=>sum+p.x,0)/members.length:(Math.max(...xs)+Math.min(...xs))/2);
     const y=selected?.y??(members.length?members.reduce((sum,p)=>sum+p.y,0)/members.length:(Math.max(...ys)+Math.min(...ys))/2);

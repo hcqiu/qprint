@@ -110,3 +110,87 @@ def test_reference_index_cannot_execute_external_tex(tmp_path):
     assert not detail['warnings']
     assert '>th:first</a>' in detail['html']  # No invented fragment-local number.
     assert 'data-tex-node="A#First"' in detail['html']
+
+
+def make_multifile_workspace(tmp_path):
+    (tmp_path / 'tex/book/chapters').mkdir(parents=True)
+    (tmp_path / 'tex/other').mkdir()
+    (tmp_path / 'blueprint').mkdir()
+    (tmp_path / 'blueprint/Book.md').write_text(
+        '# Caller\n```qprint\ntex: book/chapters/a#caller\n```\n'
+        '# Target\n```qprint\ntex: book/chapters/b#target\n```\n', encoding='utf-8')
+    (tmp_path / 'tex/book/main.tex').write_text(
+        r'\input{../shared}\input{chapters/a}\include{chapters/b.tex}', encoding='utf-8')
+    (tmp_path / 'tex/shared.tex').write_text(r'\newcommand{\shared}{Shared}', encoding='utf-8')
+    (tmp_path / 'tex/book/chapters/a.tex').write_text(
+        r'\bpnode{caller}\label{local}See \ref{target}, \eqref{eq:target}, \ref{unbound}, \ref{local}.', encoding='utf-8')
+    (tmp_path / 'tex/book/chapters/b.tex').write_text(
+        r'\section{Unbound}\label{unbound}\bpnode{target}'
+        r'\begin{theorem}\label{target}Text\end{theorem}'
+        r'\begin{equation}x=1\label{eq:target}\end{equation}', encoding='utf-8')
+    # Sharing a macro file must not merge otherwise independent documents.
+    (tmp_path / 'tex/other/main.tex').write_text(
+        r'\input{../shared}\input{chapter}', encoding='utf-8')
+    (tmp_path / 'tex/other/chapter.tex').write_text(r'\label{target}\label{local}', encoding='utf-8')
+    return Workspace(tmp_path)
+
+
+def test_include_tree_resolves_cross_chapter_refs_and_isolates_other_books(tmp_path):
+    workspace = make_multifile_workspace(tmp_path)
+    detail = workspace.detail('Book#Caller')['tex_content']
+    assert not detail['warnings']
+    assert detail['html'].count('data-tex-node="Book#Target"') == 2
+    assert f'data-tex-anchor="{tex_label_anchor("target")}"' in detail['html']
+    assert 'href="#node=Book%23Target"' in detail['html']
+    assert f'href="#{tex_label_anchor("local")}"' in detail['html']
+    assert 'data-paper="book/chapters/b.tex" data-line="1"' in detail['html']
+    assert '>(eq:target)</a>' in detail['html']  # No invented book-wide numbering.
+    assert 'other/chapter.tex' not in workspace.tex_label_cache  # Parse on demand.
+
+
+def test_cross_chapter_duplicates_warn_and_reload_rebuilds_scope(tmp_path):
+    workspace = make_multifile_workspace(tmp_path)
+    workspace.detail('Book#Caller')
+    main = tmp_path / 'tex/book/main.tex'
+    main.write_text(main.read_text(encoding='utf-8') + r'\input{extra}', encoding='utf-8')
+    (tmp_path / 'tex/book/extra.tex').write_text(r'\label{target}', encoding='utf-8')
+    workspace.reload()
+    detail = workspace.detail('Book#Caller')['tex_content']
+    assert any('target' in warning for warning in detail['warnings'])
+    assert '>target</a>' not in detail['html']
+    main.write_text(r'\input{chapters/a}', encoding='utf-8')
+    workspace.reload()
+    detail = workspace.detail('Book#Caller')['tex_content']
+    assert 'data-tex-node="Book#Target"' not in detail['html']
+
+
+def test_scope_handles_nested_includes_cycles_and_inert_or_external_paths():
+    from qprint.tex import TexDocument
+    from qprint.tex_scope import TexReferenceScope
+
+    sources = {
+        'book/main.tex': r'\input{parts/a}',
+        'book/parts/a.tex': r'\input{parts/b}\input{../../outside}\input{/absolute}'
+                            '\n% \\input{../../unrelated}\n'
+                            r'\verb|\input{../../unrelated}|\begin{comment}\input{../../unrelated}\end{comment}',
+        'book/parts/b.tex': r'\input{a}\label{b}',
+        'unrelated.tex': r'\label{other}',
+    }
+    scope = TexReferenceScope({path: TexDocument(path, source) for path, source in sources.items()})
+    assert scope.files('book/parts/a.tex') == set(sources) - {'unrelated.tex'}
+    assert scope.candidates('b', 'book/parts/a.tex') == {'book/parts/b.tex'}
+    assert not scope.candidates('other', 'book/parts/a.tex')
+    cycle = {path: TexDocument(path, source) for path, source in {'a.tex': r'\input{b}', 'b.tex': r'\input{a}'}.items()}
+    assert TexReferenceScope(cycle).files('a.tex') == {'a.tex', 'b.tex'}
+
+
+def test_shared_chapter_does_not_guess_between_multiple_main_documents():
+    from qprint.tex import TexDocument
+    from qprint.tex_scope import TexReferenceScope
+
+    sources = {'a.tex': r'\input{shared}\input{only-a}', 'b.tex': r'\input{shared}\input{only-b}',
+               'shared.tex': r'\label{common}', 'only-a.tex': r'\label{target}', 'only-b.tex': r'\label{target}'}
+    scope = TexReferenceScope({path: TexDocument(path, source) for path, source in sources.items()})
+    assert scope.files('shared.tex') == {'shared.tex'}
+    assert not scope.candidates('target', 'shared.tex')
+    assert scope.candidates('target', 'only-a.tex') == {'only-a.tex'}

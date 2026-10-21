@@ -31,6 +31,14 @@ export function changeGraphLevel(view, level) {
   view.highlightLabel=null;
 }
 
+export function focusReadingNode(view, project, selected) {
+  if(!project.nodes.some(n=>n.id===selected))return false;
+  view.level='node';
+  syncGraphContext(view,project,selected,true);
+  view.focusId=selected;
+  return true;
+}
+
 export function changeGraphScope(view, project, scope, selected) {
   // Capture the graph selection before clearing aggregate focus/highlights.
   const current=(view.level==='node'&&project.nodes.find(n=>n.id===view.focusId))

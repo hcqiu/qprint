@@ -6,7 +6,7 @@ Entry files: [index.html](../qprint/static/index.html), [style.css](../qprint/st
 
 ## Page and controls
 
-The left panel contains paper outlines, Blueprint nodes, and search. The center displays node content, TeX, or a whole-file Markdown editor. The right panel provides language/declaration selection and code. Sidebars collapse; narrow layouts move code below the main content. Diagnostics, rendering warnings, and lookup errors are presented separately.
+The left panel contains Blueprint folders, files, nodes, and search, without paper outlines or group headings. The center displays node content, TeX, or a whole-file Markdown editor. The right panel provides language/declaration selection and code. Sidebars collapse; narrow layouts move code below the main content. Diagnostics, rendering warnings, and lookup errors are presented separately.
 
 | Action | Behavior |
 | --- | --- |
@@ -39,6 +39,8 @@ Direct Markdown and TeX `uses` are merged and deduplicated. Level 0 includes no 
 
 ## Graph responsibilities
 
+Entering the graph from the reader switches to node granularity, follows the reading node's project and Milestone, and clears kind, status, and neighborhood filters. The node is selected, highlighted, centered, and previewed just like a single click. Centering follows force-layout motion until the user pans, zooms, or selects a node.
+
 `graph-view.js` has no DOM dependency and manages granularity, project scope, focus, and member highlighting. `app.js` passes projected and filtered data to the graph and handles previews, drill-down, and reader navigation. `graph.js` owns force/layered layouts, SVG nodes and edges, label hit regions, and keyboard/mouse interactions.
 
 Drill-down highlighting is independent of reader selection. Scope always allows all, current project, or current Milestone; Milestone scope shows a file selector, while kind filtering is enabled only at node level. Labels retain a minimum display size while zooming, with larger hit regions. Controls are laid out separately from the canvas. See the [graph module](graph.en.md) for grouping rules.
@@ -48,6 +50,8 @@ Drill-down highlighting is independent of reader selection. Scope always allows 
 The reader supports AMS math environments, table rows/columns/borders, theorem names/numbers, and same-node or cross-node `\Cref` / `\cref` navigation. Large-paper indexing retains counter structure instead of falling back to label names when the full text exceeds the rendering limit. Labels containing underscores are read literally. `comment` environments are excluded from content, annotations and reference indexing. Simple `\def` math aliases are translated to bounded macros; empty array intercolumn spacing and fixed-width boxes in arrow labels receive web-layout approximations.
 
 Bibliographies support AMSRefs `bibdiv` / `biblist` / `\bib` BBL records as well as BibTeX `thebibliography`. Author, title, publication metadata, math and links are preserved. Explicit `label` fields are honored; otherwise the web reader numbers entries in BBL order, consistently across citations and the References page.
+
+Formal Blueprint `\lean{...}` annotations are hidden in the LaTeX reading view; the original TeX and code bindings remain available. `\source{...}` displays `Source: ...` and reuses citation navigation when a parsed bibliography is available. Consecutive `\dcref{...}` annotations form a numbered list starting at 1, displaying source coordinates such as sections, theorems and pages, preserving text styles and math in its argument. These commands do not produce layout warnings, even when the print preamble defines them as empty macros.
 
 `\includegraphics` supports PDF, PNG, JPEG, WebP and GIF (first frame) inside the workspace `tex/` directory, relative to the source file and `\graphicspath`. PDFs show page 1 unless `page=N` is supplied. `tikzpicture`, `tikzcd`, and display-math XY-pic `\xymatrix` / AMSCD diagrams compile independently; images, captions and labels retain their positions. Exchange diagrams include their enclosing formula so arrows, labels and surrounding operations stay together. Images are rasterized to PNG under `.qprint/cache/tex-media/`. A failed graphic shows an expandable source and diagnostic without replacing the surrounding text. Normal reading uses cached TeX packages only and does not download them.
 

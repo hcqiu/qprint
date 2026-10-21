@@ -16,13 +16,23 @@
 3. 没有显示写出\ref的项的引用（例如一些数学对象，论文中通常不会显式引用），如果该项为blueprint节点，也要标注\uses
 建议标注在紧接着对其他blueprint node中的内容的引用的后方，这样渲染时会出现引用链接。
 
-# tex to blueprint
+
+# tex to blueprint pipeline
 严格依据blueprint分级指南。
-## agent标注
+以下流程在没有agent的情况下，只进行自动标注和自动生成blueprint。例如用户在导入新的arxiv论文时。默认开启自动标注和自动生成blueprint。
+## 自动标注
+一个自动对latex文件进行标注的py脚本，流程为：
+对每一个begin/end块包裹的内容，如果不是proof，就从begin向前找，直到遇到：
+1. 第一个end（前一个begin/end块的结尾），
+2. \subsection, \section 或 charpter等章节标识。
+在此处标注当前块的bpnode，名字为当前begin/end块中，第一个label。
+完成之后，再次遍历整个文件，遇到ref，则标注uses, 标注内容为被引的label所在的bpnode。
+不标注bpdesc。
+## agent调整
 对没有被begin/end块包裹的定义（如果被超过一个blueprint节点使用）、证明等内容，也要标注为节点；
 对没有显示写出\ref的项的引用（例如一些数学对象，论文中通常不会显式引用），如果该项为blueprint节点，也要标注\uses。
 ## 自动生成blueprint
-一个自动化脚本，对tex文件中每个subsection生成一个md文件，文件中的一级标题为该subsection下全部blueprint节点，且节点信息含有tex文件中标注的该节点内所有的bpdesc、uses。
+一个自动化脚本，对tex文件中每个subsection生成一个md文件，文件中的一级标题为该subsection下全部blueprint节点，且节点信息含有tex文件中标注的该节点内所有的bpdesc、uses。如果一个节点没有bpdesc，则将从\bpnode开始到第一个\begin之间的内容，视为bpdesc。
 ## agent review
 自动生成blueprint完成后，agent重新看一遍md文件和tex文件，做适当地调整，使得每个md文件都是论文里的一个的milestone。为该项目生成一个索引md文件，记录
 - 该项目的论文标题、作者、年份、关键字

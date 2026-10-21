@@ -65,6 +65,8 @@ my-math/
 
 目录可为空，标准库节点不必有论文附件。文件在外部修改后点击“刷新”；应用不会后台改写文件。
 
+已有 LaTeX Blueprint 与 Lean 工程可使用 [Formal Blueprint Project to QPrint](docs/formal-blueprint-project-to-qprint.md) 转换工具；输入源工程地址及输出文件夹名字，保留 label、依赖和已有描述，并从 `\lean` 生成源码绑定。
+
 ## 编写节点
 
 一份 Markdown 可以包含多个节点。每个一级标题是一个节点，标题下方的 `qprint` YAML 围栏描述绑定，后续内容为 Markdown 正文。
@@ -118,7 +120,7 @@ The next mathematical object begins here.
 
 ## 导航与编辑
 
-左侧目录包含论文目录和 blueprint 节点。`/` 聚焦搜索。中栏切换阅读、TeX、Markdown；右栏仅显示当前节点绑定的代码，支持切换语言和声明。两个侧栏可以收起；窄屏下代码栏位于正文下方。
+左侧目录仅显示 blueprint 文件夹、文件和节点，不显示分组标题。`/` 聚焦搜索。中栏切换阅读、TeX、Markdown；右栏仅显示当前节点绑定的代码，支持切换语言和声明。两个侧栏可以收起；窄屏下代码栏位于正文下方。
 
 点击“知识图谱”聚焦当前节点。单击节点查看描述，双击或 Enter 打开正文和源码，空格预览。支持拖动、平移、缩放、力导向/分层切换、类型/进度筛选、一跳邻域；箭头从依赖指向使用者，虚线表示思想来源。
 

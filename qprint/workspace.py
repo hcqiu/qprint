@@ -8,13 +8,15 @@ from urllib.parse import quote
 
 from markdown_it import MarkdownIt
 
-from .blueprint import WIKILINK, parse_markdown, resolve_link, resolve_tex_use, revision
+from .blueprint import WIKILINK, parse_markdown, revision
 from .clipboard_context import build_contexts
 from .formal import locate_code
 from .graph_index import build_graph_index
+from .node_lookup import NodeLookup
 from .paths import WorkspaceError, read_text, safe_path
 from .tex import TexDocument, render_tex, tex_commands, merge_tex_warnings
 from .tex_media import TexMedia
+from .tex_scope import TexReferenceScope
 
 
 class ConflictError(WorkspaceError):
@@ -33,6 +35,7 @@ class Workspace:
             self.nodes, self.documents, self.tex, self.diagnostics = {}, {}, {}, []
             self.render_cache = {}
             self.tex_label_cache = {}
+            self.tex_reference_scope = None
             self.bibliography_cache = {}
             for path in sorted((self.root / "blueprint").rglob("*.md")):
                 relative = path.relative_to(self.root / "blueprint").as_posix()
@@ -53,11 +56,12 @@ class Workspace:
                         self.diagnostics.append({"severity": "error", "path": relative, "message": message})
                 except (OSError, UnicodeError, WorkspaceError) as exc:
                     self.diagnostics.append({"severity": "error", "path": relative, "message": str(exc)})
+            self.lookup = NodeLookup(self.nodes)
             self.edges, self.locations = [], {}
             for node in self.nodes.values():
                 for relation in ("uses", "inspired_by"):
                     for link in getattr(node, relation):
-                        target = resolve_link(link, node.id, self.nodes)
+                        target = self.lookup.link(link, node.id)
                         if target:
                             self.edges.append({"source": target, "target": node.id, "kind": relation})
                         else:
@@ -72,7 +76,7 @@ class Workspace:
                         self.diagnostics.append({"severity": "error", "path": node.path, "line": node.line, "message": f"TeX 标签不存在: {node.tex}"})
             self.order = sorted(self.locations, key=lambda key: (self.locations[key][0], next(a["start"] for a in self.tex[self.locations[key][0]].anchors if a["label"] == self.locations[key][1])))
             self.graph_index = build_graph_index(self.documents, self.nodes)
-            self.context_bundles = build_contexts(self.nodes, self.locations, self.tex)
+            self.context_bundles = build_contexts(self.nodes, self.locations, self.tex, lookup=self.lookup)
 
     def project(self):
         with self.lock:
@@ -94,7 +98,7 @@ class Workspace:
                 # Match on already escaped HTML: unescape for resolving, escape label again.
                 from html import unescape
                 raw = unescape(match[0])
-                target = resolve_link(raw, node.id, self.nodes)
+                target = self.lookup.link(raw, node.id)
                 label = unescape(match[1]).split("|")[-1]
                 if target:
                     return f'<a class="wikilink" href="#node={quote(target, safe="")}">{escape(label)}</a>'
@@ -108,7 +112,7 @@ class Workspace:
                 if node_id not in self.render_cache:
                     try:
                         references = {value: target for value in doc.annotations(label)["uses"]
-                                      if (target := resolve_tex_use(value, node, self.nodes))}
+                                      if (target := self.lookup.tex_use(value, node))}
                     except ValueError:
                         references = {}
                     bibliography = self.bibliography(path)
@@ -175,8 +179,8 @@ class Workspace:
             self.bibliography_cache[path] = data
             return data
 
-    def tex_labels(self, path: str, current_id: str):
-        """Resolve ordinary LaTeX labels within their source paper, independently of uses."""
+    def _tex_file_labels(self, path: str):
+        """Lazily index numbering and node ownership for one source file."""
         if path not in self.tex_label_cache:
             doc = self.tex[path]
             start = len(doc.preamble)
@@ -208,8 +212,37 @@ class Workspace:
             except ValueError:
                 pass
             self.tex_label_cache[path] = targets
+        return self.tex_label_cache[path]
+
+    def tex_labels(self, path: str, current_id: str):
+        """Resolve labels within the same include tree, independently of uses."""
+        if self.tex_reference_scope is None:
+            self.tex_reference_scope = TexReferenceScope(self.tex)
+        scope = self.tex_reference_scope
+        targets = dict(self._tex_file_labels(path))
+        # Only parse external files whose labels this node actually references.
+        binding = self.locations.get(current_id)
+        fragment = self.tex[path].fragment(binding[1]) if binding and binding[0] == path else ''
+        requested = set(targets)
+        try:
+            for command in tex_commands(fragment or '', {'ref', 'eqref', 'cref', 'Cref'}):
+                values = command['value'].split(',') if command['name'] in {'cref', 'Cref'} else [command['value']]
+                requested.update(value.strip() for value in values)
+        except ValueError:
+            pass
+        for label in requested:
+            candidates = scope.candidates(label, path)
+            if len(candidates) > 1:
+                targets[label] = {'ambiguous': True}
+            elif len(candidates) == 1:
+                target_path = next(iter(candidates))
+                if target_path != path:
+                    target = self._tex_file_labels(target_path).get(label)
+                    if target:
+                        # A chapter-local counter is not the book's number.
+                        targets[label] = {**target, 'text': label}
         result = {}
-        for label, target in self.tex_label_cache[path].items():
+        for label, target in targets.items():
             target = dict(target)
             owners = target.pop("owners", [])
             if current_id in owners:

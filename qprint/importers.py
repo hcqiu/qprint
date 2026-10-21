@@ -30,7 +30,8 @@ def fetch(url: str) -> bytes:
     return fetch_bytes(url, limit=MAX_DOWNLOAD, hosts=HOSTS)
 
 
-def extract_archive(data: bytes, destination: Path, strip_root: bool = False) -> list[str]:
+def extract_archive(data: bytes, destination: Path, strip_root: bool = False, *,
+                    max_files: int = MAX_FILES, excluded_directories: frozenset[str] = frozenset()) -> list[str]:
     destination = destination.resolve()
     records = []
     expanded_size = 0
@@ -53,11 +54,11 @@ def extract_archive(data: bytes, destination: Path, strip_root: bool = False) ->
                 raise WorkspaceError("归档包含链接或特殊文件")
             records.append((info.name, info.size, info.isdir(), lambda info=info: archive.extractfile(info)))
             expanded_size += info.size
-            if len(records) > MAX_FILES or expanded_size > MAX_EXPANDED:
+            if len(records) > max_files or expanded_size > MAX_EXPANDED:
                 archive.close()
                 raise WorkspaceError("解压内容超过文件数或 300 MiB 限制")
     try:
-        if len(records) > MAX_FILES or sum(size for _, size, _, _ in records) > MAX_EXPANDED:
+        if len(records) > max_files or sum(size for _, size, _, _ in records) > MAX_EXPANDED:
             raise WorkspaceError("解压内容超过文件数或 300 MiB 限制")
         validated, seen, roots = [], set(), set()
         for name, size, is_dir, opener in records:
@@ -74,6 +75,10 @@ def extract_archive(data: bytes, destination: Path, strip_root: bool = False) ->
                         continue
                     raise WorkspaceError("仓库归档缺少根目录")
                 name = name.split("/", 1)[1]
+            if any(part in excluded_directories for part in name.split("/")[:-1]):
+                continue
+            if is_dir and name.split("/")[-1] in excluded_directories:
+                continue
             path = safe_path(destination, name)
             if str(path).casefold() in seen:
                 raise WorkspaceError("归档包含重复路径（含大小写冲突）")

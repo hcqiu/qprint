@@ -99,6 +99,10 @@ def create_app(root: Path, *, allow_verification: bool = False, toolchain_home: 
         response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'"
         if request.url.path.startswith("/api/"):
             response.headers["Cache-Control"] = "no-store"
+        elif request.url.path == "/" or request.url.path.startswith("/static/"):
+            # Revalidate modules together after local code updates, rather than
+            # mixing a fresh entry point with heuristically cached old imports.
+            response.headers["Cache-Control"] = "no-cache"
         return response
 
     @app.exception_handler(WorkspaceError)

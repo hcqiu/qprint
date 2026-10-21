@@ -22,6 +22,7 @@
 
 | 模块 | 内容 | English |
 | --- | --- | --- |
+| [文件格式与示例](file-formats/index.md) | TeX、Blueprint、Lean、Agda 格式规范、统一示例和总索引（中文） | — |
 | [Blueprint](blueprint.md) | 节点结构、元数据、链接和编写示例 | [Blueprint](blueprint.en.md) |
 | [工作区](workspace.md) | 文件布局、路径、索引、诊断和保存 | [Workspace](workspace.en.md) |
 | [知识图谱](graph.md) | 项目识别、引用聚合、范围和下钻 | [Graphs](graph.en.md) |

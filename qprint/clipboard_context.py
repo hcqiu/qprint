@@ -1,5 +1,5 @@
 """Prebuilt, level-zero reading context; no Navigator queries or rendering."""
-from .blueprint import resolve_link, resolve_tex_use
+from .node_lookup import NodeLookup
 
 
 MAX_DEPENDENCIES = 20
@@ -7,8 +7,9 @@ MAX_SUMMARY_CHARS = 600
 MAX_DEPENDENCY_CHARS = 8000
 
 
-def build_contexts(nodes, locations, tex):
+def build_contexts(nodes, locations, tex, *, lookup=None):
     """Build once per workspace snapshot, preserving the complete node TeX."""
+    lookup = lookup or NodeLookup(nodes)
     sources, annotations, summaries = {}, {}, {}
     for node in nodes.values():
         source, metadata = None, {"descriptions": [], "uses": []}
@@ -28,8 +29,8 @@ def build_contexts(nodes, locations, tex):
     bundles = {}
     for node in nodes.values():
         targets, unresolved = [], []
-        refs = [(ref, resolve_link(ref, node.id, nodes)) for ref in node.uses]
-        refs.extend((ref, resolve_tex_use(ref, node, nodes))
+        refs = [(ref, lookup.link(ref, node.id)) for ref in node.uses]
+        refs.extend((ref, lookup.tex_use(ref, node))
                     for ref in annotations[node.id]["uses"])
         for ref, target in refs:
             if target is None:

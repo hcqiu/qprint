@@ -4,13 +4,31 @@ import assert from 'node:assert/strict';
 
 // Load the browser's dependency-free state module without changing package mode.
 const source=readFileSync(new URL('../qprint/static/graph-view.js',import.meta.url),'utf8');
-const {createGraphView,syncGraphContext,changeGraphLevel,changeGraphScope,drillGraph,graphProjection}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
+const {createGraphView,syncGraphContext,changeGraphLevel,changeGraphScope,drillGraph,graphProjection,focusReadingNode}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
 const project={nodes:[{id:'A/One#X',path:'A/One.md'},{id:'A/One#Y',path:'A/One.md'},{id:'A/Two#Z',path:'A/Two.md'},{id:'B/Other#X',path:'B/Other.md'}],edges:[{source:'B/Other#X',target:'A/One#X'},{source:'A/One#X',target:'A/Two#Z'}],graph:{
   files:[{id:'A/One.md',project_id:'A',node_ids:['A/One#X','A/One#Y']},{id:'A/Two.md',project_id:'A',node_ids:['A/Two#Z']},{id:'B/Other.md',project_id:'B',node_ids:['B/Other#X']},{id:'B/Empty.md',project_id:'B',node_ids:[]}],
   projects:[{id:'A',file_ids:['A/One.md','A/Two.md']},{id:'B',file_ids:['B/Other.md','B/Empty.md']}],
   node_projects:{'A/One#X':'A','A/One#Y':'A','A/Two#Z':'A','B/Other#X':'B'},
   file_edges:[{source:'B/Other.md',target:'A/One.md'}],project_edges:[{source:'B',target:'A'}]
 }};
+
+test('graph entry selects the reader across stale scopes, granularities and drill highlights',()=>{
+  for(const scope of ['all','project','milestone'])for(const level of ['node','file','project']){
+    const view={...createGraphView(),scope,level,projectId:'B',milestoneId:'B/Other.md',focusId:'B/Other#X',highlightIds:['B/Other#X'],highlightLabel:'old drill'};
+    assert.equal(focusReadingNode(view,project,'A/One#Y'),true);
+    const data=graphProjection(project,view,'A/One#Y');
+    assert.equal(view.level,'node');assert.equal(view.scope,scope);
+    assert.equal(view.projectId,'A');assert.equal(view.milestoneId,'A/One.md');
+    assert.equal(data.selected,'A/One#Y');assert.ok(data.nodes.some(n=>n.id===data.selected));
+    assert.deepEqual(data.highlightIds,[]);assert.equal(view.highlightLabel,null);
+  }
+});
+
+test('graph entry without a valid reading node leaves the existing view intact',()=>{
+  const view=createGraphView(),before=structuredClone(view);
+  assert.equal(focusReadingNode(view,project,'deleted'),false);
+  assert.deepEqual(view,before);
+});
 
 test('node view defaults to current project; global restores cross-project edges',()=>{
   const view=createGraphView();syncGraphContext(view,project,'A/One#X');

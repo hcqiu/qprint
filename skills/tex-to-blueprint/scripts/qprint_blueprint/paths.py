@@ -6,8 +6,8 @@ class WorkspaceError(ValueError):
     pass
 
 
-def safe_path(root: Path, relative: str) -> Path:
-    """Validate portable paths, including Windows quirks, before resolving symlinks."""
+def validate_relative_path(relative: str) -> None:
+    """Validate spelling without filesystem calls (also for scanned entry names)."""
     if not isinstance(relative, str) or not relative or "\\" in relative:
         raise WorkspaceError("路径必须是非空的相对路径，分隔符请使用 /")
     parts = relative.split("/")
@@ -18,6 +18,11 @@ def safe_path(root: Path, relative: str) -> Path:
         for p in parts
     ):
         raise WorkspaceError(f"不安全的路径: {relative}")
+
+
+def safe_path(root: Path, relative: str) -> Path:
+    """Validate portable paths, including Windows quirks, before resolving symlinks."""
+    validate_relative_path(relative)
     target = (root / relative).resolve()
     if not target.is_relative_to(root.resolve()):
         raise WorkspaceError("路径不能离开工作区")

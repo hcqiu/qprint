@@ -255,12 +255,16 @@ def _render_tex_dom(fragment: str, preamble: str = "", references: dict[str, str
                 if environment:
                     preserved = r'\begin{' + environment[1] + '} x ' + preserved + r'\end{' + environment[1] + '}'
                 fragment = fragment[:graphic["start"]] + preserved + fragment[graphic["end"]:]
-        commands = list(tex_commands(fragment, {"bpnode", "node", "bpdesc", "uses"}))
+        commands = list(tex_commands(fragment, {"bpnode", "node", "bpdesc", "uses", "lean", "source", "dcref"}))
         for command in reversed(commands):
             replacement = ""
             if command["name"] == "uses":
                 dependencies.append(command["value"])
                 replacement = rf"\qprintdependency{{{len(dependencies) - 1}}}"
+            elif command["name"] in {"source", "dcref"}:
+                # Source coordinates are hidden by print-only macro definitions.
+                # Preserve them in the web reader independently of that preamble.
+                replacement = "\\qprint" + command["name"] + "{" + command["value"] + "}"
             fragment = fragment[:command["start"]] + replacement + fragment[command["end"]:]
     except ValueError as exc:
         return f'<pre class="tex-fallback">{escape(original_fragment)}</pre>', [str(exc)]
@@ -285,6 +289,12 @@ def _render_tex_dom(fragment: str, preamble: str = "", references: dict[str, str
 
     class qprintmedia(Command):
         args = "index:str"
+
+    class qprintsource(Command):
+        args = "keys:nox"
+
+    class qprintdcref(Command):
+        args = "self"
 
     def media_html(index):
         try:
@@ -385,7 +395,7 @@ def _render_tex_dom(fragment: str, preamble: str = "", references: dict[str, str
     definitions = []
     for line in preamble.splitlines():
         if re.match(r"\s*\\(?:newcommand|renewcommand|providecommand|newtheorem|DeclareMathOperator)\b", line):
-            if re.search(r"\\(?:bpnode|node|bpdesc|uses|qprintdependency|qprintmedia)\b", line):
+            if re.search(r"\\(?:bpnode|node|bpdesc|uses|qprintdependency|qprintmedia|qprintsource|qprintdcref)\b", line):
                 continue
             definitions.append(line)
     aliases = simple_definitions(mask_comments(preamble))
@@ -399,8 +409,28 @@ def _render_tex_dom(fragment: str, preamble: str = "", references: dict[str, str
     if len(source) > 100_000:
         return f"<pre>{escape(original_fragment)}</pre>", ["片段过大，已显示原文。"]
 
+    def source_coordinates(values):
+        # Spans keep the list valid inside a TeX paragraph's HTML <p>.
+        items = ''.join(f'<span class="tex-dcref" role="listitem" style="display:block">{i}. {value}</span>'
+                        for i, value in enumerate(values, 1))
+        return f'<span class="tex-source-references" role="list" style="display:block">{items}</span>' if items else ''
+
     def children(node):
-        return "".join(convert(child) for child in node.childNodes)
+        result, coordinates = [], []
+        for child in node.childNodes:
+            if child.nodeName == "qprintdcref":
+                value = children(child)
+                if value.strip():
+                    coordinates.append(value)
+                continue
+            if coordinates:
+                if getattr(child, "nodeType", None) == 3 and not str(child).strip():
+                    continue
+                result.append(source_coordinates(coordinates))
+                coordinates = []
+            result.append(convert(child))
+        result.append(source_coordinates(coordinates))
+        return ''.join(result)
 
     def convert(node):
         if getattr(node, "nodeType", None) == 3:
@@ -441,6 +471,15 @@ def _render_tex_dom(fragment: str, preamble: str = "", references: dict[str, str
             return dependency_links(node.attributes.get("index", ""))
         if name == "qprintmedia":
             return media_html(node.attributes.get("index", ""))
+        if name == "qprintsource":
+            keys = [key.strip() for key in ''.join(str(token) for token in node.attributes.get("keys", [])).split(',') if key.strip()]
+            if not keys:
+                return ""
+            value = citation_links(keys, "", ', '.join(keys))
+            return f'<span class="tex-source" style="display:block">Source: {value}</span>'
+        if name == "qprintdcref":
+            value = children(node)
+            return source_coordinates([value]) if value.strip() else ""
         if name == "label":
             return label_anchor(str(node.attributes.get("label", "")))
         if name in {"ref", "eqref", "cref", "Cref"}:
@@ -576,6 +615,8 @@ def _render_tex_dom(fragment: str, preamble: str = "", references: dict[str, str
             tex.ownerDocument.context.importMacros(vars(amsmath))
             tex.ownerDocument.context.addGlobal("qprintdependency", qprintdependency)
             tex.ownerDocument.context.addGlobal("qprintmedia", qprintmedia)
+            tex.ownerDocument.context.addGlobal("qprintsource", qprintsource)
+            tex.ownerDocument.context.addGlobal("qprintdcref", qprintdcref)
             tex.ownerDocument.context.addGlobal("eqref", eqref)
             tex.ownerDocument.context.addGlobal("ref", LiteralRef)
             tex.ownerDocument.context.addGlobal("label", label)

@@ -2,7 +2,8 @@ import {renderImportJob, renderReports} from './import-progress.js';
 import {KnowledgeGraph} from './graph.js';
 import {followTexReference} from './tex-references.js';
 import {referencesHash, referencesRoute, referencesMarkup, citationTarget} from './bibliography.js';
-import {createGraphView, syncGraphContext, changeGraphLevel, changeGraphScope, drillGraph, graphProjection} from './graph-view.js';
+import {createGraphView, syncGraphContext, changeGraphLevel, changeGraphScope, drillGraph, graphProjection, focusReadingNode} from './graph-view.js?v=20261015';
+import {requestJson} from './api.js';
 import {createFocusPublisher, browserSession} from './navigator-state.js';
 import {copyWithContext} from './clipboard-context.js';
 
@@ -18,7 +19,7 @@ const publishFocus=createFocusPublisher(payload=>api('/api/navigator/focus',{met
 function syncNavigator(view){if(!state.project?.navigator_available)return;const selection=window.getSelection();const selected=selection?.anchorNode&&$('#content').contains(selection.anchorNode)?String(selection).slice(0,2000):'';return publishFocus({session:navigatorSession,node_id:state.detail?.id??null,view:view??(state.view==='graph'?'graph':state.mode),document:state.detail?(state.mode==='edit'||!state.detail.tex_content?'blueprint/'+state.detail.path:'tex/'+state.detail.tex_content.path):navigatorDocument,selection:selected});}
 let toastTimer;
 function toast(message){$('#toast').textContent=message;$('#toast').classList.remove('hidden');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').classList.add('hidden'),5000);}
-async function api(path,options={}){const response=await fetch(path,{...options,headers:{'Content-Type':'application/json','X-Qprint-Token':state.project?.token??'',...options.headers}});let result;try{result=await response.json();}catch{throw new Error(`服务响应异常 (${response.status})`);}if(!response.ok)throw new Error(typeof result.detail==='string'?result.detail:JSON.stringify(result.detail));return result;}
+function api(path,options={}){return requestJson(path,{...options,headers:{'Content-Type':'application/json','X-Qprint-Token':state.project?.token??'',...options.headers}});}
 function guarded(fn){return(...args)=>Promise.resolve().then(()=>fn(...args)).catch(e=>toast(e.message));}
 function canLeave(){return !state.dirty||window.confirm('Markdown 有未保存的更改，确定放弃这些更改？');}
 function math(container){if(!window.katex)return;container.querySelectorAll('[data-tex]').forEach(el=>{let source=el.dataset.tex;source=source.replace(/^\$\$?|\$\$?$/g,'').replace(/^\\\(|\\\)$/g,'').replace(/^\\\[|\\\]$/g,'');source=source.replace(/^\\begin\{(?:equation\*?|displaymath)\}|\\end\{(?:equation\*?|displaymath)\}$/g,'');try{window.katex.render(source,el,{throwOnError:false,displayMode:el.dataset.display==='true',trust:false,strict:false});}catch{el.textContent=source;}});window.renderMathInElement?.(container,{delimiters:[{left:'$$',right:'$$',display:true},{left:'\\[',right:'\\]',display:true},{left:'$',right:'$',display:false},{left:'\\(',right:'\\)',display:false}],throwOnError:false,trust:false});}
@@ -33,11 +34,10 @@ async function loadProject(preserve=true){const data=await api('/api/project');s
   syncNavigator();
 }
 function treeButton(node){return `<button class="node-entry ${state.selected===node.id?'active':''}" data-node="${esc(node.id)}"><i class="dot ${node.status}"></i><span>${esc(node.title)}</span></button>`;}
-function fileTree(items,renderFile){const root={folders:new Map(),files:[]};for(const item of items){const parts=item.path.split('/');let cursor=root;for(const name of parts.slice(0,-1)){if(!cursor.folders.has(name))cursor.folders.set(name,{folders:new Map(),files:[]});cursor=cursor.folders.get(name);}cursor.files.push({...item,name:parts.at(-1)});}const render=branch=>[...branch.folders].map(([name,child])=>`<details open class="folder"><summary>▱ ${esc(name)}</summary><div class="folder-contents">${render(child)}</div></details>`).join('')+branch.files.map(renderFile).join('');return render(root);}
+function fileTree(items,renderFile){const root={folders:new Map(),files:[]};for(const item of items){const parts=item.path.split('/');let cursor=root;for(const name of parts.slice(0,-1)){if(!cursor.folders.has(name))cursor.folders.set(name,{folders:new Map(),files:[]});cursor=cursor.folders.get(name);}cursor.files.push({...item,name:parts.at(-1)});}const render=branch=>[...branch.folders].map(([name,child])=>name==='blueprint'?render(child):`<details open class="folder"><summary>▱ ${esc(name)}</summary><div class="folder-contents">${render(child)}</div></details>`).join('')+branch.files.map(renderFile).join('');return render(root);}
 function renderTree(){if(!state.project)return;const query=$('#search').value.toLowerCase().trim();const nodes=state.project.nodes.filter(n=>`${n.title} ${n.path} ${n.body}`.toLowerCase().includes(query));if(query){$('#tree').innerHTML=`<div class="tree-group"><div class="tree-title">搜索结果 · ${nodes.length}</div>${nodes.map(treeButton).join('')||'<p class="hint">没有匹配的节点</p>'}</div>`;return;}
-  const papers=fileTree(state.project.papers,p=>`<details open><summary title="${esc(p.path)}">▤ ${esc(p.name)}</summary>${p.sections.map(s=>`<button class="section-entry" style="padding-left:${14+s.level*8}px" ${s.node_id?`data-node="${esc(s.node_id)}"`:`data-paper="${esc(p.path)}" data-line="${s.line}"`}>${esc(s.title)}</button>`).join('')}${p.has_bibliography?`<button class="section-entry" data-bibliography="${esc(p.path)}">参考文献 / References</button>`:''}${!p.sections.length?`<button class="section-entry" ${p.nodes[0]?`data-node="${esc(p.nodes[0])}"`:`data-paper="${esc(p.path)}"`}>打开论文</button>`:''}</details>`);
   const files=new Map();for(const n of nodes){if(!files.has(n.path))files.set(n.path,[]);files.get(n.path).push(n);}
-  $('#tree').innerHTML=`<div class="tree-group"><div class="tree-title">PAPERS / 论文目录</div>${papers||'<p class="hint">暂无 TeX 文件</p>'}</div><div class="tree-group"><div class="tree-title">BLUEPRINT / 数学对象</div>${fileTree([...files].map(([path,items])=>({path,items})),file=>`<details open><summary title="${esc(file.path)}">◇ ${esc(file.name)}</summary>${file.items.map(treeButton).join('')}</details>`)}</div>`;
+  $('#tree').innerHTML=`<div class="tree-group">${fileTree([...files].map(([path,items])=>({path,items})),file=>`<details open><summary title="${esc(file.path)}">◇ ${esc(file.name)}</summary>${file.items.map(treeButton).join('')}</details>`)}</div>`;
 }
 async function selectNode(id,updateHash=true){if(!canLeave())return false;const request=++state.request;const detail=await api(`/api/node?id=${encodeURIComponent(id)}`);if(request!==state.request)return false;const changed=state.selected!==id;state.selected=id;navigatorDocument=null;syncGraphContext(graphView,state.project,id,changed);state.detail=detail;state.binding=0;state.document=null;state.dirty=false;state.boundary=null;state.lastWheel=performance.now();if(updateHash)setHash(id);renderTree();await renderContent();renderFormal();syncNavigator();return true;}
 function nodeHeader(n){return `<header class="node-heading"><span class="eyebrow">${n.tex?'PAPER BLUEPRINT':'MATHEMATICAL OBJECT'}</span><h1>${esc(n.title)}</h1><div class="node-meta"><span class="badge">${kindLabel[n.kind]}</span><span class="status-badge"><i class="dot ${n.status}"></i>${statusLabel[n.status]}</span><span>${esc(n.path)} : ${n.line}</span></div></header>`;}
@@ -54,7 +54,16 @@ async function saveDocument(){const button=$('#save-document');button.disabled=t
 function highlight(line){const escaped=esc(line);if(/^\s*(--|\/\/|\(\*)/.test(line))return `<span class="code-comment">${escaped}</span>`;return escaped.replace(/\b(theorem|lemma|def|by|simp|exact|intro|apply|namespace|end|import|open|where|module|data|Set|Definition|Theorem|Proof|Qed|forall|fun|variable|structure|inductive|axiom)\b/g,'<span class="code-keyword">$1</span>');}
 function renderFormal(){const n=state.detail;if(!n?.formal.length){$('#formal-content').innerHTML='<div class="empty-code"><span class="empty-symbol">⌘</span><strong>还没有形式化代码</strong>在 Markdown 节点中添加 Lean、Agda 或 Coq 绑定，开始连接证明。</div>';return;}const binding=n.formal[state.binding]||n.formal[0];$('#formal-content').innerHTML=`<div class="formal-tabs">${n.formal.map((b,i)=>`<button data-binding="${i}" class="${i===state.binding?'active':''}">${esc(b.language.toUpperCase())}${n.formal.filter(x=>x.language===b.language).length>1?` · ${i+1}`:''}</button>`).join('')}</div><div class="binding-name">${esc(binding.declaration)}</div>${binding.code!==null?`<div class="code-location"><span>⌑ ${esc(binding.file)}</span><span>L${binding.lines[0]}–${binding.lines[1]}</span></div><pre class="code-block">${binding.code.split('\n').map((line,i)=>`<span class="code-line"><span class="line-number">${binding.lines[0]+i}</span><span class="code-text">${highlight(line)}</span></span>`).join('')}</pre>`:`<div class="empty-code"><strong>${esc(binding.error)}</strong>可通过「导入资料」下载仓库，或填写准确的 file / lines。</div>`}${binding.url?`<a class="source-link" target="_blank" rel="noopener noreferrer" href="${esc(binding.url)}">查看代码来源 ↗</a>`:''}`;}
 
-function setView(view){state.view=view;$('#reader').classList.toggle('hidden',view!=='reader');$('#graph').classList.toggle('hidden',view!=='graph');$('#reader-view').classList.toggle('active',view==='reader');$('#graph-view').classList.toggle('active',view==='graph');if(view==='graph')renderGraph();else graph.stop();syncNavigator();}
+function setView(view){
+  const enteringGraph=view==='graph'&&state.view!=='graph';
+  state.view=view;$('#reader').classList.toggle('hidden',view!=='reader');$('#graph').classList.toggle('hidden',view!=='graph');$('#reader-view').classList.toggle('active',view==='reader');$('#graph-view').classList.toggle('active',view==='graph');
+  if(view==='graph'){
+    const previewSelected=enteringGraph&&state.project&&focusReadingNode(graphView,state.project,state.selected);
+    if(previewSelected){$('#graph-kind').value='';$('#graph-status').value='';$('#graph-local').checked=false;}
+    renderGraph({previewSelected});
+  }else graph.stop();
+  syncNavigator();
+}
 const graph=new KnowledgeGraph($('#graph-svg'),node=>{
   graphView.focusId=node.id;
   const label=graphView.level==='project'?'项目':graphView.level==='file'?'Milestone':kindLabel[node.kind];
@@ -74,7 +83,7 @@ async function openGraphItem(id){
   renderGraph();
 }
 
-function renderGraph(){
+function renderGraph({previewSelected=false}={}){
   if(!state.project)return;
   syncGraphContext(graphView,state.project,state.selected);
   const groups=state.project.graph.projects;
@@ -95,7 +104,7 @@ function renderGraph(){
   const scopeLabel=graphView.scope==='all'?'全范围':graphView.scope==='milestone'?`当前 Milestone：${graphView.milestoneId??'无文件'}`:`当前项目：${graphView.projectId??'无项目'}`;
   $('#graph-context').textContent=`${scopeLabel} · ${graphView.highlightLabel?`${graphView.highlightLabel}：高亮 ${data.highlightIds.length} 个${unit}`:'单击预览，双击'+(graphView.level==='node'?'打开节点':'下钻')}`;
   $('#graph-preview').classList.add('hidden');
-  graph.render(data,data.selected,{layout:$('#graph-layout').value,kind:graphView.level==='node'?$('#graph-kind').value:'',status:$('#graph-status').value,local:$('#graph-local').checked,highlightIds:data.highlightIds,unit});
+  graph.render(data,data.selected,{layout:$('#graph-layout').value,kind:graphView.level==='node'?$('#graph-kind').value:'',status:$('#graph-status').value,local:$('#graph-local').checked,highlightIds:data.highlightIds,unit,previewSelected});
 }
 async function openPaper(path,line=1){if(!canLeave())return;const data=await api(`/api/tex?path=${encodeURIComponent(path)}`);state.dirty=false;state.detail=null;navigatorDocument='tex/'+path;state.mode='tex';setView('reader');$('#breadcrumb').textContent=`tex / ${path}`;$('#content').innerHTML=`<span class="eyebrow">PAPER SOURCE</span><h2>${esc(path)}</h2><p class="hint">此位置尚无绑定节点。可以在 Markdown 中用 tex 字段关联 bpnode 标签。</p><pre class="tex-source">${data.source.split('\n').map((s,i)=>`<span id="tex-line-${i+1}">${esc(s)}\n</span>`).join('')}</pre>`;$('#formal-content').innerHTML='<div class="empty-code">选择 Blueprint 节点以定位代码</div>';$('#previous').disabled=true;$('#next').disabled=true;$(`#tex-line-${line}`)?.scrollIntoView({block:'start'});syncNavigator('paper');}
 
@@ -144,7 +153,7 @@ $('#diagnostics-open').onclick=()=>{const diagnostics=state.project?.diagnostics
 document.querySelectorAll('.close-dialog').forEach(b=>b.onclick=()=>b.closest('dialog').close());$('#import-open').onclick=()=>$('#import-dialog').showModal();$('#import-kind').onchange=()=>{const paper=$('#import-kind').value==='paper';$('#code-options').classList.toggle('hidden',paper);$('#import-verify-option').classList.toggle('hidden',paper);$('#paper-name').classList.toggle('hidden',!paper);$('#paper-name input').required=paper;$('#source-label').firstChild.textContent=paper?'arXiv 编号或地址':'仓库 URL';$('#source-label input').placeholder=paper?'2001.00001 或 https://arxiv.org/abs/…':'https://github.com/owner/repository';};
 $('#import-form').addEventListener('submit',guarded(async e=>{e.preventDefault();const values=Object.fromEntries(new FormData(e.target));values.ref=values.ref||null;values.verify_after_download=e.target.elements.verify_after_download.checked;const button=$('#import-submit');button.disabled=true;$('#import-result').textContent='正在提交下载任务…';try{const job=await api('/api/import',{method:'POST',body:JSON.stringify(values)});let finished=false;while(!finished){await new Promise(resolve=>setTimeout(resolve,1200));const current=await api(`/api/jobs/${job.id}`);renderImportJob($('#import-result'),current);finished=['succeeded','failed'].includes(current.status);if(current.status==='succeeded'){if(!state.dirty)await loadProject();else toast('资料已导入；保存当前编辑后刷新索引');}}}finally{button.disabled=false;}}));
 
-guarded(()=>loadProject(false))();
+export function startApp(){return loadProject(false);}
 
 $('#import-history').addEventListener('click',guarded(async()=>{const data=await api('/api/formal-reports');const target=$('#import-result');target.textContent=data.reports.length?'最近验证报告':'当前工作区暂无验证报告';renderReports(target,data.reports);}));
 
