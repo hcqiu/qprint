@@ -10,5 +10,6 @@ if __name__ == "__main__":
     result = _render_tex_dom(request["fragment"], request["preamble"], request.get("references"),
                              labels=request.get("labels"), index_only=request.get("index_only", False),
                              bibliography=request.get("bibliography"),
-                             bibliography_only=request.get("bibliography_only", False), media=request.get("media"))
+                             bibliography_only=request.get("bibliography_only", False), media=request.get("media"),
+                             environment_names=request.get("environment_names", False))
     print(json.dumps(result))

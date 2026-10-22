@@ -133,3 +133,22 @@ def test_import_optout_passed_to_backend(client, monkeypatch):
             break
         time.sleep(.01)
     assert job["status"] == "succeeded" and job["result"]["verification"]["status"] == "not_run"
+
+
+@pytest.mark.parametrize("enabled", [True, False])
+def test_paper_blueprint_option_passed_to_backend(client, monkeypatch, enabled):
+    def run(*args, **kwargs):
+        assert kwargs["auto_blueprint"] is enabled
+        return {"blueprint": {"status": "generated" if enabled else "not_run"}}
+    monkeypatch.setattr("qprint.server.import_paper", run)
+    payload = {"kind": "paper", "source": "2003.03925", "dest": "Topology", "name": "Paper"}
+    if not enabled:
+        payload["auto_blueprint"] = False
+    response = client.post("/api/import", json=payload)
+    assert response.status_code == 202
+    for _ in range(100):
+        job = client.get('/api/jobs/' + response.json()["id"]).json()
+        if job["status"] in {"failed", "succeeded"}:
+            break
+        time.sleep(.01)
+    assert job["status"] == "succeeded", job

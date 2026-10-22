@@ -3,6 +3,7 @@ import argparse
 from collections import defaultdict
 import json
 from pathlib import Path
+import posixpath
 import re
 import tempfile
 
@@ -11,7 +12,214 @@ import yaml
 from .blueprint import Node, parse_markdown, resolve_link, resolve_tex_use
 from .graph_index import build_graph_index
 from .paths import WorkspaceError, read_text, safe_path
-from .tex import TexDocument, mask_comments, render_tex
+from .tex import TexDocument, mask_comments, render_tex, tex_commands
+from .tex_support import compact_label_source
+
+
+def _environment_names(sources, candidates):
+    """Ask the bounded renderer for headings in the loaded paper's input order.
+
+    Probes and include expansion exist only in memory, never in saved TeX.
+    No file outside the explicitly supplied source mapping is read.
+    """
+    marked = dict(sources)
+    keys, values, diagnostics = {}, defaultdict(set), []
+    for path, blocks in candidates.items():
+        edits = []
+        for block in blocks:
+            key = f"qprint-auto-name-{len(keys)}"
+            keys[key] = (path, block["start"])
+            edits.append((block["begin_end"], rf"\qprintnameprobe{{{key}}}"))
+        for offset, insertion in reversed(edits):
+            marked[path] = marked[path][:offset] + insertion + marked[path][offset:]
+    if not keys:
+        return {}, []
+    children, includes = set(), {}
+    for path, source in marked.items():
+        includes[path] = []
+        for command in tex_commands(source, {"input", "include"}):
+            value = command["value"]
+            target = None
+            if value and not value.startswith("/") and not any(c in value for c in "\\{}:#"):
+                value = value if value.endswith(".tex") else value + ".tex"
+                folder = posixpath.dirname(path)
+                while True:
+                    possible = posixpath.normpath(posixpath.join(folder, value))
+                    if possible in marked:
+                        target = possible
+                        break
+                    if not folder:
+                        break
+                    folder = posixpath.dirname(folder)
+            includes[path].append((command, target))
+            if target:
+                children.add(target)
+
+    def expand(path, active):
+        if path in active or len(active) >= 32:
+            raise ValueError(f"input/include 循环或嵌套过深: {path}")
+        source = marked[path]
+        for command, target in reversed(includes[path]):
+            if target is None:
+                raise ValueError(f"{path}: 缺少用于计算编号的 input/include: {command['value']}")
+            source = source[:command["start"]] + expand(target, active | {path}) + source[command["end"]:]
+            if len(source) > 2_000_000:
+                raise ValueError("计算环境名称的合并源码超过 2 MiB")
+        return source
+
+    roots = sorted(set(marked) - children)
+    if not roots:
+        return {}, ["input/include 存在循环，无法确定环境显示名称"]
+    for root in roots:
+        try:
+            source = expand(root, set())
+            if not any(key in source for key in keys):
+                continue
+            doc = TexDocument(root, source)
+            begin = next((c for c in tex_commands(source, {"begin"}) if c["value"] == "document"), None)
+            preamble = source[:begin["start"]] if begin else ""
+            body = source[begin["end"] if begin else 0: min([doc.body_end, *doc.bibliography_offsets])]
+            # Preserve counter-bearing structure without expanding figures or
+            # arbitrary paper content just to obtain a heading.
+            body = compact_label_source(mask_comments(body), preamble)
+            names, warnings = render_tex(body, preamble, index_only=True, environment_names=True)
+            if not isinstance(names, dict):
+                raise ValueError("; ".join(warnings) or "环境显示名称解析失败")
+            for key, name in names.items():
+                if key in keys:
+                    values[keys[key]].add(name)
+        except ValueError as exc:
+            diagnostics.append(f"{root}: {exc}")
+    return {key: next(iter(names)) for key, names in values.items() if len(names) == 1}, diagnostics
+
+
+def annotate_sources(sources: dict[str, str]):
+    """Annotate literal environments, then resolve explicit refs across all files.
+
+    Keep nested environments in their enclosing node so fragments stay balanced.
+    Unlabelled blocks use their rendered heading; proofs are skipped. Existing manual
+    anchors win; comments, verbatim and the document preamble are left alone.
+    """
+    output, diagnostics, all_spans, candidates = {}, [], {}, {}
+    marked_nodes = marked_references = 0
+    for path, source in sources.items():
+        doc = TexDocument(path, source)
+        if doc.diagnostics:
+            raise WorkspaceError(f"{path}: {'; '.join(doc.diagnostics)}")
+        begin = next((c for c in tex_commands(source, {"begin"}) if c["value"] == "document"), None)
+        start = begin["end"] if begin else 0
+        stop = min([doc.body_end, *doc.bibliography_offsets])
+        commands = list(tex_commands(source[start:stop], {"begin", "end", "label", "chapter", "section", "subsection", "subsubsection"}))
+        stack, spans = [], []
+        boundary = start
+        for command in commands:
+            offset, end = start + command["start"], start + command["end"]
+            name, value = command["name"], command["value"]
+            if name == "begin":
+                stack.append({"name": value, "start": offset, "begin_end": end, "boundary": boundary, "labels": []})
+            elif name == "label":
+                for block in stack:
+                    block["labels"].append(value)
+            elif name == "end":
+                if not stack or stack[-1]["name"] != value:
+                    raise WorkspaceError(f"{path}: begin/end 不匹配: {value}")
+                block = stack.pop()
+                # Only outer blocks can form independent balanced fragments.
+                if not stack:
+                    spans.append({**block, "end": end})
+                boundary = end
+            else:
+                boundary = end
+        if stack:
+            raise WorkspaceError(f"{path}: begin/end 未闭合: {stack[-1]['name']}")
+        all_spans[path] = spans
+        candidates[path] = [block for block in spans if not block["labels"]
+                            and block["name"].rstrip("*") != "proof"
+                            and not any(block["boundary"] <= a["start"] < block["end"] for a in doc.anchors)]
+    names, name_diagnostics = _environment_names(sources, candidates)
+    diagnostics.extend(name_diagnostics)
+    for path, source in sources.items():
+        doc = TexDocument(path, source)
+        reserved = {a["label"] for a in doc.anchors} | {b["labels"][0] for b in all_spans[path] if b["labels"]}
+        edits = []
+        for block in all_spans[path]:
+            if block["name"].rstrip("*") == "proof":
+                continue
+            if any(block["boundary"] <= a["start"] < block["end"] for a in doc.anchors):
+                continue
+            label = block["labels"][0] if block["labels"] else names.get((path, block["start"]))
+            if not label:
+                diagnostics.append(f"{path}: {block['name']} 环境无 label 且无法确定唯一显示名称，留待 agent 标注")
+                continue
+            if not block["labels"]:
+                base, number = label, 2
+                while label in reserved:
+                    label = f"{base} ({number})"
+                    number += 1
+                reserved.add(label)
+            if any(c in label for c in "{}\n#|\\") or "]]" in label or not label:
+                diagnostics.append(f"{path}: 无法用 label 生成节点: {label!r}")
+                continue
+            edits.append((block["boundary"], f"\n\\bpnode{{{label}}}\n"))
+            marked_nodes += 1
+        for offset, insertion in reversed(edits):
+            source = source[:offset] + insertion + source[offset:]
+        output[path] = source
+
+    # Associate every label, including equations inside proofs, with its node.
+    owners = defaultdict(set)
+    has_anchors = any(TexDocument(path, source).anchors for path, source in output.items())
+    for path, source in output.items():
+        doc = TexDocument(path, source)
+        for label in dict.fromkeys(a["label"] for a in doc.anchors):
+            for part in doc.fragments(label):
+                for command in tex_commands(part, {"label"}):
+                    owners[command["value"]].add((path, label))
+    for path, source in output.items():
+        doc = TexDocument(path, source)
+        begin = next((c for c in tex_commands(source, {"begin"}) if c["value"] == "document"), None)
+        start = begin["end"] if begin else 0
+        edits = []
+        for command in tex_commands(source[start:doc.body_end], {"ref", "eqref", "cref", "Cref", "autoref"}):
+            targets = []
+            for value in command["value"].split(","):
+                choices = owners.get(value.strip(), set())
+                local = {item for item in choices if item[0] == path}
+                choices = local or choices
+                if len(choices) == 1:
+                    target_path, label = next(iter(choices))
+                    targets.append(label if target_path == path else f"{target_path}#{label}")
+            end = start + command["end"]
+            if targets and not re.match(r"\s*\\uses\s*\{", mask_comments(source[end:])):
+                edits.append((end, "\\uses{" + ", ".join(dict.fromkeys(targets)) + "}"))
+                marked_references += len(set(targets))
+        for offset, insertion in reversed(edits):
+            source = source[:offset] + insertion + source[offset:]
+        # No-op macros preserve the original printed paper when compiled.
+        if has_anchors:
+            begin = next((c for c in tex_commands(source, {"begin"}) if c["value"] == "document"), None)
+            if begin:
+                macros = "".join(f"\\providecommand{{\\{name}}}[1]{{}}\n" for name in ("bpnode", "bpdesc", "uses")
+                                 if not re.search(r"\\(?:providecommand|newcommand|renewcommand)\*?\s*\{?\\" + name + r"\b", mask_comments(source[:begin["start"]])))
+                source = source[:begin["start"]] + macros + source[begin["start"]:]
+        output[path] = source
+    return output, {"marked_nodes": marked_nodes, "marked_references": marked_references,
+                    "diagnostics": diagnostics, "review_required": True}
+
+
+def annotate(root: Path, sources: list[str], *, dry_run: bool = False):
+    root = root.resolve()
+    paths = {}
+    for relative in dict.fromkeys(sources):
+        path = safe_path(root, f"tex/{relative}")
+        if path.suffix != ".tex" or "#" in relative:
+            raise WorkspaceError("源文件必须是 tex/ 下的 .tex 相对路径，且不能含 #")
+        paths[relative] = path
+    output, report = annotate_sources({relative: read_text(path) for relative, path in paths.items()})
+    if not dry_run:
+        for relative, source in output.items():
+            paths[relative].write_text(source, encoding="utf-8")
+    return {**report, "files": list(paths), "dry_run": dry_run}
 
 
 def catalog(root: Path):
@@ -82,8 +290,6 @@ def validate(root: Path, project: str, render_limit: int = 3):
                 diagnostics.append(f"{node.id}: TeX 依赖未解析: {value}")
             elif references[value] not in declared:
                 diagnostics.append(f"{node.id}: Markdown 遗漏 TeX 依赖: {value}")
-        if not annotations["descriptions"]:
-            diagnostics.append(f"{node.id}: 缺少 bpdesc 描述")
         if len(renders) < render_limit:
             html, warnings = render_tex(fragment, doc.preamble, references)
             renders.append({"node": node.id, "warnings": warnings,
@@ -236,6 +442,10 @@ def main(argv=None):
     find.add_argument("--workspace", type=Path, required=True)
     find.add_argument("--query", required=True)
     find.add_argument("--limit", type=int, default=30)
+    mark = sub.add_parser("annotate", help="自动标注环境及显式引用，保留已有人工标注")
+    mark.add_argument("--workspace", type=Path, required=True)
+    mark.add_argument("--tex", action="append", required=True)
+    mark.add_argument("--dry-run", action="store_true")
     create = sub.add_parser("generate", help="从已标注 TeX 生成待 review 的 Blueprint")
     create.add_argument("--workspace", type=Path, required=True)
     create.add_argument("--tex", action="append", required=True)
@@ -256,6 +466,8 @@ def main(argv=None):
             if not 1 <= args.limit <= 200:
                 raise WorkspaceError("limit 必须在 1 到 200 之间")
             result = search(args.workspace, args.query, args.limit)
+        elif args.command == "annotate":
+            result = annotate(args.workspace, args.tex, dry_run=args.dry_run)
         elif args.command == "validate":
             if not 0 <= args.render_limit <= 1000:
                 raise WorkspaceError("render-limit 必须在 0 到 1000 之间")

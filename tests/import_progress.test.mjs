@@ -34,3 +34,12 @@ test('paper import retains PDF and source destinations', () => {
   assert.match(text,/pdf\/Paper.pdf/);
   assert.match(text,/tex\/Paper/);
 });
+test('paper blueprint outcome includes review, opt-out and skip information', () => {
+  const text = formatImportJob({status:'succeeded',result:{blueprint:{status:'generated',nodes:12,
+    path:'blueprint/Topology/Paper',diagnostics:[],annotation:{diagnostics:['Missing label']}}}});
+  assert.match(text,/12 个节点（待数学 review）/);
+  assert.match(text,/blueprint\/Topology\/Paper/);
+  assert.match(text,/1 项待检查/);
+  assert.match(formatImportJob({status:'succeeded',result:{blueprint:{status:'not_run'}}}),/已关闭/);
+  assert.match(formatImportJob({status:'succeeded',result:{blueprint:{status:'skipped',reason:'没有节点'}}}),/没有节点/);
+});

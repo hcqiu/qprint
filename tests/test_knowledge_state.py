@@ -3,6 +3,7 @@ from pathlib import Path
 import sqlite3
 import subprocess
 import sys
+import time
 from concurrent.futures import ThreadPoolExecutor
 
 from fastapi.testclient import TestClient
@@ -123,3 +124,60 @@ def test_batch_reports_each_error_without_exposing_mutations(workspace):
     results = json.loads(result.stdout)['results']
     assert 'error' in results[1]
     assert results[2]['result']['current_node']['id'] == 'One#First'
+
+
+@pytest.mark.parametrize('auto_blueprint', [True, False])
+def test_import_publishes_navigator_index_before_job_succeeds(workspace, monkeypatch, auto_blueprint):
+    from qprint.importers import import_paper
+    source = r'''\documentclass{article}
+\newtheorem{thm}{Theorem}
+\begin{document}\subsection{Result}\begin{thm}\label{main}A result.\end{thm}\end{document}'''
+    def download_paper(root, identifier, dest, name, **options):
+        return import_paper(root, identifier, dest, name, **options,
+                            downloader=lambda url: b'%PDF-1.7' if '/pdf/' in url else source.encode())
+    monkeypatch.setattr('qprint.server.import_paper', download_paper)
+    with TestClient(create_app(workspace)) as client:
+        client.headers['X-Qprint-Token'] = client.get('/api/project').json()['token']
+        job = client.post('/api/import', json={'kind': 'paper', 'source': '2501.12345',
+                          'dest': 'Topology', 'name': 'Ren25', 'auto_blueprint': auto_blueprint})
+        assert job.status_code == 202
+        for _ in range(300):
+            status = client.get('/api/jobs/' + job.json()['id']).json()
+            if status['status'] in {'failed', 'succeeded'}:
+                break
+            time.sleep(.01)
+        assert status['status'] == 'succeeded', status
+        project = client.get('/api/project').json()
+        nodes = [n for n in project['nodes'] if n['path'].startswith('Topology/Ren25/')]
+        assert len(nodes) == int(auto_blueprint)
+        response = client.post('/api/navigator/focus', json={
+            'session': 'import-browser', 'node_id': nodes[0]['id'] if nodes else None,
+            'document': 'tex/Topology/Ren25/Ren25.tex', 'view': 'rendered' if nodes else 'paper'})
+        assert response.status_code == 200, response.text
+        state = response.json()
+        assert state['current_document'] == 'tex/Topology/Ren25/Ren25.tex'
+        assert state['current_node']['title'] == 'main' if nodes else state['current_node'] is None
+        with KnowledgeNavigator(workspace, session='import-browser') as nav:
+            assert nav.kb_state()['current_node'] == state['current_node']
+
+
+def test_reload_and_save_keep_focus_index_in_sync(workspace):
+    with TestClient(create_app(workspace)) as client:
+        client.headers['X-Qprint-Token'] = client.get('/api/project').json()['token']
+        path = workspace / 'blueprint/Added.md'
+        path.write_text('# Added\nExternal edit.\n', encoding='utf-8')
+        assert client.post('/api/reload').status_code == 200
+        payload = {'session': 'browser', 'node_id': 'Added#Added', 'document': 'blueprint/Added.md', 'view': 'edit'}
+        result = client.post('/api/navigator/focus', json=payload)
+        assert result.status_code == 200, result.text
+        document = client.get('/api/document', params={'path': 'Added.md'}).json()
+        saved = client.put('/api/document', json={**document, 'text': '# Renamed\nSaved through UI.\n'})
+        assert saved.status_code == 200, saved.text
+        result = client.post('/api/navigator/focus', json={**payload, 'node_id': 'Added#Renamed'})
+        assert result.status_code == 200, result.text
+        assert result.json()['current_node']['description'] == 'Saved through UI.'
+        assert client.post('/api/navigator/focus', json=payload).status_code == 404
+        path.unlink()
+        assert client.post('/api/reload').status_code == 200
+        state = client.get('/api/navigator/state', params={'session': 'browser'}).json()
+        assert state['stale_focus'] and state['current_node'] is None

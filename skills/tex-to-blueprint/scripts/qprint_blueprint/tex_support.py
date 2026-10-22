@@ -98,18 +98,56 @@ def amsrefs_bibliography(source):
     return r'\begin{thebibliography}{999}' + '\n' + '\n'.join(entries) + '\n' + r'\end{thebibliography}' if entries else source
 
 
+def naming_definitions(preamble):
+    """Read complete literal declarations even on shared or multiple lines."""
+    source = preamble
+    result, end = [], 0
+    pattern = r'(?<!\\)\\(newtheorem|newcommand|renewcommand|providecommand|DeclareMathOperator|numberwithin|setcounter|addtocounter)\*?\s*'
+    for match in re.finditer(pattern, source):
+        if match.start() < end:
+            continue
+        cursor = match.end()
+        try:
+            if source[cursor:cursor + 1] == '{':
+                _, cursor = braced(source, cursor)
+            else:
+                macro = re.match(r'\\[A-Za-z]+\s*', source[cursor:])
+                if not macro:
+                    continue
+                cursor += macro.end()
+            # Macro argument counts/defaults or a theorem's shared counter.
+            while optional := re.match(r'\s*\[[^\]]*\]', source[cursor:]):
+                cursor += optional.end()
+            _, cursor = braced(source, cursor)
+            if match[1] == 'newtheorem':
+                parent = re.match(r'\s*\[[^\]]*\]', source[cursor:])
+                if parent:
+                    cursor += parent.end()
+            definition = source[match.start():cursor]
+            if not re.search(r'\\(?:bpnode|node|bpdesc|uses|qprint\w*)\b', definition):
+                result.append(definition)
+            end = cursor
+        except ValueError:
+            continue
+    return result
+
+
 def compact_label_source(source, preamble):
     """Keep counter-bearing structure for the bounded whole-paper label pass."""
     theorem_names = set(re.findall(r'\\newtheorem\*?\s*\{([^}]+)\}', preamble))
-    environments = theorem_names | {'figure', 'figure*', 'table', 'table*', 'enumerate', 'itemize', 'equation', 'equation*', 'align', 'align*', 'gather', 'gather*', 'proof'}
+    environments = theorem_names | {'figure', 'figure*', 'table', 'table*', 'abstract', 'enumerate', 'itemize', 'equation', 'equation*', 'align', 'align*', 'gather', 'gather*', 'proof'}
     result, stack, end = [], [], 0
     for match in re.finditer(r'\\([A-Za-z]+\*?|\\)', source):
         if match.start() < end:
             continue
         name = match[1]
-        if name in {'begin', 'end', 'section', 'section*', 'subsection', 'subsection*', 'subsubsection', 'chapter', 'caption', 'label', 'setcounter', 'addtocounter'}:
+        if name in {'begin', 'end', 'section', 'section*', 'subsection', 'subsection*', 'subsubsection', 'subsubsection*', 'chapter', 'chapter*', 'caption', 'label', 'qprintnameprobe', 'setcounter', 'addtocounter', 'numberwithin', 'stepcounter', 'refstepcounter'}:
             try:
-                value, end = braced(source, match.end())
+                start = match.end()
+                optional = re.match(r'\s*\[[^\]]*\]', source[start:])
+                if optional:
+                    start += optional.end()
+                value, end = braced(source, start)
             except ValueError:
                 continue
             if name in {'begin', 'end'}:
@@ -119,12 +157,12 @@ def compact_label_source(source, preamble):
                     stack.pop()
                 if value not in environments:
                     continue
-            elif name not in {'label', 'setcounter', 'addtocounter'}:
+            elif name not in {'label', 'qprintnameprobe', 'setcounter', 'addtocounter', 'numberwithin', 'stepcounter', 'refstepcounter'}:
                 value = 'Title'
             result.append('\\' + name + '{' + value + '}')
             if name == 'begin' and value in {'equation', 'equation*', 'align', 'align*', 'gather', 'gather*'}:
                 result.append(' x ')
-            if name in {'setcounter', 'addtocounter'}:
+            if name in {'setcounter', 'addtocounter', 'numberwithin'}:
                 value, end = braced(source, end)
                 result.append('{' + value + '}')
         elif name in {'item', 'appendix', 'nonumber', 'notag'}:

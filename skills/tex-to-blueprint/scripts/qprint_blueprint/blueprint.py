@@ -136,7 +136,14 @@ def resolve_link(link: str, current: str, nodes: dict[str, Node]) -> str | None:
 def resolve_tex_use(label: str, current: Node, nodes: dict[str, Node]) -> str | None:
     """Prefer explicit IDs, then same-paper anchors, declared edges, unique aliases."""
     if "#" in label:
-        return resolve_link(label, current.id, nodes)
+        resolved = resolve_link(label, current.id, nodes)
+        if resolved:
+            return resolved
+        # Automatic cross-file references use an explicit TeX binding.
+        if label.rsplit("#", 1)[0].endswith(".tex"):
+            matches = [node.id for node in nodes.values() if node.tex == label]
+            return matches[0] if len(matches) == 1 else None
+        return None
 
     def binding(node):
         if not node.tex:

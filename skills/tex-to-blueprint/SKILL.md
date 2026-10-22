@@ -5,7 +5,7 @@ description: 将数学论文 TeX 标注并转换为 Qprint Blueprint，检索已
 
 # TeX to Blueprint
 
-将给定论文完成为可阅读、可导航的 Blueprint：阅读与标注 → 自动生成 → 数学 review → 校验。所有固定资料和脚本都在本 skill 目录中，不需要读取 Qprint 仓库或外部工作流文档。
+将给定论文完成为可阅读、可导航的 Blueprint：自动标注 → 阅读与调整 → 自动生成 → 数学 review → 校验。无 agent 的论文导入默认只执行自动标注和自动生成，用户可取消；这些草稿仍需数学 review。所有固定资料和脚本都在本 skill 目录中，不需要读取 Qprint 仓库或外部工作流文档。
 
 ## 输入与运行
 
@@ -15,7 +15,16 @@ description: 将数学论文 TeX 标注并转换为 Qprint Blueprint，检索已
 
 只修改当前项目的 TeX（含引用文件）与 Blueprint；临时辅助脚本/报告放在当前项目目录中。其他项目仅通过 search 脚本检索 Markdown，不读取或修改其 TeX 或证明代码。无需修改 skill 的脚本；如工具失效，报告具体输入和错误。不要用批量正则抽取代替数学理解，可以在理解后用辅助脚本落盘已确定的标注。
 
-## 阅读与标注
+## 自动标注与阅读调整
+
+先对当前项目所有正文文件运行自动标注，重复 `--tex` 以解析跨文件引用；已自动导入的项目可直接阅读生成的标注与报告。
+
+```powershell
+.\.conda\python.exe "SKILL_DIR/scripts/convert.py" annotate --workspace WORKSPACE --tex Paper/main.tex --dry-run
+```
+
+核实后去掉 `--dry-run` 写入。脚本以非 proof 环境首个 label 为节点名，将节点置于此前环境结尾或章节标题之后，保留引导文字；嵌套环境归入外层节点以保持片段完整。无 label 时用渲染出的显示名称和编号（如 `Theorem 2.1`），按已传入文件的 input/include 顺序计算章节及共享计数器；不读取未传入的文件。同名无编号环境使用 `(2)` 等稳定后缀以免误合并。无显示标题的排版环境或无法可靠解析名称的环境报告后留给 agent。第二遍为显式引用添加 uses，保留原 ref/cite、人工标注及已有 uses，不生成 bpdesc。重复执行不会重复标注。自动化不代替下面的全文阅读与语义调整。
+
 
 识别定义、引理、命题、定理、猜想及相关证明。无环境包裹、被多个节点使用的定义和数学对象也需要节点。在节点起始处、环境外添加 `\bpnode{稳定标签}` 和 `\bpdesc{数学描述}`；唯一环境已有良好 `\label` 时优先沿用其标签。
 
@@ -39,7 +48,7 @@ search 返回节点 ID、TeX 绑定和描述。外部引用可直接标注完整
 
 核实输出后去掉 `--dry-run` 写入。多作者、关键词、正文文件分别重复 `--author`、`--keyword`、`--tex`。脚本不展开 `input/include`，需显式传入相关正文文件。依据论文和来源记录填写元信息，不从文件修改时间猜测年份。
 
-脚本按 subsection 生成 Markdown；同标签归入首次出现的分组并汇总所有 bpdesc/uses，空 subsection 留作 review，其他已标注章节内容不会丢弃。目标项目存在时拒绝覆盖；生成一次后直接 review 已有文件，不重新生成覆盖人工修改。
+脚本按 subsection 生成 Markdown；同标签归入首次出现的分组并汇总所有 bpdesc/uses，空 subsection 留作 review，其他已标注章节内容不会丢弃。整个节点没有 bpdesc 时，将各片段从 bpnode 到首个 begin 之间的引导文字作为描述，空描述合法；agent 应在 review 时补足数学信息。目标项目存在时拒绝覆盖；生成一次后直接 review 已有文件，不重新生成覆盖人工修改。
 
 ## 数学 review 与验收
 

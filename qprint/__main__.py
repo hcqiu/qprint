@@ -58,6 +58,7 @@ def main():
             command.add_argument("--offline", action="store_true", help="验证仅使用已安装环境；源码下载仍需网络")
         if name == "import-paper":
             command.add_argument("--name", required=True)
+            command.add_argument("--auto-blueprint", action=argparse.BooleanOptionalAction, default=True)
     args = parser.parse_args()
     if args.command == "serve":
         import uvicorn
@@ -122,7 +123,8 @@ def main():
                                  verify_after_download=args.verify_after_download, timeout=args.timeout,
                                  toolchain_home=args.toolchain_home, offline=args.offline)
         else:
-            result = import_paper(args.workspace.resolve(), args.source, args.dest, args.name)
+            result = import_paper(args.workspace.resolve(), args.source, args.dest, args.name,
+                                  auto_blueprint=args.auto_blueprint)
         print(json.dumps(result, ensure_ascii=True, indent=2))
         if args.command == "import-code" and args.verify_after_download:
             return 0 if result["verification"]["status"] == "passed" else 1

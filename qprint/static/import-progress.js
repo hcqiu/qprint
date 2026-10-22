@@ -12,6 +12,13 @@ export function formatImportJob(job) {
       result?.path || result?.pdf || '', result?.tex || ''];
     if (verification?.message) lines.push(verification.message);
     if (verification?.report_error) lines.push(verification.report_error);
+    const blueprint = result?.blueprint;
+    if (blueprint?.status === 'generated') {
+      lines.push(`Blueprint 已生成：${blueprint.nodes} 个节点（待数学 review）`, blueprint.path);
+      const count = (blueprint.diagnostics?.length || 0) + (blueprint.annotation?.diagnostics?.length || 0);
+      if (count) lines.push(`${count} 项待检查，请查看生成报告。`);
+    } else if (blueprint?.status === 'skipped') lines.push(`Blueprint 未生成：${blueprint.reason}`);
+    else if (blueprint?.status === 'not_run') lines.push('自动标注与 Blueprint 生成已关闭');
     if (verification && !['passed','not_run','unsupported'].includes(verification.status) && !verification.reports?.length)
       lines.push('未生成可用报告，请查看上方错误信息。');
     return lines.filter(Boolean).join('\n');

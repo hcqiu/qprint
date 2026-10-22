@@ -10,7 +10,7 @@ import subprocess
 import sys
 from threading import RLock
 from urllib.parse import quote
-from .tex_support import amsrefs_bibliography, compact_label_source, simple_definitions, normalize_math
+from .tex_support import amsrefs_bibliography, compact_label_source, simple_definitions, normalize_math, naming_definitions
 
 _PARSE_LOCK = RLock()
 _LAYOUT_WARNING = "部分 TeX 排版细节未完整还原（已保留可读内容）: "
@@ -183,12 +183,24 @@ class TexDocument:
 
     def annotations(self, label: str) -> dict[str, list[str]]:
         descriptions, uses = [], []
-        for part in self.fragments(label):
+        parts = self.fragments(label)
+        for part in parts:
             for command in tex_commands(part, {"bpdesc", "uses"}):
                 if command["name"] == "bpdesc":
                     descriptions.append(command["value"])
                 else:
                     uses.extend(v.strip() for v in command["value"].split(",") if v.strip())
+        if not descriptions:
+            for part in parts:
+                begin = next(tex_commands(part, {"begin"}), None)
+                if begin is None:
+                    continue
+                intro = part[:begin["start"]]
+                for command in reversed(list(tex_commands(intro, {"uses"}))):
+                    intro = intro[:command["start"]] + intro[command["end"]:]
+                intro = mask_comments(intro).strip()
+                if intro:
+                    descriptions.append(intro)
         return {"descriptions": descriptions, "uses": list(dict.fromkeys(uses))}
 
 
@@ -203,7 +215,7 @@ def citation_anchor(key: str) -> str:
 def render_tex(fragment: str, preamble: str = "", references: dict[str, str] | None = None,
                *, labels: dict | None = None, index_only: bool = False,
                bibliography: dict | None = None, bibliography_only: bool = False,
-               media: list[str] | None = None):
+               media: list[str] | None = None, environment_names: bool = False):
     """Isolate macro expansion so malformed/recursive TeX cannot hang the server."""
     if len(fragment) + len(preamble) > (2_000_000 if index_only else 200_000):
         return f"<pre>{escape(fragment)}</pre>", ["片段或宏定义过大，已显示原文。"]
@@ -212,7 +224,8 @@ def render_tex(fragment: str, preamble: str = "", references: dict[str, str] | N
             [sys.executable, "-m", f"{__package__}._tex_worker"],
             input=json.dumps({"fragment": fragment, "preamble": preamble, "references": references or {},
                               "labels": labels, "index_only": index_only,
-                              "bibliography": bibliography, "bibliography_only": bibliography_only, "media": media}),
+                              "bibliography": bibliography, "bibliography_only": bibliography_only, "media": media,
+                              "environment_names": environment_names}),
             capture_output=True, text=True, encoding="utf-8", timeout=8,
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
             cwd=Path(__file__).resolve().parent.parent,
@@ -230,7 +243,7 @@ def render_tex(fragment: str, preamble: str = "", references: dict[str, str] | N
 def _render_tex_dom(fragment: str, preamble: str = "", references: dict[str, str] | None = None,
                     *, labels: dict | None = None, index_only: bool = False,
                     bibliography: dict | None = None, bibliography_only: bool = False,
-                    media: list[str] | None = None):
+                    media: list[str] | None = None, environment_names: bool = False):
     from plasTeX import Command
     from plasTeX.TeX import TeX
     from plasTeX.Base.LaTeX.Crossref import ref
@@ -286,6 +299,9 @@ def _render_tex_dom(fragment: str, preamble: str = "", references: dict[str, str
 
     class qprintdependency(Command):
         args = "index:str"
+
+    class qprintnameprobe(Command):
+        args = "key:str"
 
     class qprintmedia(Command):
         args = "index:str"
@@ -398,6 +414,8 @@ def _render_tex_dom(fragment: str, preamble: str = "", references: dict[str, str
             if re.search(r"\\(?:bpnode|node|bpdesc|uses|qprintdependency|qprintmedia|qprintsource|qprintdcref)\b", line):
                 continue
             definitions.append(line)
+    if environment_names:
+        definitions = naming_definitions(mask_comments(preamble))
     aliases = simple_definitions(mask_comments(preamble))
     definitions.extend(aliases)
     source = "\n".join(definitions) + "\n" + fragment
@@ -614,6 +632,7 @@ def _render_tex_dom(fragment: str, preamble: str = "", references: dict[str, str
             from plasTeX.Packages import amsmath
             tex.ownerDocument.context.importMacros(vars(amsmath))
             tex.ownerDocument.context.addGlobal("qprintdependency", qprintdependency)
+            tex.ownerDocument.context.addGlobal("qprintnameprobe", qprintnameprobe)
             tex.ownerDocument.context.addGlobal("qprintmedia", qprintmedia)
             tex.ownerDocument.context.addGlobal("qprintsource", qprintsource)
             tex.ownerDocument.context.addGlobal("qprintdcref", qprintdcref)
@@ -631,8 +650,39 @@ def _render_tex_dom(fragment: str, preamble: str = "", references: dict[str, str
                 tex.ownerDocument.context.addGlobal("href", href)
                 tex.ownerDocument.context.addGlobal("url", url)
             tex.ownerDocument.config["general"]["load-tex-packages"] = False
-            tex.input("\\documentclass{article}\n" + source)
+            document_class = "article"
+            if environment_names:
+                declared_class = next(tex_commands(preamble, {"documentclass"}), None)
+                if declared_class and declared_class["value"] in {"article", "report", "book"}:
+                    document_class = declared_class["value"]
+            tex.input("\\documentclass{" + document_class + "}\n" + source)
             document = tex.parse()
+            if environment_names:
+                names = {}
+                for probe in document.getElementsByTagName("qprintnameprobe"):
+                    target = probe.parentNode
+                    while target is not None and not (hasattr(target, "thmName") or target.nodeName in {
+                            "equation", "equation*", "align", "align*", "gather", "gather*",
+                            "figure", "figure*", "table", "table*", "abstract"}):
+                        target = target.parentNode
+                    if target is None:
+                        continue
+                    title = getattr(target, "caption", None) if hasattr(target, "thmName") else None
+                    title = getattr(title, "textContent", title)
+                    if not title:
+                        title = theorem_titles.get(target.nodeName) or {
+                            "abstract": "Abstract", "figure": "Figure", "figure*": "Figure",
+                            "table": "Table", "table*": "Table"}.get(target.nodeName, "Equation")
+                    number = getattr(getattr(target, "ref", None), "textContent", "")
+                    if target.nodeName in {"equation", "equation*", "align", "align*", "gather", "gather*"} and not number:
+                        continue
+                    if target.nodeName in {"figure", "figure*", "table", "table*"}:
+                        captions = target.getElementsByTagName("caption")
+                        number = getattr(getattr(captions[0], "ref", None), "textContent", "") if captions else ""
+                        if not captions:
+                            continue
+                    names[str(probe.attributes["key"])] = str(title).strip() + (" " + str(number) if number else "")
+                return names, []
             if bibliography_only:
                 cites = document.userdata.get("bibliography", {}).get("bibcites", {})
                 entries, seen = [], set()

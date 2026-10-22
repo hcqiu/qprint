@@ -15,7 +15,7 @@ from time import perf_counter
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from qprint.importers import extract_source
 from qprint.tex import mask_comments, TexDocument
-from qprint.tex_to_blueprint import generate
+from qprint.tex_to_blueprint import annotate_sources, generate
 from qprint.workspace import Workspace
 
 
@@ -71,6 +71,8 @@ def main():
     parser.add_argument("--author", action="append", required=True)
     parser.add_argument("--year", required=True)
     parser.add_argument("--render-limit", type=int, default=12)
+    parser.add_argument("--auto-annotate", action="store_true",
+                        help="Use the production annotator instead of historical synthetic fixtures")
     args = parser.parse_args()
     root = args.output.resolve()
     if root.exists():
@@ -81,17 +83,24 @@ def main():
     raw = args.archive.read_bytes()
     files = extract_source(raw, tex, "paper")
     counts, sources = {}, []
+    originals = {relative: (tex / relative).read_text(encoding="utf-8-sig")
+                 for relative in files if relative.endswith(".tex")}
+    if args.auto_annotate:
+        annotated_sources, counts = annotate_sources(originals)
     for relative in files:
         if not relative.endswith(".tex"):
             continue
         path = tex / relative
-        annotated, counts[relative] = annotate_for_smoke(path.read_text(encoding="utf-8-sig"))
+        if args.auto_annotate:
+            annotated = annotated_sources[relative]
+        else:
+            annotated, counts[relative] = annotate_for_smoke(originals[relative])
         path.write_text(annotated, encoding="utf-8")
         if TexDocument(relative, annotated).anchors:
             sources.append(relative)
     started = perf_counter()
     generated = generate(root, sources, "Smoke/Paper", title=args.title, authors=args.author,
-                         year=args.year, keywords=["structural smoke fixture"])
+                         year=args.year, keywords=["automatic annotation" if args.auto_annotate else "structural smoke fixture"])
     conversion_seconds = perf_counter() - started
     workspace = Workspace(root)
     assert not workspace.diagnostics, workspace.diagnostics
@@ -108,7 +117,7 @@ def main():
         renders.append({"node": node_id, "fallback": "tex-fallback" in detail["html"],
                         "warnings": detail["warnings"], "inline_links": detail["html"].count('class="wikilink tex-use"')})
     report = {"archive": args.archive.name, "sha256": hashlib.sha256(raw).hexdigest(),
-              "semantic_review": False, "annotation": counts,
+              "semantic_review": False, "auto_annotate": args.auto_annotate, "annotation": counts,
               "conversion_seconds": round(conversion_seconds, 3),
               "render_seconds": round(perf_counter() - started, 3),
               "generation": generated, "edges": len(workspace.edges),

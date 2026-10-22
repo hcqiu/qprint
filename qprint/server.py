@@ -40,6 +40,7 @@ class ImportRequest(BaseModel):
     name: str = ""
     ref: str | None = None
     verify_after_download: bool = True
+    auto_blueprint: bool = True
     timeout: float = Field(default=600, ge=1, le=3600, allow_inf_nan=False)
 
 
@@ -68,6 +69,13 @@ def create_app(root: Path, *, allow_verification: bool = False, toolchain_home: 
     verification_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="qprint-verify")
     jobs, job_lock = {}, Lock()
     static = Path(__file__).parent / "static"
+
+    def refresh_workspace():
+        # Publish the browser snapshot only after navigator queries can resolve
+        # the same files/nodes. Downloads stay outside this short refresh lock.
+        with workspace.lock:
+            KnowledgeIndexer(workspace.root).update()
+            workspace.reload()
 
     @asynccontextmanager
     async def lifespan(app):
@@ -127,12 +135,13 @@ def create_app(root: Path, *, allow_verification: bool = False, toolchain_home: 
     @app.post("/api/navigator/focus")
     def navigator_focus(payload: NavigatorFocus):
         # Validate against the visible workspace as well as the canonical index.
-        if payload.node_id is not None and payload.node_id not in workspace.nodes:
-            raise HTTPException(404, "节点不存在")
-        with KnowledgeNavigator(workspace.root, session=payload.session, runtime_root=runtime_root) as nav:
-            state = nav.set_focus(payload.node_id, view=payload.view, selection=payload.selection, origin="browser", document=payload.document)
-            publish_runtime(runtime_root, workspace.root, payload.session)
-            return relative_output(state, runtime_root)
+        with workspace.lock:
+            if payload.node_id is not None and payload.node_id not in workspace.nodes:
+                raise HTTPException(404, "节点不存在")
+            with KnowledgeNavigator(workspace.root, session=payload.session, runtime_root=runtime_root) as nav:
+                state = nav.set_focus(payload.node_id, view=payload.view, selection=payload.selection, origin="browser", document=payload.document)
+                publish_runtime(runtime_root, workspace.root, payload.session)
+                return relative_output(state, runtime_root)
 
     @app.get("/api/formal-reports")
     def reports():
@@ -168,7 +177,10 @@ def create_app(root: Path, *, allow_verification: bool = False, toolchain_home: 
 
     @app.put("/api/document")
     def save_document(update: DocumentUpdate):
-        return workspace.save_document(update.path, update.text, update.revision)
+        with workspace.lock:
+            document = workspace.save_document(update.path, update.text, update.revision)
+            KnowledgeIndexer(workspace.root).update()
+            return document
 
     @app.get("/api/tex")
     def tex_document(path: str):
@@ -191,7 +203,7 @@ def create_app(root: Path, *, allow_verification: bool = False, toolchain_home: 
 
     @app.post("/api/reload")
     def reload():
-        workspace.reload()
+        refresh_workspace()
         return workspace.project()
 
     def run_import(job_id, payload):
@@ -209,8 +221,9 @@ def create_app(root: Path, *, allow_verification: bool = False, toolchain_home: 
                                      verify_after_download=payload.verify_after_download, timeout=payload.timeout,
                                      toolchain_home=toolchain_home, on_phase=phase, on_progress=progress)
             else:
-                result = import_paper(workspace.root, payload.source, payload.dest, payload.name)
-            workspace.reload()
+                result = import_paper(workspace.root, payload.source, payload.dest, payload.name,
+                                      auto_blueprint=payload.auto_blueprint)
+            refresh_workspace()
             with job_lock:
                 jobs[job_id].update(status="succeeded", phase="complete", result=result, finished_at=time.time())
         except Exception as exc:

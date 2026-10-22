@@ -19,13 +19,13 @@
 
 # tex to blueprint pipeline
 严格依据blueprint分级指南。
-以下流程在没有agent的情况下，只进行自动标注和自动生成blueprint。例如用户在导入新的arxiv论文时。默认开启自动标注和自动生成blueprint。
+以下流程在没有agent的情况下，只进行自动标注和自动生成blueprint。例如用户在导入新的arxiv论文时。默认开启自动标注和自动生成blueprint（用户可手动取消）。
 ## 自动标注
 一个自动对latex文件进行标注的py脚本，流程为：
 对每一个begin/end块包裹的内容，如果不是proof，就从begin向前找，直到遇到：
 1. 第一个end（前一个begin/end块的结尾），
 2. \subsection, \section 或 charpter等章节标识。
-在此处标注当前块的bpnode，名字为当前begin/end块中，第一个label。
+在此处标注当前块的bpnode，名字为当前begin/end块中，第一个label。如果没有label，则使用该begin/end块在LaTeX中渲染出的名字（例如Theorem 2.1）。如果无label则bpnode标注为该begin/end块在latex中渲染出的名字（例如Theorem 2.1等）。
 完成之后，再次遍历整个文件，遇到ref，则标注uses, 标注内容为被引的label所在的bpnode。
 不标注bpdesc。
 ## agent调整

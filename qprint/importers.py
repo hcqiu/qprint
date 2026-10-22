@@ -211,8 +211,10 @@ def extract_source(data: bytes, stage: Path, name: str):
     return [f"{name}.tex"]
 
 
-def import_paper(root: Path, source: str, dest: str, name: str, downloader=fetch):
+def import_paper(root: Path, source: str, dest: str, name: str, downloader=fetch, *, auto_blueprint=True):
     root = root.resolve()
+    if type(auto_blueprint) is not bool:
+        raise WorkspaceError("auto_blueprint must be boolean")
     identifier = arxiv_id(source)
     if "/" in name or not name:
         raise WorkspaceError("论文名必须是不含目录的 basename")
@@ -227,8 +229,11 @@ def import_paper(root: Path, source: str, dest: str, name: str, downloader=fetch
     prefix = f"{parent}/" if parent else ""
     pdf_target = safe_path(root, f"pdf/{prefix}{name}.pdf")
     tex_target = safe_path(root, f"tex/{prefix}{name}")
+    blueprint_target = safe_path(root, f"blueprint/{prefix}{name}")
     if pdf_target.exists() or tex_target.exists():
         raise WorkspaceError("PDF 或 TeX 目标已存在，导入不会覆盖")
+    if auto_blueprint and blueprint_target.exists():
+        raise WorkspaceError("Blueprint 目标已存在，导入不会覆盖；可取消自动生成")
     pdf = downloader(f"https://arxiv.org/pdf/{identifier}")
     if not pdf.startswith(b"%PDF-"):
         raise WorkspaceError("arXiv 返回内容不是 PDF")
@@ -250,17 +255,63 @@ def import_paper(root: Path, source: str, dest: str, name: str, downloader=fetch
                 break
             source_root = children[0]
         provenance(source_root, {"type": "arxiv", "id": identifier})
+        blueprint = {"status": "not_run", "reason": "disabled"}
+        blueprint_stage = None
+        if auto_blueprint:
+            from .tex import TexDocument, tex_commands
+            from .tex_to_blueprint import annotate_sources, generate
+            from .paths import read_text
+            sources = {f"{prefix}{name}/{p.relative_to(source_root).as_posix()}": read_text(p)
+                       for p in sorted(source_root.rglob("*.tex"))}
+            annotated, annotation = annotate_sources(sources)
+            # Build a disposable workspace using the eventual TeX bindings.
+            workspace_stage = stage / "workspace"
+            for relative, content in annotated.items():
+                path = workspace_stage / "tex" / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(content, encoding="utf-8")
+            selected = [p for p, content in annotated.items() if TexDocument(p, content).anchors]
+            if selected:
+                metadata = list(tex_commands("\n".join(sources.values()), {"title", "author", "keywords"}))
+                title = next((c["value"] for c in metadata if c["name"] == "title"), name)
+                authors = [c["value"] for c in metadata if c["name"] == "author"]
+                keywords = [c["value"] for c in metadata if c["name"] == "keywords"]
+                digits = identifier.split("/")[-1][:2]
+                year = str((1900 if int(digits) >= 91 else 2000) + int(digits))
+                report = generate(workspace_stage, selected, f"{prefix}{name}", title=title,
+                                  authors=authors, year=year, keywords=keywords)
+                blueprint_stage = workspace_stage / "blueprint" / f"{prefix}{name}"
+                blueprint = {"status": "generated", "path": blueprint_target.relative_to(root).as_posix(),
+                             **report, "annotation": annotation}
+                (blueprint_stage / "generation-report.json").write_text(
+                    json.dumps(blueprint, ensure_ascii=False, indent=2), encoding="utf-8")
+            else:
+                blueprint = {"status": "skipped", "reason": "没有带 label 的可标注环境或已有节点",
+                             "annotation": annotation, "review_required": True}
+            for relative, content in annotated.items():
+                (source_root / relative.removeprefix(f"{prefix}{name}/")).write_text(content, encoding="utf-8")
         pdf_stage = stage / "paper.pdf"
         pdf_stage.write_bytes(pdf)
         tex_target.parent.mkdir(parents=True, exist_ok=True)
         pdf_target.parent.mkdir(parents=True, exist_ok=True)
         if pdf_target.exists() or tex_target.exists():
             raise WorkspaceError("导入期间目标已被创建")
+        if blueprint_stage:
+            blueprint_target.parent.mkdir(parents=True, exist_ok=True)
+            if blueprint_target.exists():
+                raise WorkspaceError("导入期间 Blueprint 目标已被创建")
         source_root.rename(tex_target)
         try:
             pdf_stage.rename(pdf_target)
+            try:
+                if blueprint_stage:
+                    blueprint_stage.rename(blueprint_target)
+            except Exception:
+                pdf_target.rename(pdf_stage)
+                raise
         except Exception:
             # Roll back only the directory that this operation just published.
             tex_target.rename(source_root)
             raise
-    return {"pdf": pdf_target.relative_to(root).as_posix(), "tex": tex_target.relative_to(root).as_posix(), "files": len(files), "id": identifier}
+    return {"pdf": pdf_target.relative_to(root).as_posix(), "tex": tex_target.relative_to(root).as_posix(),
+            "files": len(files), "id": identifier, "blueprint": blueprint}
