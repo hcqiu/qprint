@@ -6,6 +6,8 @@ Entry files: [index.html](../qprint/static/index.html), [style.css](../qprint/st
 
 ## Page and controls
 
+Folders and files in the directory tree start collapsed. Expansion is saved locally by library name and full path, surviving node selection, search, index refresh, and page reload. Collapsing a parent retains its children's expansion preferences. If browser storage is unavailable, preferences remain in memory for the current page.
+
 The left panel contains Blueprint folders, files, nodes, and search, without paper outlines or group headings. The center displays node content, TeX, or a whole-file Markdown editor. The right panel provides language/declaration selection and code. Sidebars collapse; narrow layouts move code below the main content. Diagnostics, rendering warnings, and lookup errors are presented separately.
 
 | Action | Behavior |

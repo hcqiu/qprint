@@ -6,6 +6,7 @@ import {createGraphView, syncGraphContext, changeGraphLevel, changeGraphScope, d
 import {requestJson} from './api.js';
 import {createFocusPublisher, browserSession} from './navigator-state.js';
 import {copyWithContext} from './clipboard-context.js';
+import {createTreeExpansionStore} from './tree-state.js';
 
 const $=selector=>document.querySelector(selector);
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -13,6 +14,8 @@ const kindLabel={definition:'定义',lemma:'引理',theorem:'定理',conjecture:
 const statusLabel={complete:'已完成',in_progress:'进行中',not_started:'未开始'};
 const state={project:null,detail:null,selected:null,mode:'rendered',view:'reader',binding:0,document:null,dirty:false,request:0,boundary:null,lastWheel:0};
 const graphView=createGraphView();
+const treeExpansions=createTreeExpansionStore(()=>window.localStorage);
+let treeExpansion=null;
 const navigatorSession=browserSession(location.search,()=>window.sessionStorage,()=>crypto.randomUUID());
 let navigatorDocument=null;
 const publishFocus=createFocusPublisher(payload=>api('/api/navigator/focus',{method:'POST',body:JSON.stringify(payload)}),error=>toast(`Navigator 状态同步失败：${error.message}`));
@@ -34,10 +37,19 @@ async function loadProject(preserve=true){const data=await api('/api/project');s
   syncNavigator();
 }
 function treeButton(node){return `<button class="node-entry ${state.selected===node.id?'active':''}" data-node="${esc(node.id)}"><i class="dot ${node.status}"></i><span>${esc(node.title)}</span></button>`;}
-function fileTree(items,renderFile){const root={folders:new Map(),files:[]};for(const item of items){const parts=item.path.split('/');let cursor=root;for(const name of parts.slice(0,-1)){if(!cursor.folders.has(name))cursor.folders.set(name,{folders:new Map(),files:[]});cursor=cursor.folders.get(name);}cursor.files.push({...item,name:parts.at(-1)});}const render=branch=>[...branch.folders].map(([name,child])=>name==='blueprint'?render(child):`<details open class="folder"><summary>▱ ${esc(name)}</summary><div class="folder-contents">${render(child)}</div></details>`).join('')+branch.files.map(renderFile).join('');return render(root);}
-function renderTree(){if(!state.project)return;const query=$('#search').value.toLowerCase().trim();const nodes=state.project.nodes.filter(n=>`${n.title} ${n.path} ${n.body}`.toLowerCase().includes(query));if(query){$('#tree').innerHTML=`<div class="tree-group"><div class="tree-title">搜索结果 · ${nodes.length}</div>${nodes.map(treeButton).join('')||'<p class="hint">没有匹配的节点</p>'}</div>`;return;}
+function treeAttributes(kind,path){const key=`${kind}:${path}`;return `data-tree-key="${esc(key)}"${treeExpansion.isOpen(key)?' open':''}`;}
+function fileTree(items,renderFile){
+  const root={folders:new Map(),files:[]};
+  for(const item of items){const parts=item.path.split('/');let cursor=root;for(const name of parts.slice(0,-1)){if(!cursor.folders.has(name))cursor.folders.set(name,{folders:new Map(),files:[]});cursor=cursor.folders.get(name);}cursor.files.push({...item,name:parts.at(-1)});}
+  const render=(branch,parent='')=>[...branch.folders].map(([name,child])=>{
+    const path=parent?`${parent}/${name}`:name;
+    return name==='blueprint'?render(child,path):`<details ${treeAttributes('folder',path)} class="folder"><summary>▱ ${esc(name)}</summary><div class="folder-contents">${render(child,path)}</div></details>`;
+  }).join('')+branch.files.map(renderFile).join('');
+  return render(root);
+}
+function renderTree(){if(!state.project)return;treeExpansion?.capture($('#tree'));treeExpansion=treeExpansions(state.project.name);const query=$('#search').value.toLowerCase().trim();const nodes=state.project.nodes.filter(n=>`${n.title} ${n.path} ${n.body}`.toLowerCase().includes(query));if(query){$('#tree').innerHTML=`<div class="tree-group"><div class="tree-title">搜索结果 · ${nodes.length}</div>${nodes.map(treeButton).join('')||'<p class="hint">没有匹配的节点</p>'}</div>`;return;}
   const files=new Map();for(const n of nodes){if(!files.has(n.path))files.set(n.path,[]);files.get(n.path).push(n);}
-  $('#tree').innerHTML=`<div class="tree-group">${fileTree([...files].map(([path,items])=>({path,items})),file=>`<details open><summary title="${esc(file.path)}">◇ ${esc(file.name)}</summary>${file.items.map(treeButton).join('')}</details>`)}</div>`;
+  $('#tree').innerHTML=`<div class="tree-group">${fileTree([...files].map(([path,items])=>({path,items})),file=>`<details ${treeAttributes('file',file.path)}><summary title="${esc(file.path)}">◇ ${esc(file.name)}</summary>${file.items.map(treeButton).join('')}</details>`)}</div>`;
 }
 async function selectNode(id,updateHash=true){if(!canLeave())return false;const request=++state.request;const detail=await api(`/api/node?id=${encodeURIComponent(id)}`);if(request!==state.request)return false;const changed=state.selected!==id;state.selected=id;navigatorDocument=null;syncGraphContext(graphView,state.project,id,changed);state.detail=detail;state.binding=0;state.document=null;state.dirty=false;state.boundary=null;state.lastWheel=performance.now();if(updateHash)setHash(id);renderTree();await renderContent();renderFormal();syncNavigator();return true;}
 function nodeHeader(n){return `<header class="node-heading"><span class="eyebrow">${n.tex?'PAPER BLUEPRINT':'MATHEMATICAL OBJECT'}</span><h1>${esc(n.title)}</h1><div class="node-meta"><span class="badge">${kindLabel[n.kind]}</span><span class="status-badge"><i class="dot ${n.status}"></i>${statusLabel[n.status]}</span><span>${esc(n.path)} : ${n.line}</span></div></header>`;}
@@ -127,6 +139,13 @@ async function openReferences(path,key='',from=state.selected,updateHash=true){
   syncNavigator('references');
   return true;
 }
+
+// toggle does not bubble; capture it for every folder/file in the tree.
+$('#tree').addEventListener('toggle',event=>{
+  const el=event.target;
+  if(el.matches('details[data-tree-key]')&&$('#tree').contains(el))treeExpansion?.setOpen(el.dataset.treeKey,el.open);
+},true);
+window.addEventListener('pagehide',()=>treeExpansion?.capture($('#tree')));
 
 let selectionTimer;
 document.addEventListener('copy',event=>copyWithContext(event,{
