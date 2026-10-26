@@ -1,7 +1,7 @@
 import {renderImportJob, renderReports} from './import-progress.js';
 import {KnowledgeGraph} from './graph.js';
 import {followTexReference} from './tex-references.js';
-import {referencesHash, referencesRoute, referencesMarkup, citationTarget} from './bibliography.js';
+import {referencesHash, referencesRoute, referencesMarkup, citationTarget, referenceImportDefaults, prefillReferenceImport} from './bibliography.js';
 import {createGraphView, syncGraphContext, changeGraphLevel, changeGraphScope, drillGraph, graphProjection, focusReadingNode} from './graph-view.js?v=20261015';
 import {requestJson} from './api.js';
 import {createFocusPublisher, browserSession} from './navigator-state.js';
@@ -12,7 +12,7 @@ const $=selector=>document.querySelector(selector);
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const kindLabel={definition:'定义',lemma:'引理',theorem:'定理',conjecture:'猜想',proof:'证明',other:'数学对象'};
 const statusLabel={complete:'已完成',in_progress:'进行中',not_started:'未开始'};
-const state={project:null,detail:null,selected:null,mode:'rendered',view:'reader',binding:0,document:null,dirty:false,request:0,boundary:null,lastWheel:0};
+const state={project:null,detail:null,selected:null,mode:'rendered',view:'reader',binding:0,document:null,dirty:false,request:0,boundary:null,lastWheel:0,references:null};
 const graphView=createGraphView();
 const treeExpansions=createTreeExpansionStore(()=>window.localStorage);
 let treeExpansion=null;
@@ -36,7 +36,8 @@ async function loadProject(preserve=true){const data=await api('/api/project');s
   if(state.view==='graph')renderGraph();
   syncNavigator();
 }
-function treeButton(node){return `<button class="node-entry ${state.selected===node.id?'active':''}" data-node="${esc(node.id)}"><i class="dot ${node.status}"></i><span>${esc(node.title)}</span></button>`;}
+function treeButton(node){return `<button class="node-entry ${state.selected===node.id?'active':''}" data-node="${esc(node.id)}"><i class="dot ${node.status}"></i><span>${esc(treeLabel(node.title))}</span></button>`;}
+function treeLabel(value){return String(value??'').replace(/\.(?:md|markdown|tex)$/i,'');}
 function treeAttributes(kind,path){const key=`${kind}:${path}`;return `data-tree-key="${esc(key)}"${treeExpansion.isOpen(key)?' open':''}`;}
 function fileTree(items,renderFile){
   const root={folders:new Map(),files:[]};
@@ -49,7 +50,7 @@ function fileTree(items,renderFile){
 }
 function renderTree(){if(!state.project)return;treeExpansion?.capture($('#tree'));treeExpansion=treeExpansions(state.project.name);const query=$('#search').value.toLowerCase().trim();const nodes=state.project.nodes.filter(n=>`${n.title} ${n.path} ${n.body}`.toLowerCase().includes(query));if(query){$('#tree').innerHTML=`<div class="tree-group"><div class="tree-title">搜索结果 · ${nodes.length}</div>${nodes.map(treeButton).join('')||'<p class="hint">没有匹配的节点</p>'}</div>`;return;}
   const files=new Map();for(const n of nodes){if(!files.has(n.path))files.set(n.path,[]);files.get(n.path).push(n);}
-  $('#tree').innerHTML=`<div class="tree-group">${fileTree([...files].map(([path,items])=>({path,items})),file=>`<details ${treeAttributes('file',file.path)}><summary title="${esc(file.path)}">◇ ${esc(file.name)}</summary>${file.items.map(treeButton).join('')}</details>`)}</div>`;
+  $('#tree').innerHTML=`<div class="tree-group">${fileTree([...files].map(([path,items])=>({path,items})),file=>`<details ${treeAttributes('file',file.path)}><summary title="${esc(file.path)}">◇ ${esc(treeLabel(file.name))}</summary>${file.items.map(treeButton).join('')}</details>`)}</div>`;
 }
 async function selectNode(id,updateHash=true){if(!canLeave())return false;const request=++state.request;const detail=await api(`/api/node?id=${encodeURIComponent(id)}`);if(request!==state.request)return false;const changed=state.selected!==id;state.selected=id;navigatorDocument=null;syncGraphContext(graphView,state.project,id,changed);state.detail=detail;state.binding=0;state.document=null;state.dirty=false;state.boundary=null;state.lastWheel=performance.now();if(updateHash)setHash(id);renderTree();await renderContent();renderFormal();syncNavigator();return true;}
 function nodeHeader(n){return `<header class="node-heading"><span class="eyebrow">${n.tex?'PAPER BLUEPRINT':'MATHEMATICAL OBJECT'}</span><h1>${esc(n.title)}</h1><div class="node-meta"><span class="badge">${kindLabel[n.kind]}</span><span class="status-badge"><i class="dot ${n.status}"></i>${statusLabel[n.status]}</span><span>${esc(n.path)} : ${n.line}</span></div></header>`;}
@@ -136,6 +137,7 @@ async function openReferences(path,key='',from=state.selected,updateHash=true){
   $('#formal-content').innerHTML='<div class="empty-code">论文参考文献</div>';
   const content=$('#content');content.innerHTML=referencesMarkup(data,from);math(content);content.scrollTop=0;
   const anchor=citationTarget(data,key);if(anchor)document.getElementById(anchor)?.scrollIntoView({block:'center'});
+  state.references=data;
   syncNavigator('references');
   return true;
 }
@@ -169,7 +171,25 @@ window.addEventListener('beforeunload',e=>{if(state.dirty){e.preventDefault();e.
 if(matchMedia('(max-width:800px)').matches)$('#sidebar').classList.add('hidden');
 
 $('#diagnostics-open').onclick=()=>{const diagnostics=state.project?.diagnostics||[];$('#diagnostics-list').innerHTML=diagnostics.length?diagnostics.map(d=>`<div class="diagnostic"><strong>${d.severity==='error'?'错误':'提示'} · ${esc(d.path)}${d.line?`:${d.line}`:''}</strong><div>${esc(d.message)}</div></div>`).join(''):'<p class="muted">没有发现索引错误或断开的依赖链接。</p>';$('#diagnostics-dialog').showModal();};
-document.querySelectorAll('.close-dialog').forEach(b=>b.onclick=()=>b.closest('dialog').close());$('#import-open').onclick=()=>$('#import-dialog').showModal();$('#import-kind').onchange=()=>{const paper=$('#import-kind').value==='paper';$('#code-options').classList.toggle('hidden',paper);$('#import-verify-option').classList.toggle('hidden',paper);$('#paper-name').classList.toggle('hidden',!paper);$('#paper-blueprint-option').classList.toggle('hidden',!paper);$('#paper-name input').required=paper;$('#source-label').firstChild.textContent=paper?'arXiv 编号或地址':'仓库 URL';$('#source-label input').placeholder=paper?'2001.00001 或 https://arxiv.org/abs/…':'https://github.com/owner/repository';};
+document.querySelectorAll('.close-dialog').forEach(b=>b.onclick=()=>b.closest('dialog').close());
+function updateImportKind(){const paper=$('#import-kind').value==='paper';$('#code-options').classList.toggle('hidden',paper);$('#import-verify-option').classList.toggle('hidden',paper);$('#paper-name').classList.toggle('hidden',!paper);$('#paper-blueprint-option').classList.toggle('hidden',!paper);$('#paper-name input').required=paper;$('#source-label').firstChild.textContent=paper?'arXiv 编号或地址':'仓库 URL';$('#source-label input').placeholder=paper?'2001.00001 或 https://arxiv.org/abs/…':'https://github.com/owner/repository';}
+function openImport(defaults){
+  if(defaults){
+    if($('#import-submit').disabled){toast('当前导入任务仍在进行，请完成后再导入其他文献');return;}
+    prefillReferenceImport($('#import-form'),defaults);
+    $('#import-result').textContent=defaults.source?'':'未识别到 arXiv 编号，请填写后导入。';
+  }
+  updateImportKind();$('#import-dialog').showModal();
+  if(defaults)$('#import-form').elements[defaults.source?'dest':'source'].focus();
+}
+$('#import-open').onclick=()=>openImport();
+$('#import-kind').onchange=updateImportKind;
+$('#content').addEventListener('click',guarded(e=>{
+  const button=e.target.closest('[data-reference-import]');
+  if(!button||!state.references)return;
+  const entry=state.references.entries[Number(button.dataset.referenceImport)];
+  if(entry)openImport(referenceImportDefaults(state.references,entry));
+}));
 $('#import-form').addEventListener('submit',guarded(async e=>{e.preventDefault();const values=Object.fromEntries(new FormData(e.target));values.ref=values.ref||null;values.verify_after_download=e.target.elements.verify_after_download.checked;values.auto_blueprint=e.target.elements.auto_blueprint.checked;const button=$('#import-submit');button.disabled=true;$('#import-result').textContent='正在提交下载任务…';try{const job=await api('/api/import',{method:'POST',body:JSON.stringify(values)});let finished=false;while(!finished){await new Promise(resolve=>setTimeout(resolve,1200));const current=await api(`/api/jobs/${job.id}`);renderImportJob($('#import-result'),current);finished=['succeeded','failed'].includes(current.status);if(current.status==='succeeded'){if(!state.dirty)await loadProject();else toast('资料已导入；保存当前编辑后刷新索引');}}}finally{button.disabled=false;}}));
 
 export function startApp(){return loadProject(false);}

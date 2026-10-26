@@ -9,6 +9,7 @@ from urllib.parse import quote
 from markdown_it import MarkdownIt
 
 from .blueprint import WIKILINK, parse_markdown, revision
+from .bibliography import reference_arxiv_id
 from .clipboard_context import build_contexts
 from .formal import locate_code
 from .graph_index import build_graph_index
@@ -85,7 +86,7 @@ class Workspace:
                 located = [(key, next(a["start"] for a in doc.anchors if a["label"] == label)) for key, (p, label) in self.locations.items() if p == path]
                 sections = [{**section, "node_id": next((key for key, offset in sorted(located, key=lambda item: item[1]) if offset >= section["offset"]), None)} for section in doc.sections]
                 papers.append({"path": path, "sections": sections, "nodes": [key for key in self.order if self.locations[key][0] == path],
-                               "has_bibliography": bool(self.bibliography_files(path))})
+                               "has_bibliography": bool(self.bibliography_files(path) or self.inline_bibliography_files(path))})
             return {"name": self.root.name, "nodes": [n.public() for n in self.nodes.values()], "edges": self.edges, "graph": self.graph_index, "papers": papers, "diagnostics": self.diagnostics, "stats": {"nodes": len(self.nodes), "complete": sum(n.status == "complete" for n in self.nodes.values()), "edges": len(self.edges), "papers": len(self.tex)}}
 
     def detail(self, node_id: str):
@@ -144,6 +145,24 @@ class Workspace:
         folder = safe_path(self.root, "tex/" + path).parent
         return sorted(p for p in folder.iterdir() if p.suffix.lower() == ".bbl" and p.is_file())
 
+    def inline_bibliography_files(self, path: str):
+        """Use the current file, or an unambiguous source in its loaded include scope."""
+        if self.tex[path].inline_bibliography:
+            return [path]
+        if self.tex_reference_scope is None:
+            self.tex_reference_scope = TexReferenceScope(self.tex)
+        return sorted(p for p in self.tex_reference_scope.files(path) if self.tex[p].inline_bibliography)
+
+    def bibliography_project(self, path: str):
+        owners = {self.graph_index['node_projects'][node_id]
+                  for node_id, (tex_path, _) in self.locations.items() if tex_path == path}
+        if len(owners) == 1:
+            return owners.pop()
+        # Nested TeX chapters may have no bound node of their own.
+        projects = [p['path'] for p in self.graph_index['projects']
+                    if p['index_path'] and path.startswith(p['path'] + '/')]
+        return max(projects, key=len) if projects else Path(path).parent.as_posix()
+
     def bibliography(self, path: str):
         with self.lock:
             if path not in self.tex:
@@ -151,20 +170,34 @@ class Workspace:
             if path in self.bibliography_cache:
                 return self.bibliography_cache[path]
             files = self.bibliography_files(path)
-            data = {"path": path, "bbl": None, "entries": [], "html": "", "warnings": [], "citations": None}
+            data = {"path": path, "project_path": self.bibliography_project(path),
+                    "bbl": None, "source": None, "entries": [], "html": "", "warnings": [], "citations": None}
             matching = [p for p in files if p.stem == Path(path).stem]
             chosen = matching[0] if len(matching) == 1 else files[0] if len(files) == 1 else None
-            if chosen is None:
+            inline = self.inline_bibliography_files(path)
+            # An explicit inline bibliography wins over stale adjacent BBL files.
+            inline_path = path if self.tex[path].inline_bibliography else inline[0] if not files and len(inline) == 1 else None
+            if chosen is None and inline_path is None:
                 if files:
                     data["warnings"].append("同目录有多个 BBL，且没有与 TeX 同名的文件；引用保留原文。")
+                elif len(inline) > 1:
+                    data["warnings"].append("包含关系中有多个内嵌参考文献来源；引用保留原文。")
             else:
                 try:
-                    relative = chosen.relative_to(self.root).as_posix()
-                    source = read_text(safe_path(self.root, relative))
-                    parsed, warnings = render_tex(source, bibliography_only=True)
-                    data.update(bbl=relative.removeprefix("tex/"), warnings=warnings)
+                    if inline_path:
+                        doc = self.tex[inline_path]
+                        source, preamble = doc.inline_bibliography, doc.preamble
+                        data["source"] = "tex/" + inline_path
+                    else:
+                        relative = chosen.relative_to(self.root).as_posix()
+                        source, preamble = read_text(safe_path(self.root, relative)), ""
+                        data.update(bbl=relative.removeprefix("tex/"), source=relative)
+                    parsed, warnings = render_tex(source, preamble, bibliography_only=True)
+                    data["warnings"] = warnings
                     if isinstance(parsed, dict):
                         entries = parsed["entries"]
+                        for entry in entries:
+                            entry['arxiv_id'] = reference_arxiv_id(entry['html'])
                         counts = Counter(entry["key"] for entry in entries)
                         data["entries"] = entries
                         if entries:
@@ -175,7 +208,7 @@ class Workspace:
                     else:
                         data["html"] = parsed
                 except (OSError, UnicodeError, WorkspaceError) as exc:
-                    data["warnings"].append(f"无法读取 BBL，引用保留原文: {exc}")
+                    data["warnings"].append(f"无法读取参考文献，引用保留原文: {exc}")
             self.bibliography_cache[path] = data
             return data
 

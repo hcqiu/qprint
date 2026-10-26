@@ -10,7 +10,7 @@ import subprocess
 import sys
 from threading import RLock
 from urllib.parse import quote
-from .tex_support import amsrefs_bibliography, compact_label_source, simple_definitions, normalize_math, naming_definitions
+from .tex_support import amsrefs_bibliography, biblatex_bibliography, compact_label_source, simple_definitions, normalize_math, naming_definitions
 
 _PARSE_LOCK = RLock()
 _LAYOUT_WARNING = "部分 TeX 排版细节未完整还原（已保留可读内容）: "
@@ -154,8 +154,12 @@ class TexDocument:
             self.diagnostics.append(str(exc))
 
         self.bibliography_offsets = [m.start() for m in re.finditer(
-            r"\\(?:bibliographystyle|bibliography|printbibliography)\b|\\begin\{thebibliography\}", masked)
+            r"\\(?:bibliographystyle|bibliography|printbibliography)\b|\\begin\s*\{(?:thebibliography|bibdiv|biblist)\}", masked)
             if body_start <= m.start() < self.body_end]
+        self.inline_bibliography = '\n'.join(
+            self.source[m.start():m.end()]
+            for m in re.finditer(r'\\begin\s*\{(thebibliography|bibdiv|biblist)\}.*?\\end\s*\{\1\}', masked, re.S)
+            if body_start <= m.start() < m.end() <= self.body_end)
         self.sections = []
         try:
             for command in tex_commands(self.source[body_start:self.body_end], {"chapter", "section", "subsection", "subsubsection"}):
@@ -259,8 +263,12 @@ def _render_tex_dom(fragment: str, preamble: str = "", references: dict[str, str
     label_targets = dict(labels or {})
     emitted_anchors = set()
     try:
-        if bibliography_only and re.search(r"\\bib\s*\{", mask_comments(fragment)):
-            fragment = amsrefs_bibliography(mask_comments(fragment))
+        if bibliography_only:
+            masked = mask_comments(fragment)
+            if re.search(r"\\entry\s*\{", masked):
+                fragment = biblatex_bibliography(fragment)
+            elif re.search(r"\\bib\s*\{", masked):
+                fragment = amsrefs_bibliography(masked)
         if index_only:
             for graphic in reversed(tex_graphics(fragment)):
                 preserved = ''.join(re.findall(r'\\label\s*\{[^{}]*\}', graphic['source']))
@@ -699,7 +707,7 @@ def _render_tex_dom(fragment: str, preamble: str = "", references: dict[str, str
                     entries.append({"key": key, "label": str(label), "anchor": anchor,
                                     "html": children(item)})
                 if not entries:
-                    warnings.append("BBL 中没有可渲染的 bibitem 条目；当前支持 BibTeX 的 thebibliography 格式。")
+                    warnings.append("参考文献中没有可渲染的条目；支持 thebibliography、AMSRefs 和 BibLaTeX BBL。")
                 return {"entries": entries}, merge_tex_warnings(warnings)
             parsed_labels = {}
             for label, target in document.context.labels.items():

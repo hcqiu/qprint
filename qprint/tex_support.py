@@ -98,6 +98,106 @@ def amsrefs_bibliography(source):
     return r'\begin{thebibliography}{999}' + '\n' + '\n'.join(entries) + '\n' + r'\end{thebibliography}' if entries else source
 
 
+def biblatex_bibliography(source):
+    """Read literal Biber records, without loading or executing biblatex.
+
+    Only publication fields are copied into the existing safe bibitem renderer.
+    Consume balanced arguments so commands inside a title cannot become records.
+    Verbatim URL/DOI fields retain percent escapes and fragment identifiers.
+    """
+    source = re.sub(r'\\verb\{[^{}]*\}.*?\\endverb|(?<!\\)(?:\\\\)*(%[^\n]*)',
+                    lambda m: m[0] if m[1] is None else m[0][:m.start(1) - m.start()],
+                    source, flags=re.S)
+    command = re.compile(r'\\([A-Za-z]+)\b')
+    arities = {'entry': 3, 'field': 2, 'strng': 2, 'name': 4, 'list': 3,
+               'range': 2, 'keyw': 1, 'true': 1, 'false': 1, 'set': 1,
+               'inset': 1, 'missing': 1}
+
+    def groups(value):
+        offset = 0
+        while value[offset:].strip():
+            group, offset = braced(value, offset)
+            yield group
+
+    def names(value):
+        result = []
+        for record in groups(value):
+            _, end = braced(record, 0)  # name hashes/options
+            fields, _ = braced(record, end)
+            parts, offset = {}, 0
+            while match := re.search(r'([A-Za-z]+)\s*=\s*(?=\{)', fields[offset:]):
+                part, offset = braced(fields, offset + match.end())
+                parts[match[1]] = part
+            result.append(parts.get('literal') or ' '.join(parts[k] for k in ('given', 'prefix', 'family', 'suffix') if parts.get(k)))
+        return ', '.join(result)
+
+    def text(value):
+        replacements = {'bibrangedash': '--', 'bibnamedelima': ' ', 'bibnamedelimb': ' ',
+                        'bibnamedelimc': ' ', 'bibnamedelimd': ' ', 'bibnamedelimi': ' ',
+                        'bibinitdelim': ' ', 'bibinitperiod': '.', 'bibinithyphendelim': '-'}
+        return re.sub(r'\\([A-Za-z]+)\b\s*', lambda m: replacements.get(m[1], m[0]), value)
+
+    def entry(key, fields):
+        if not key or re.search(r'[{}\\%\r\n]', key):
+            raise ValueError('BibLaTeX 文献键不合法')
+        if not fields.get('title'):
+            raise ValueError(f'BibLaTeX 条目缺少 title: {key}')
+        parts = []
+        for name in ('author', 'editor', 'title', 'subtitle', 'journaltitle', 'booktitle',
+                     'series', 'volume', 'number', 'publisher', 'location', 'date', 'year', 'pages', 'note'):
+            value = text(fields.get(name, ''))
+            if value:
+                parts.append(r'\emph{' + value + '}' if name in {'journaltitle', 'booktitle'} else value)
+        for name in ('doi', 'url', 'eprint'):
+            value = fields.get(name, '')
+            if value:
+                url = ('https://doi.org/' + value if name == 'doi' else
+                       'https://arxiv.org/abs/' + value if name == 'eprint' and fields.get('eprinttype') == 'arxiv' else
+                       value if name == 'url' else '')
+                parts.append(r'\url{' + url + '}' if url else 'eprint: ' + text(value))
+        label = fields.get('labelnumber') or fields.get('labelalpha', '')
+        extra = fields.get('extraalpha', '')
+        if not fields.get('labelnumber') and label and extra.isdigit() and 1 <= int(extra) <= 26:
+            label += chr(96 + int(extra))
+        # Braces keep TeX math/brackets in an explicit label balanced.
+        optional = '[{' + text(label) + '}]' if label else ''
+        return r'\bibitem' + optional + '{' + key + '}' + '. '.join(parts) + '.'
+
+    entries, key, fields, offset = [], None, {}, 0
+    while match := command.search(source, offset):
+        name, offset = match[1], match.end()
+        if name == 'verb':
+            field, offset = braced(source, offset)
+            end = source.find(r'\endverb', offset)
+            if end < 0:
+                raise ValueError('BibLaTeX verb 字段未闭合')
+            if key is not None:
+                fields[field] = re.sub(r'^\\verb\s+', '', source[offset:end].strip())
+            offset = end + len(r'\endverb')
+            continue
+        args = []
+        for _ in range(arities.get(name, 0)):
+            value, offset = braced(source, offset)
+            args.append(value)
+        if name == 'entry':
+            if key is not None:
+                raise ValueError('BibLaTeX entry 未闭合')
+            key, fields = args[0], {}
+        elif name == 'endentry' and key is not None:
+            entries.append(entry(key, fields))
+            key = None
+        elif key is not None:
+            if name in {'field', 'strng'}:
+                fields[args[0]] = args[1]
+            elif name == 'name' and args[0] in {'author', 'editor'}:
+                fields[args[0]] = names(args[3])
+            elif name == 'list':
+                fields[args[0]] = ', '.join(groups(args[2]))
+    if key is not None:
+        raise ValueError('BibLaTeX entry 未闭合')
+    return r'\begin{thebibliography}{999}' + '\n' + '\n'.join(entries) + '\n' + r'\end{thebibliography}'
+
+
 def naming_definitions(preamble):
     """Read complete literal declarations even on shared or multiple lines."""
     source = preamble
