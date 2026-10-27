@@ -313,5 +313,12 @@ def import_paper(root: Path, source: str, dest: str, name: str, downloader=fetch
             # Roll back only the directory that this operation just published.
             tex_target.rename(source_root)
             raise
+    # The paper is already safely published. A linking failure must not turn a
+    # successful download into an apparent failure or discard the original data.
+    from .cross_references import link_workspace
+    try:
+        cross_links = link_workspace(root, imported=identifier)
+    except Exception as exc:
+        cross_links = {"status": "error", "links_added": 0, "diagnostics": [{"reason": str(exc)}]}
     return {"pdf": pdf_target.relative_to(root).as_posix(), "tex": tex_target.relative_to(root).as_posix(),
-            "files": len(files), "id": identifier, "blueprint": blueprint}
+            "files": len(files), "id": identifier, "blueprint": blueprint, "cross_links": cross_links}

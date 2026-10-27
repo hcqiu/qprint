@@ -69,6 +69,9 @@ def test_generation_roundtrip_and_inline_rendering(tmp_path):
     report = convert(tmp_path)
     assert report["nodes"] == 3 and not report["diagnostics"]
     assert len(report["files"]) == 5  # intro, three subsections, index
+    assert [Path(path).name for path in report["files"]] == [
+        "01-Intro.md", "02-Main.md", "03-Proofs.md", "04-Empty.md", "index.md",
+    ]
     workspace = Workspace(tmp_path)
     assert not workspace.diagnostics
     main = next(n for n in workspace.nodes.values() if n.title == "main")
@@ -156,11 +159,31 @@ def test_multiple_files_with_same_label_keep_local_dependencies(tmp_path):
     report = generate(tmp_path, ["one.tex", "two.tex"], "Multi", title="Multiple files",
                       authors=["A"], year="2025", keywords=[])
     assert report["nodes"] == 4 and not report["diagnostics"]
+    assert [Path(path).name for path in report["files"]] == [
+        "01-01-Nested-title-value.md", "02-01-Nested-title-value.md", "index.md",
+    ]
     workspace = Workspace(tmp_path)
     for node in workspace.nodes.values():
         if node.title == "y":
             assert node.kind == "theorem"
             assert node.uses == [f"[[{node.path[:-3]}#x]]"]
+
+
+@pytest.mark.parametrize("count,width", [(99, 2), (100, 3)])
+def test_section_number_width_and_duplicate_source(tmp_path, count, width):
+    setup_project(tmp_path)
+    source = "\n".join(
+        rf"\subsection{{Section {number}}}\bpnode{{node{number}}}Content."
+        for number in range(1, count + 1)
+    )
+    (tmp_path / "tex/paper.tex").write_text(source, encoding="utf-8")
+    report = generate(tmp_path, ["paper.tex", "paper.tex"], "Numbered", title="Numbered",
+                      authors=[], year="2025", keywords=[], dry_run=True)
+    filenames = [Path(path).name for path in report["files"][:-1]]
+    assert filenames == [f"{number:0{width}d}-Section-{number}.md"
+                         for number in range(1, count + 1)]
+    assert filenames == sorted(filenames)
+    assert report["nodes"] == count
 
 
 def test_render_fallback_preserves_annotations():

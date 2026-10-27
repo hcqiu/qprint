@@ -334,7 +334,9 @@ def generate(root: Path, sources: list[str], dest: str, *, title: str,
     overrides = dependency_map or {}
     if not isinstance(overrides, dict) or any(not isinstance(k, str) or not isinstance(v, str) for k, v in overrides.items()):
         raise WorkspaceError("dependency-map 必须是标签到节点 ID 的 JSON 对象")
-    for file_number, relative in enumerate(dict.fromkeys(sources), 1):
+    unique_sources = list(dict.fromkeys(sources))
+    file_width = max(2, len(str(len(unique_sources))))
+    for file_number, relative in enumerate(unique_sources, 1):
         path = safe_path(root, f"tex/{relative}")
         if path.suffix != ".tex" or "#" in relative:
             raise WorkspaceError("源文件必须是 tex/ 下的 .tex 相对路径，且不能含 #")
@@ -355,10 +357,14 @@ def generate(root: Path, sources: list[str], dest: str, *, title: str,
             seen_labels.add(anchor["label"])
             group = max(i for i, section in enumerate(boundaries) if section["offset"] < anchor["start"])
             groups[group].append(anchor)
-        for group, section in enumerate(boundaries):
-            if group not in groups and section["level"] != 2:
-                continue
-            filename = f"{file_number:02d}-{group:03d}-{_slug(section['title'])}.md"
+        output_groups = [(group, section) for group, section in enumerate(boundaries)
+                         if group in groups or section["level"] == 2]
+        # Keep source numbering only when it distinguishes multiple input files.
+        # Pad each source's sections to the width actually needed for sorting.
+        file_prefix = f"{file_number:0{file_width}d}-" if len(unique_sources) > 1 else ""
+        group_width = max(2, len(str(max((group for group, _ in output_groups), default=0))))
+        for group, section in output_groups:
+            filename = f"{file_prefix}{group:0{group_width}d}-{_slug(section['title'])}.md"
             md_path = f"{dest}/{filename}"
             drafts[md_path] = []
             for anchor in groups[group]:

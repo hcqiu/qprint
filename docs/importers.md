@@ -24,7 +24,25 @@
 
 结果为 `pdf/Geometry/Via16SpherePacking.pdf` 和 `tex/Geometry/Via16SpherePacking/`。多文件源码保留内部相对目录；源码目录含来源记录。返回 `pdf`、`tex`、`files`、`id`。`name` 只填 basename，不含目录或 `.pdf` 后缀；`dest` 可为空字符串以使用根分类。
 
-必须同时得到有效 PDF 和含 `.tex` 的源码，错误页面、缺失源码或不支持内容会失败。导入不生成 Markdown、不插入 `\bpnode`，论文导入也不执行代码或安装依赖；之后需要人工建立节点和绑定。
+必须同时得到有效 PDF 和含 `.tex` 的源码，错误页面、缺失源码或不支持内容会失败。默认自动标注 TeX 并生成待 review 的 Blueprint，可用 `--no-auto-blueprint` 关闭；论文导入不执行论文代码或安装依赖。
+
+## 自动跨文献链接
+
+论文发布后，导入器自动对涉及新论文的引用做双向匹配：已有论文引用新论文，以及新论文引用已有论文。使用参考文献中的 arXiv 编号与 `tex/<项目>/.qprint-source.json` 的 `id` 匹配，忽略版本后缀；支持已解析的 BBL、TeX 内嵌参考文献和 `.bib` 中的字面 URL/DOI/arXiv eprint 字段，不根据论文标题猜测，也不联网搜索补全。
+
+`\cite[Thm.~2.3]{B}`、`Proposition 2.3 in \cite{B}`、`\cite{B}, Defn. 2.3` 等紧邻定位会链接到 B 的相应 Blueprint 节点。识别不区分大小写，包含 theorem/thm/th、proposition/prop/prp、lemma/lem、definition/def/defn，以及 corollary、remark、example、conjecture 的常见简写。目标编号按已加载 TeX 的包含顺序和计数器计算；没有环境编号时可使用明确写有类型及编号的 Blueprint 标题。编号不存在、重复、范围不支持，或多个 cite 键无法分配定位时，保留原文并记录诊断。
+
+没有具体定位的引用链接到目标项目 `index.md` 的首个节点；索引没有一级标题时，保留原内容并补充“文献索引”节点。工具紧接 cite 添加完整节点 ID 的 `\uses{...}`，并合并到所在 Blueprint 节点的 `uses` 元数据，保留已有依赖、正文和形式化绑定。未绑定节点的引用只写入 TeX 并报告；重复执行不会重复插入。
+
+可从 Qprint 根目录独立执行：
+
+```powershell
+.\.conda\python.exe -m qprint link-citations --workspace examples/demo --dry-run
+.\.conda\python.exe -m qprint link-citations --workspace examples/demo
+.\.conda\python.exe -m qprint link-citations --workspace examples/demo --imported 2401.00002
+```
+
+`--dry-run` 只返回拟修改文件、匹配和诊断。实际写入前检查文件是否被修改，原文件备份和 JSON 报告位于 `.qprint/cross-links/<运行编号>/`，普通写入失败会回滚本次已写文件；不保证进程崩溃时的跨文件原子性。导入结果包含 `cross_links`；链接失败会显示诊断并保留已下载论文。现有服务在 CLI 写入后需要刷新索引；自动导入流程会自行刷新。
 
 ## 下载、归档与发布
 

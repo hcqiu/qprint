@@ -24,7 +24,25 @@ Imports accept modern/legacy arXiv IDs, optional version suffixes, and HTTPS abs
 
 Outputs are `pdf/Geometry/Via16SpherePacking.pdf` and `tex/Geometry/Via16SpherePacking/`. Multi-file source retains internal relative paths and includes provenance. The result contains `pdf`, `tex`, `files`, and `id`. Supply a basename for `name`, without directories or a `.pdf` suffix. An empty `dest` selects the root category.
 
-A valid PDF and source containing `.tex` are both required. Error pages, unavailable source, and unsupported content fail the import. Paper imports do not create Markdown, insert `\bpnode`, execute code, or install dependencies. Nodes and bindings must be authored afterward.
+A valid PDF and source containing `.tex` are both required. Error pages, unavailable source, and unsupported content fail the import. TeX annotation and draft Blueprint generation are enabled by default and can be disabled with `--no-auto-blueprint`. Paper imports do not execute paper code or install dependencies.
+
+## Automatic cross-paper links
+
+After publishing a paper, the importer scans both incoming and outgoing citations involving that paper. Explicit arXiv identifiers from BBL, inline bibliographies and literal BibTeX URL/DOI/arXiv eprint fields are matched against project `.qprint-source.json` records, ignoring version suffixes. Titles are never used to guess a paper identity; there are no network lookups.
+
+Adjacent locators such as `\cite[Thm.~2.3]{B}`, `Proposition 2.3 in \cite{B}` and `\cite{B}, Defn. 2.3` resolve to the corresponding Blueprint node. Matching is case-insensitive and supports common theorem, proposition, lemma, definition, corollary, remark, example and conjecture abbreviations. Target numbering respects loaded TeX include order and counters; explicitly numbered Blueprint titles can serve as a fallback. Missing or ambiguous nodes, unsupported ranges and ambiguous multi-key citations produce diagnostics instead of guessed links.
+
+Bare citations link to the first node in the target `index.md`. If it has no level-one heading, a bibliography index node is added while retaining its content. Full node IDs are inserted in `\uses{...}` immediately after citations and merged into the owning Blueprint node's `uses` metadata. Unbound citations receive TeX annotations and a diagnostic. Repeated runs preserve existing links and avoid duplicate insertions.
+
+Run from the Qprint root:
+
+```powershell
+.\.conda\python.exe -m qprint link-citations --workspace examples/demo --dry-run
+.\.conda\python.exe -m qprint link-citations --workspace examples/demo
+.\.conda\python.exe -m qprint link-citations --workspace examples/demo --imported 2401.00002
+```
+
+Dry runs return planned files, matches and diagnostics without writing. Applied changes retain original files and a JSON report in `.qprint/cross-links/<run>/`. The writer checks for intervening edits and rolls back ordinary write failures; it does not promise crash-atomic multi-file commits. Import results expose `cross_links`; a linking failure keeps the downloaded paper. Refresh a running reader after using the standalone CLI; the import workflow refreshes automatically.
 
 ## Downloads, archives, and publication
 

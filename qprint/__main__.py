@@ -30,10 +30,13 @@ def main():
     manager_command.add_argument("artifact", nargs="?")
     manager_command.add_argument("--home", type=Path)
     manager_command.add_argument("--archive", type=Path, help="使用已下载、仍需校验 SHA-256 的归档")
-    for name in ("serve", "check", "verify", "import-code", "import-paper"):
+    for name in ("serve", "check", "verify", "import-code", "import-paper", "link-citations"):
         command = commands.add_parser(name)
         default_workspace = Path("examples/demo") if Path("examples/demo").is_dir() else Path("examples/verification")
         command.add_argument("--workspace", type=Path, default=default_workspace)
+        if name == 'link-citations':
+            command.add_argument('--imported', help='只处理涉及这个 arXiv 编号的双向引用；默认扫描全部')
+            command.add_argument('--dry-run', action='store_true', help='预览链接和诊断，不修改文件')
         if name in {"serve", "verify"}:
             command.add_argument("--toolchain-home", type=Path, help="Qprint 安装根目录；默认 QPRINT_HOME 或程序所在目录")
             command.add_argument("--allow-system-toolchains", action="store_true", help="显式允许匹配版本的 PATH 工具链回退")
@@ -72,6 +75,11 @@ def main():
                     host="127.0.0.1", port=args.port)
         return
     try:
+        if args.command == 'link-citations':
+            from .cross_references import link_workspace
+            result = link_workspace(args.workspace, imported=args.imported, dry_run=args.dry_run)
+            print(json.dumps(result, ensure_ascii=True, indent=2))
+            return 0
         if args.command in {"index", "watch", "agent"}:
             from .knowledge.cli import run
             return run(args)

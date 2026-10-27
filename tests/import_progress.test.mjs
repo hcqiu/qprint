@@ -43,3 +43,14 @@ test('paper blueprint outcome includes review, opt-out and skip information', ()
   assert.match(formatImportJob({status:'succeeded',result:{blueprint:{status:'not_run'}}}),/已关闭/);
   assert.match(formatImportJob({status:'succeeded',result:{blueprint:{status:'skipped',reason:'没有节点'}}}),/没有节点/);
 });
+
+test('paper import reports cross-paper links and unresolved diagnostics', () => {
+  const text = formatImportJob({status:'succeeded',result:{cross_links:{status:'completed',links_added:3,
+    diagnostics:[{reason:'Missing theorem'}], report_path:'.qprint/cross-links/run/report.json'}}});
+  assert.match(text,/新增 3 个 uses/);
+  assert.match(text,/1 项待检查/);
+  assert.match(text,/report.json/);
+  const failed = formatImportJob({status:'succeeded',result:{cross_links:{status:'error',diagnostics:[{reason:'write failed'}]}}});
+  assert.match(failed,/下载资料已保留/);
+  assert.match(failed,/write failed/);
+});

@@ -19,6 +19,13 @@ export function formatImportJob(job) {
       if (count) lines.push(`${count} 项待检查，请查看生成报告。`);
     } else if (blueprint?.status === 'skipped') lines.push(`Blueprint 未生成：${blueprint.reason}`);
     else if (blueprint?.status === 'not_run') lines.push('自动标注与 Blueprint 生成已关闭');
+    const links = result?.cross_links;
+    if (links) {
+      lines.push(links.status === 'error' ? '跨文献链接未完成，下载资料已保留' : `跨文献链接：新增 ${links.links_added || 0} 个 uses`);
+      if (links.diagnostics?.length) lines.push(`跨文献链接有 ${links.diagnostics.length} 项待检查`);
+      if (links.status === 'error' && links.diagnostics?.[0]?.reason) lines.push(links.diagnostics[0].reason);
+      if (links.report_path) lines.push(`链接报告：${links.report_path}`);
+    }
     if (verification && !['passed','not_run','unsupported'].includes(verification.status) && !verification.reports?.length)
       lines.push('未生成可用报告，请查看上方错误信息。');
     return lines.filter(Boolean).join('\n');
