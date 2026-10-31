@@ -106,7 +106,7 @@ def main():
     assert not workspace.diagnostics, workspace.diagnostics
     assert not generated["diagnostics"], generated["diagnostics"]
     assert len(workspace.nodes) == generated["nodes"]
-    nodes = list(workspace.nodes)
+    nodes = list(workspace.locations)
     count = min(max(args.render_limit, 0), len(nodes))
     selected = [nodes[i * len(nodes) // count] for i in range(count)]
     renders = []

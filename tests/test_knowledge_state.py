@@ -149,14 +149,15 @@ def test_import_publishes_navigator_index_before_job_succeeds(workspace, monkeyp
         assert status['status'] == 'succeeded', status
         project = client.get('/api/project').json()
         nodes = [n for n in project['nodes'] if n['path'].startswith('Topology/Ren25/')]
-        assert len(nodes) == int(auto_blueprint)
+        assert len(nodes) == 2 * int(auto_blueprint)
+        current_document = 'blueprint/Topology/Ren25/index.md' if nodes else 'tex/Topology/Ren25/Ren25.tex'
         response = client.post('/api/navigator/focus', json={
             'session': 'import-browser', 'node_id': nodes[0]['id'] if nodes else None,
-            'document': 'tex/Topology/Ren25/Ren25.tex', 'view': 'rendered' if nodes else 'paper'})
+            'document': current_document, 'view': 'rendered' if nodes else 'paper'})
         assert response.status_code == 200, response.text
         state = response.json()
-        assert state['current_document'] == 'tex/Topology/Ren25/Ren25.tex'
-        assert state['current_node']['title'] == 'main' if nodes else state['current_node'] is None
+        assert state['current_document'] == current_document
+        assert state['current_node']['title'] == 'index' if nodes else state['current_node'] is None
         with KnowledgeNavigator(workspace, session='import-browser') as nav:
             assert nav.kb_state()['current_node'] == state['current_node']
 

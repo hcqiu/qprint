@@ -32,7 +32,9 @@ After publishing a paper, the importer scans both incoming and outgoing citation
 
 Adjacent locators such as `\cite[Thm.~2.3]{B}`, `Proposition 2.3 in \cite{B}` and `\cite{B}, Defn. 2.3` resolve to the corresponding Blueprint node. Matching is case-insensitive and supports common theorem, proposition, lemma, definition, corollary, remark, example and conjecture abbreviations. Target numbering respects loaded TeX include order and counters; explicitly numbered Blueprint titles can serve as a fallback. Missing or ambiguous nodes, unsupported ranges and ambiguous multi-key citations produce diagnostics instead of guessed links.
 
-Bare citations link to the first node in the target `index.md`. If it has no level-one heading, a bibliography index node is added while retaining its content. Full node IDs are inserted in `\uses{...}` immediately after citations and merged into the owning Blueprint node's `uses` metadata. Unbound citations receive TeX annotations and a diagnostic. Repeated runs preserve existing links and avoid duplicate insertions.
+Generated projects start with `index.md#index`. This node declares `uses` dependencies on every content node and displays a clickable table of contents grouped by milestone in the reader. Links within a project show node names. Cross-project links show `project/node`, prefixed with the target project's directory when the projects have different parent directories. This applies to Markdown links, TeX `uses` and dependency buttons. Milestone links also establish file-level dependencies.
+
+Bare citations and unresolved or ambiguous locators link to the target `index.md#index`. Older projects receive this directory node if missing, preserving existing content, nodes and links. Full node IDs are inserted in `\uses{...}` immediately after citations and merged into the owning Blueprint node's `uses` metadata. Unbound citations receive TeX annotations and a diagnostic. Repeated runs preserve existing links and avoid duplicate insertions. Ambiguous target papers still produce diagnostics without a link.
 
 Run from the Qprint root:
 

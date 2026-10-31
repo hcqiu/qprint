@@ -84,12 +84,12 @@ def test_bidirectional_links_numbers_index_markdown_backups_and_idempotence(tmp_
     report = link_workspace(tmp_path, imported='2401.00002')
     assert report['links_added'] == 3 and report['citations_changed'] == 3
     assert r'\cite[Prop. 1]{B}\uses{Topic/B/results#b}' in (a/'main.tex').read_text(encoding='utf-8')
-    assert r'\cite{B}\uses{Topic/B/index#文献索引}' in (a/'main.tex').read_text(encoding='utf-8')
-    assert r'\cite{A}\uses{Topic/A/index#文献索引}' in (b/'main.tex').read_text(encoding='utf-8')
+    assert r'\cite{B}\uses{Topic/B/index#index}' in (a/'main.tex').read_text(encoding='utf-8')
+    assert r'\cite{A}\uses{Topic/A/index#index}' in (b/'main.tex').read_text(encoding='utf-8')
     w = Workspace(tmp_path)
     assert '[[Topic/B/results#b]]' in w.nodes['Topic/A/results#a'].uses
     assert not w.diagnostics
-    assert len(w.edges) == 3
+    assert len(w.edges) == 5
     rendered = w.detail('Topic/A/results#a')['tex_content']
     assert 'href="#node=Topic%2FB%2Fresults%23b"' in rendered['html']
     assert not any('依赖未解析' in warning for warning in rendered['warnings'])
@@ -99,13 +99,13 @@ def test_bidirectional_links_numbers_index_markdown_backups_and_idempotence(tmp_
     assert again['links_added'] == 0 and not again['files']
 
 
-def test_missing_and_duplicate_numbered_nodes_are_not_linked_to_index(tmp_path):
+def test_missing_and_duplicate_numbered_nodes_fall_back_to_index(tmp_path):
     a = paper(tmp_path,'A','2401.00001', r'\bpnode{a}\cite[Thm 99]{B}. \cite[Thm 1]{B}.', bbl('B','2401.00002'))
     paper(tmp_path,'B','2401.00002', r'\bpnode{one}\begin{thm}X\end{thm}\setcounter{thm}{0}\bpnode{two}\begin{thm}Y\end{thm}', preamble=r'\newtheorem{thm}{Theorem}')
     report = link_workspace(tmp_path)
-    assert report['links_added'] == 0
+    assert report['links_added'] == 2
     assert len(report['diagnostics']) == 2
-    assert r'\uses' not in (a/'main.tex').read_text(encoding='utf-8')
+    assert (a/'main.tex').read_text(encoding='utf-8').count(r'\uses{Topic/B/index#index}') == 2
     assert (tmp_path / report['report_path']).is_file()
 
 
@@ -121,7 +121,7 @@ def test_bib_only_nested_chapter_and_import_filter(tmp_path):
     report = link_workspace(tmp_path, imported='2401.00002v2')
     assert report['links_added'] == 1 and not report['diagnostics']
     assert r'\cite{C}\uses' not in (a/'chapters/result.tex').read_text(encoding='utf-8')
-    assert 'Topic/B/index#文献索引' in (a/'chapters/result.tex').read_text(encoding='utf-8')
+    assert 'Topic/B/index#index' in (a/'chapters/result.tex').read_text(encoding='utf-8')
     assert r'\providecommand{\uses}[1]{}' in (a/'main.tex').read_text(encoding='utf-8')
 
 
@@ -143,7 +143,7 @@ def test_duplicate_arxiv_projects_and_multiple_keys_with_locator_are_ambiguous(t
     paper(tmp_path,'Bcopy','2401.00002v2',r'\bpnode{b}B')
     paper(tmp_path,'C','2401.00003',r'\bpnode{c}C')
     report=link_workspace(tmp_path)
-    assert not report['links_added'] and len(report['diagnostics'])==2
+    assert report['links_added']==1 and len(report['diagnostics'])==2
 
 
 def test_existing_manual_uses_and_reviewed_metadata_are_preserved(tmp_path):
@@ -192,7 +192,7 @@ def test_import_automatically_links_new_and_existing_papers_in_both_directions(t
     assert result['blueprint']['status']=='generated'
     assert links['status']=='completed' and links['links_added']==2 and not links['diagnostics']
     assert '#thm:b}' in (a/'main.tex').read_text(encoding='utf-8')
-    assert r'\cite{A}\uses{Topic/A/index#文献索引}' in (tmp_path/'tex/Topic/B/B.tex').read_text(encoding='utf-8')
+    assert r'\cite{A}\uses{Topic/A/index#index}' in (tmp_path/'tex/Topic/B/B.tex').read_text(encoding='utf-8')
     assert not Workspace(tmp_path).diagnostics
 
 
@@ -217,12 +217,30 @@ def test_explicit_numbered_blueprint_title_and_after_cite_locator_are_idempotent
 
 
 def test_existing_equivalent_markdown_link_is_not_duplicated(tmp_path):
-    paper(tmp_path,'A','2401.00001',r'\bpnode{a}\cite{B}\uses{Topic/B/index#Index}',bbl('B','2401.00002'))
+    paper(tmp_path,'A','2401.00001',r'\bpnode{a}\cite{B}\uses{Topic/B/index#index}',bbl('B','2401.00002'))
     paper(tmp_path,'B','2401.00002',r'\bpnode{b}B')
-    (tmp_path/'blueprint/Topic/B/index.md').write_text('# Index\n',encoding='utf-8')
+    (tmp_path/'blueprint/Topic/B/index.md').write_text('# index\n',encoding='utf-8')
     md=tmp_path/'blueprint/Topic/A/results.md'
-    text=md.read_text(encoding='utf-8').replace('uses: []','uses: ["[[Topic/B/index.md#Index]]"]')
+    text=md.read_text(encoding='utf-8').replace('uses: []','uses: ["[[Topic/B/index.md#index]]"]')
     md.write_text(text,encoding='utf-8')
     report=link_workspace(tmp_path)
     assert report['links_added']==0 and not report['files']
     assert md.read_text(encoding='utf-8')==text
+
+
+@pytest.mark.parametrize('citation', [r'\cite{B}', r'\cite[Theorems 1--3]{B}'])
+def test_canonical_index_preserves_legacy_node_and_has_directory(tmp_path, citation):
+    a = paper(tmp_path, 'A', '2401.00001', r'\bpnode{a}' + citation, bbl('B', '2401.00002'))
+    paper(tmp_path, 'B', '2401.00002', r'\bpnode{b}Result.')
+    path = tmp_path / 'blueprint/Topic/B/index.md'
+    original = '---\ntitle: Reviewed paper\n---\n\n# 文献索引\nReviewed index prose.\n'
+    path.write_text(original, encoding='utf-8')
+    report = link_workspace(tmp_path)
+    assert report['links_added'] == 1
+    assert r'\uses{Topic/B/index#index}' in (a / 'main.tex').read_text(encoding='utf-8')
+    assert '# 文献索引\nReviewed index prose.' in path.read_text(encoding='utf-8')
+    workspace = Workspace(tmp_path)
+    assert not workspace.diagnostics
+    assert workspace.nodes['Topic/B/index#index'].uses == ['[[Topic/B/results#b]]']
+    assert 'data-milestone="Topic/B/results.md"' in workspace.detail('Topic/B/index#index')['body_html']
+    assert not link_workspace(tmp_path)['files']

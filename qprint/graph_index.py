@@ -9,10 +9,34 @@ import re
 from urllib.parse import unquote
 
 from markdown_it import MarkdownIt
+import yaml
 
 from .blueprint import WIKILINK
 
 EXTERNAL = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
+
+
+def document_order(path):
+    file = PurePosixPath(str(path).replace('\\', '/'))
+    return file.parent.as_posix(), file.name.casefold() != 'index.md', file.name
+
+
+def project_index_content(files, titles=None):
+    """A real node with node dependencies and milestone links in reading order."""
+    titles = titles or {}
+    uses = [f'[[{node.id}]]' for members in files.values() for node in members]
+    metadata = yaml.safe_dump({'kind': 'other', 'uses': uses}, allow_unicode=True, sort_keys=False).strip()
+    lines = ['# index', '', '```qprint', metadata, '```', '', '## 目录', '']
+    for path, members in files.items():
+        title = titles.get(path, PurePosixPath(path).stem)
+        # Labels remain literal text even if a TeX section contains Markdown syntax.
+        title = title.replace('|', ' / ').replace('[', '［').replace(']', '］').replace('\n', ' ')
+        lines.extend([f'### [[{path}|{title}]]', ''])
+        lines.extend(f'- [[{node.id}]]' for node in members)
+        if not members:
+            lines.append('暂无节点。')
+        lines.append('')
+    return '\n'.join(lines)
 
 
 def resolve_document(reference: str, current: str, documents: dict) -> str | None:
@@ -63,7 +87,7 @@ def aggregate_status(nodes):
 
 def build_graph_index(documents: dict[str, str], nodes: dict) -> dict:
     indexes = {}
-    for path in sorted(documents):
+    for path in sorted(documents, key=document_order):
         file = PurePosixPath(path)
         folder = file.parent.as_posix()
         # Prefer the named index when a folder also contains index.md.
@@ -77,14 +101,14 @@ def build_graph_index(documents: dict[str, str], nodes: dict) -> dict:
     grouped_nodes = defaultdict(list)
     for node in nodes.values():
         grouped_nodes[node.path].append(node)
-    for path in sorted(documents):
+    for path in sorted(documents, key=document_order):
         parent = PurePosixPath(path).parent
         project = next((folder.as_posix() for folder in (parent, *parent.parents) if folder.as_posix() in indexes), parent.as_posix())
         file_projects[path] = project
         grouped_files[project].append(path)
 
     files = []
-    for path in sorted(documents):
+    for path in sorted(documents, key=document_order):
         members = grouped_nodes[path]
         files.append({"id": path, "title": PurePosixPath(path).stem, "path": path,
                       "project_id": file_projects[path], "node_ids": [n.id for n in members],

@@ -10,7 +10,7 @@ import tempfile
 import yaml
 
 from .blueprint import Node, parse_markdown, resolve_link, resolve_tex_use
-from .graph_index import build_graph_index
+from .graph_index import build_graph_index, project_index_content
 from .paths import WorkspaceError, read_text, safe_path
 from .tex import TexDocument, mask_comments, render_tex, tex_commands
 from .tex_support import compact_label_source
@@ -264,7 +264,8 @@ def validate(root: Path, project: str, render_limit: int = 3):
             else:
                 diagnostics.append(f"{node.id}: 未解析依赖 {link}")
         if not node.tex:
-            diagnostics.append(f"{node.id}: 无 TeX 绑定")
+            if not (Path(node.path).name == 'index.md' and node.title == 'index'):
+                diagnostics.append(f"{node.id}: 无 TeX 绑定")
             continue
         path, label = node.tex.rsplit("#", 1) if "#" in node.tex else (node.path[:-3], node.tex)
         path = path.removesuffix(".tex") + ".tex"
@@ -331,6 +332,7 @@ def generate(root: Path, sources: list[str], dest: str, *, title: str,
         raise WorkspaceError("项目路径不能包含 # 或方括号")
     documents, existing = catalog(root)
     diagnostics, drafts, generated, annotations = [], {}, {}, {}
+    draft_titles = {}
     overrides = dependency_map or {}
     if not isinstance(overrides, dict) or any(not isinstance(k, str) or not isinstance(v, str) for k, v in overrides.items()):
         raise WorkspaceError("dependency-map 必须是标签到节点 ID 的 JSON 对象")
@@ -367,6 +369,7 @@ def generate(root: Path, sources: list[str], dest: str, *, title: str,
             filename = f"{file_prefix}{group:0{group_width}d}-{_slug(section['title'])}.md"
             md_path = f"{dest}/{filename}"
             drafts[md_path] = []
+            draft_titles[md_path] = section['title']
             for anchor in groups[group]:
                 label = anchor["label"]
                 node = Node(f"{md_path[:-3]}#{label}", label, md_path, 1, "",
@@ -422,10 +425,10 @@ def generate(root: Path, sources: list[str], dest: str, *, title: str,
     index_path = f"{dest}/index.md"
     frontmatter = yaml.safe_dump({"title": title, "authors": authors, "year": str(year), "keywords": keywords},
                                 allow_unicode=True, sort_keys=False).strip()
-    output[index_path] = f"---\n{frontmatter}\n---\n\n## Blueprint 索引\n\n" + "\n".join(
-        f"- [[{path}]]" for path in output) + "\n\n## 依赖项目\n\n" + (
+    index_text = f"---\n{frontmatter}\n---\n\n" + project_index_content(drafts, draft_titles) + "\n\n## 依赖项目\n\n" + (
         "\n".join(f"- [[{path}]]" for path in sorted(dependencies)) or "暂无已解析的外部项目依赖。") + "\n"
-    report = {"files": list(output), "nodes": len(generated), "diagnostics": diagnostics,
+    output = {index_path: index_text, **output}
+    report = {"files": list(output), "nodes": len(generated) + 1, "diagnostics": diagnostics,
               "review_required": True, "dry_run": dry_run}
     if not dry_run:
         target.parent.mkdir(parents=True, exist_ok=True)

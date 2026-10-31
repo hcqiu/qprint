@@ -32,7 +32,9 @@
 
 `\cite[Thm.~2.3]{B}`、`Proposition 2.3 in \cite{B}`、`\cite{B}, Defn. 2.3` 等紧邻定位会链接到 B 的相应 Blueprint 节点。识别不区分大小写，包含 theorem/thm/th、proposition/prop/prp、lemma/lem、definition/def/defn，以及 corollary、remark、example、conjecture 的常见简写。目标编号按已加载 TeX 的包含顺序和计数器计算；没有环境编号时可使用明确写有类型及编号的 Blueprint 标题。编号不存在、重复、范围不支持，或多个 cite 键无法分配定位时，保留原文并记录诊断。
 
-没有具体定位的引用链接到目标项目 `index.md` 的首个节点；索引没有一级标题时，保留原内容并补充“文献索引”节点。工具紧接 cite 添加完整节点 ID 的 `\uses{...}`，并合并到所在 Blueprint 节点的 `uses` 元数据，保留已有依赖、正文和形式化绑定。未绑定节点的引用只写入 TeX 并报告；重复执行不会重复插入。
+自动生成的项目以 `index.md#index` 节点开头。它通过 `uses` 依赖所有内容节点，在正文阅读区按 milestone 分组显示目录；milestone 和节点都可点击。同项目节点链接只显示名称；跨项目链接显示 `项目名/节点名`，当项目所在目录不同时显示 `目录路径/项目名/节点名`。此规则同时用于 Markdown、TeX `uses` 和依赖按钮。milestone 链接也参与文件层级依赖图。
+
+没有具体定位、或具体编号不存在、不唯一、无法解析的引用，链接到目标项目的 `index.md#index`。旧项目缺少此节点时，保留原内容并补充 `index` 目录节点；已有旧节点和链接仍然有效。工具紧接 cite 添加完整节点 ID 的 `\uses{...}`，并合并到所在 Blueprint 节点的 `uses` 元数据，保留已有依赖、正文和形式化绑定。未绑定节点的引用只写入 TeX 并报告；重复执行不会重复插入。无法确定目标论文时仍只记录诊断。
 
 可从 Qprint 根目录独立执行：
 

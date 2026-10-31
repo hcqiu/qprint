@@ -217,7 +217,7 @@ def citation_anchor(key: str) -> str:
 
 
 def render_tex(fragment: str, preamble: str = "", references: dict[str, str] | None = None,
-               *, labels: dict | None = None, index_only: bool = False,
+               *, labels: dict | None = None, reference_labels: dict[str, str] | None = None, index_only: bool = False,
                bibliography: dict | None = None, bibliography_only: bool = False,
                media: list[str] | None = None, environment_names: bool = False):
     """Isolate macro expansion so malformed/recursive TeX cannot hang the server."""
@@ -227,7 +227,7 @@ def render_tex(fragment: str, preamble: str = "", references: dict[str, str] | N
         completed = subprocess.run(
             [sys.executable, "-m", f"{__package__}._tex_worker"],
             input=json.dumps({"fragment": fragment, "preamble": preamble, "references": references or {},
-                              "labels": labels, "index_only": index_only,
+                              "labels": labels, "reference_labels": reference_labels, "index_only": index_only,
                               "bibliography": bibliography, "bibliography_only": bibliography_only, "media": media,
                               "environment_names": environment_names}),
             capture_output=True, text=True, encoding="utf-8", timeout=8,
@@ -245,7 +245,7 @@ def render_tex(fragment: str, preamble: str = "", references: dict[str, str] | N
 
 
 def _render_tex_dom(fragment: str, preamble: str = "", references: dict[str, str] | None = None,
-                    *, labels: dict | None = None, index_only: bool = False,
+                    *, labels: dict | None = None, reference_labels: dict[str, str] | None = None, index_only: bool = False,
                     bibliography: dict | None = None, bibliography_only: bool = False,
                     media: list[str] | None = None, environment_names: bool = False):
     from plasTeX import Command
@@ -299,7 +299,9 @@ def _render_tex_dom(fragment: str, preamble: str = "", references: dict[str, str
         for label in dict.fromkeys(v.strip() for v in labels if v.strip()):
             target = references.get(label)
             if target:
-                links.append(f'<a class="wikilink tex-use" href="#node={quote(target, safe="")}">↗ {escape(label)}</a>')
+                display = target.rsplit('#', 1)[-1] if '#' in label else label
+                display = (reference_labels or {}).get(label, display)
+                links.append(f'<a class="wikilink tex-use" href="#node={quote(target, safe="")}">↗ {escape(display)}</a>')
             else:
                 warnings.append(f"Blueprint 依赖不存在或不唯一: {label}")
                 links.append(f'<span class="unresolved tex-use">↗ {escape(label)}</span>')

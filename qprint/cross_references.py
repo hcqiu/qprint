@@ -12,6 +12,7 @@ import yaml
 
 from .bibliography import reference_arxiv_id
 from .blueprint import parse_markdown
+from .graph_index import project_index_content
 from .paths import WorkspaceError, read_text, safe_path
 from .tex import mask_comments, render_tex, tex_commands
 from .tex_support import braced
@@ -278,16 +279,15 @@ def _link_workspace(root, *, imported, dry_run):
         nodes, errors = parse_markdown(path, text)
         if errors:
             raise WorkspaceError(f'文献索引无法解析: {path}')
-        if nodes:
-            target = nodes[0].id
-        else:
+        target = path.removesuffix('.md') + '#index'
+        if not any(node.id == target for node in nodes):
             front = re.match(r'\A---\s*\n.*?\n---\s*\n', text, re.S)
             offset = front.end() if front else 0
-            text = text[:offset] + '\n# 文献索引\n\n' + text[offset:]
-            if not workspace.documents.get(path):
-                text += '\n' + '\n'.join(f'- [[{p}]]' for p in sorted(workspace.documents) if p.startswith(project + '/')) + '\n'
+            files = {file['path']: [workspace.nodes[key] for key in file['node_ids']]
+                     for file in workspace.graph_index['files']
+                     if file['project_id'] == project and file['path'] != path}
+            text = text[:offset] + '\n' + project_index_content(files) + '\n\n' + text[offset:]
             stage('blueprint/' + path, text)
-            target = path.removesuffix('.md') + '#文献索引'
         index_cache[project] = target
         return target
 
@@ -359,18 +359,18 @@ def _link_workspace(root, *, imported, dry_run):
                     continue
                 target_project = candidates[0]
                 if call['uncertain'] or call['locators'] and len(call['keys']) > 1:
-                    diagnostics.append({**context, 'reason': '文献定位语义不明确，未自动链接'})
-                    continue
-                if not call['locators']:
+                    diagnostics.append({**context, 'reason': '文献定位语义不明确，已链接到 index'})
+                    matches = [index_node(target_project)]
+                elif not call['locators']:
                     matches = [index_node(target_project)]
                 else:
                     if target_project not in number_cache:
                         number_cache[target_project] = _numbered_nodes(workspace, target_project, diagnostics)
                     choices = [number_cache[target_project].get(locator, set()) for locator in call['locators']]
                     if any(len(choice) != 1 for choice in choices):
-                        diagnostics.append({**context, 'locators': call['locators'], 'reason': '编号节点不存在或不唯一，未自动链接'})
-                        continue
-                    matches = [next(iter(choice)) for choice in choices]
+                        diagnostics.append({**context, 'locators': call['locators'], 'reason': '编号节点不存在或不唯一，已链接到 index'})
+                    matches = list(dict.fromkeys(next(iter(choice)) if len(choice) == 1 else index_node(target_project)
+                                                 for choice in choices))
                 if any(re.search(r'[{},%\\\r\n]', target) for target in matches):
                     diagnostics.append({**context, 'reason': '节点 ID 不能安全写入 uses'})
                     continue

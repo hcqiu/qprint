@@ -108,14 +108,14 @@ def test_paper_import_default_pipeline_and_opt_out(tmp_path, enabled):
         assert result['blueprint']['status'] == 'not_run'
         assert not (tmp_path / 'blueprint').exists()
         return
-    assert result['blueprint']['nodes'] == 2
+    assert result['blueprint']['nodes'] == 3
     assert result['blueprint']['status'] == 'generated'
     report = json.loads((tmp_path / 'blueprint/Topology/Paper/generation-report.json').read_text(encoding='utf-8'))
     assert report['annotation']['marked_nodes'] == 2
     index = (tmp_path / 'blueprint/Topology/Paper/index.md').read_text(encoding='utf-8')
     assert 'A paper' in index and 'A. Author' in index and '2020' in index
     workspace = Workspace(tmp_path)
-    assert len(workspace.nodes) == 2 and not workspace.diagnostics
+    assert len(workspace.nodes) == 3 and not workspace.diagnostics
 
 
 def test_generation_failure_does_not_publish_download(tmp_path, monkeypatch):
@@ -243,7 +243,7 @@ def test_import_generates_nodes_for_unlabelled_theorems(tmp_path):
                           downloader=lambda url: b'%PDF-1.7' if '/pdf/' in url else source.encode())
     assert result['blueprint']['status'] == 'generated'
     workspace = Workspace(tmp_path)
-    assert [n.title for n in workspace.nodes.values()] == ['Theorem 2.1']
+    assert [n.title for n in workspace.nodes.values()] == ['index', 'Theorem 2.1']
     assert not workspace.diagnostics
     assert not validate(tmp_path, 'Topology/Paper', render_limit=0)['diagnostics']
 

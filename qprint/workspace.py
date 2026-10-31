@@ -1,6 +1,6 @@
 from html import escape
 from collections import Counter
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import os
 import tempfile
 from threading import RLock
@@ -12,7 +12,7 @@ from .blueprint import WIKILINK, parse_markdown, revision
 from .bibliography import reference_arxiv_id
 from .clipboard_context import build_contexts
 from .formal import locate_code
-from .graph_index import build_graph_index
+from .graph_index import build_graph_index, document_order, resolve_document
 from .node_lookup import NodeLookup
 from .paths import WorkspaceError, read_text, safe_path
 from .tex import TexDocument, render_tex, tex_commands, merge_tex_warnings
@@ -38,7 +38,7 @@ class Workspace:
             self.tex_label_cache = {}
             self.tex_reference_scope = None
             self.bibliography_cache = {}
-            for path in sorted((self.root / "blueprint").rglob("*.md")):
+            for path in sorted((self.root / "blueprint").rglob("*.md"), key=document_order):
                 relative = path.relative_to(self.root / "blueprint").as_posix()
                 try:
                     text = read_text(safe_path(self.root, f"blueprint/{relative}"))
@@ -89,23 +89,51 @@ class Workspace:
                                "has_bibliography": bool(self.bibliography_files(path) or self.inline_bibliography_files(path))})
             return {"name": self.root.name, "nodes": [n.public() for n in self.nodes.values()], "edges": self.edges, "graph": self.graph_index, "papers": papers, "diagnostics": self.diagnostics, "stats": {"nodes": len(self.nodes), "complete": sum(n.status == "complete" for n in self.nodes.values()), "edges": len(self.edges), "papers": len(self.tex)}}
 
+    def _link_label(self, current_path: str, target_path: str, title: str) -> str:
+        current = self.graph_index['file_projects'][current_path]
+        target = self.graph_index['file_projects'][target_path]
+        if current == target:
+            return title
+        prefix = PurePosixPath(target).name if PurePosixPath(current).parent == PurePosixPath(target).parent else target
+        if target == '.':
+            prefix = self.root.name
+        return f'{prefix}/{title}'
+
     def detail(self, node_id: str):
         with self.lock:
             if node_id not in self.nodes:
                 raise KeyError(node_id)
             node = self.nodes[node_id]
-            html = MarkdownIt("commonmark", {"html": False}).render(node.body)
             def replace(match):
-                # Match on already escaped HTML: unescape for resolving, escape label again.
-                from html import unescape
-                raw = unescape(match[0])
+                raw = match[0]
                 target = self.lookup.link(raw, node.id)
-                label = unescape(match[1]).split("|")[-1]
+                reference, separator, alias = match[1].partition('|')
+                label = alias if separator else self.nodes[target].title if target else reference.rsplit('#', 1)[-1]
                 if target:
-                    return f'<a class="wikilink" href="#node={quote(target, safe="")}">{escape(label)}</a>'
+                    label = self._link_label(node.path, self.nodes[target].path, label)
+                    return f'<a class="wikilink tex-use" href="#node={quote(target, safe="")}">↗ {escape(label)}</a>'
+                document = resolve_document(raw, node.path, self.documents) if '#' not in reference else None
+                if document:
+                    label = alias if separator else Path(document).stem
+                    label = self._link_label(node.path, document, label)
+                    return f'<a class="wikilink tex-use" data-milestone="{escape(document, quote=True)}" href="#milestone={quote(document, safe="")}">↗ {escape(label)}</a>'
                 return f'<span class="unresolved">{escape(label)}</span>'
-            html = WIKILINK.sub(replace, html)
-            result = {**node.public(), "body_html": html, "formal": [locate_code(self.root, b) for b in node.bindings], "tex_content": None, "previous": None, "next": None}
+
+            def wikilink_rule(state, silent):
+                match = WIKILINK.match(state.src, state.pos)
+                if not match or match.end() > state.posMax:
+                    return False
+                if not silent:
+                    token = state.push('html_inline', '', 0)
+                    token.content = replace(match)
+                state.pos = match.end()
+                return True
+
+            markdown = MarkdownIt("commonmark", {"html": False})
+            markdown.inline.ruler.before('link', 'wikilink', wikilink_rule)
+            html = markdown.render(node.body)
+            is_index = Path(node.path).name == 'index.md' and node.title == 'index'
+            result = {**node.public(), "is_index": is_index, "body_html": html, "formal": [locate_code(self.root, b) for b in node.bindings], "tex_content": None, "previous": None, "next": None}
             if node_id in self.locations:
                 path, label = self.locations[node_id]
                 doc = self.tex[path]
@@ -116,9 +144,16 @@ class Workspace:
                                       if (target := self.lookup.tex_use(value, node))}
                     except ValueError:
                         references = {}
+                    reference_labels = {
+                        value: self._link_label(node.path, self.nodes[target].path,
+                                               value if '#' not in value and self.graph_index['node_projects'][target] == self.graph_index['node_projects'][node_id]
+                                               else self.nodes[target].title)
+                        for value, target in references.items()
+                    }
                     bibliography = self.bibliography(path)
                     prepared, media_html, media_warnings = self.media.prepare(source, path, doc.preamble)
                     rendered, warnings = render_tex(prepared, doc.preamble, references,
+                                                    reference_labels=reference_labels,
                                                     labels=self.tex_labels(path, node_id),
                                                     bibliography=bibliography["citations"], media=media_html)
                     self.render_cache[node_id] = rendered, merge_tex_warnings([*bibliography["warnings"], *media_warnings, *warnings])
@@ -129,8 +164,20 @@ class Workspace:
                 i = order.index(node_id)
                 result["previous"] = order[i - 1] if i else None
                 result["next"] = order[i + 1] if i + 1 < len(order) else None
-            result["relations"] = [{"kind": e["kind"], "id": e["source"], "title": self.nodes[e["source"]].title} for e in self.edges if e["target"] == node_id]
-            result["backlinks"] = [{"kind": e["kind"], "id": e["target"], "title": self.nodes[e["target"]].title} for e in self.edges if e["source"] == node_id]
+            project = self.graph_index['node_projects'][node_id]
+            index_id = ('index' if project == '.' else f'{project}/index') + '#index'
+            if index_id in self.nodes:
+                reading = [key for key in self.order if self.graph_index['node_projects'][key] == project]
+                if is_index:
+                    result['next'] = reading[0] if reading else None
+                elif reading and node_id == reading[0]:
+                    result['previous'] = index_id
+            def related(target, kind):
+                other = self.nodes[target]
+                return {"kind": kind, "id": target, "title": other.title,
+                        "label": self._link_label(node.path, other.path, other.title)}
+            result["relations"] = [related(e["source"], e["kind"]) for e in self.edges if e["target"] == node_id]
+            result["backlinks"] = [related(e["target"], e["kind"]) for e in self.edges if e["source"] == node_id]
             result["copy_context"] = self.context_bundles[node_id]
             return result
 
