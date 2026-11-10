@@ -2,7 +2,7 @@
 
 [中文](index.md) | [English](index.en.md)
 
-Chinese documents use the base filename; English documents use `.en.md`. Both versions cover the same scope: `0.1.0` and the graph granularity extension dated 2026-09-20.
+The main README is in English, with its Chinese version in `README.zh.md`. Other Chinese documents use the base filename; their English versions use `.en.md`. Both versions cover the same scope: `0.1.0` and the graph granularity extension dated 2026-09-20.
 
 ## Reading paths
 
@@ -10,7 +10,7 @@ Start with README to use the application and PRODUCT to understand its purpose. 
 
 | Topic | 中文 | English |
 | --- | --- | --- |
-| Installation, startup, and basic usage | [README](../README.md) | [README](../README.en.md) |
+| Installation, startup, and basic usage | [README](../README.zh.md) | [README](../README.md) |
 | Licensing and commercial authorization | [licensing](licensing.md) | [licensing](licensing.en.md) |
 | Product definition and boundaries | [PRODUCT](../PRODUCT.md) | [PRODUCT](../PRODUCT.en.md) |
 | Architecture and decisions | [ARCHITECTURE](../ARCHITECTURE.md) | [ARCHITECTURE](../ARCHITECTURE.en.md) |

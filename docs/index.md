@@ -2,7 +2,7 @@
 
 [中文](index.md) | [English](index.en.md)
 
-中文文档使用原文件名，英文版本使用 `.en.md`，两版保持相同范围。本文档集对应 `0.1.0` 及 2026-09-20 图谱分级扩展。
+主 README 使用英文，中文版为 `README.zh.md`。其余中文文档使用原文件名，英文版本使用 `.en.md`，两版保持相同范围。本文档集对应 `0.1.0` 及 2026-09-20 图谱分级扩展。
 
 ## 阅读路径
 
@@ -10,7 +10,7 @@
 
 | 内容 | 中文 | English |
 | --- | --- | --- |
-| 安装、启动与基本使用 | [README](../README.md) | [README](../README.en.md) |
+| 安装、启动与基本使用 | [README](../README.zh.md) | [README](../README.md) |
 | 许可证与商业授权 | [licensing](licensing.md) | [licensing](licensing.en.md) |
 | 产品定义与边界 | [PRODUCT](../PRODUCT.md) | [PRODUCT](../PRODUCT.en.md) |
 | 架构与技术决策 | [ARCHITECTURE](../ARCHITECTURE.md) | [ARCHITECTURE](../ARCHITECTURE.en.md) |

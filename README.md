@@ -1,52 +1,59 @@
 # Qprint
 
-[中文](README.md) | [English](README.en.md)
+[English](README.md) | [中文](README.zh.md)
 
-以 Markdown 为中心的数学知识图谱与 proof navigation IDE。TeX 论文、Lean / Agda / Coq 代码通过 blueprint 节点连接，资料保留为普通文件，可直接用 Obsidian 或其他编辑器管理。
+A mathematical knowledge graph and formalized proof navigation IDE. Blueprint nodes connect TeX papers with Lean / Agda / Coq code. Node content is stored in Markdown files that you can manage directly in Obsidian or any other editor.
 
-当前包版本为 `0.1.0`。文档描述当前实现；未来工作单独列在 TODO 中。
+1. Organize a visual knowledge graph at three levels—projects, milestones, and blueprint nodes (such as definitions, theorems, and conjectures)—for quick navigation by humans and AI.
+2. Automatically import LaTeX from arXiv or GitHub and build a knowledge graph that includes all dependencies across papers.
+3. Copy text from a page with node information and prompts automatically appended. Paste it into an agent so it can use skills to explore, conduct research, and answer questions.
+4. Automatically type-check formalized code imported from GitHub, with natural language and formalized code shown side by side.
 
-**许可证：非商业免费，商业用途须另行取得书面授权。** 个人非商业学习、非营利教育和学术研究可免费使用；公司内部使用、商业 SaaS、商业产品集成、再销售等需要商业授权。版权人为 Haochen Qiu。这是源码可见项目。范围与例外见 [许可指南](docs/licensing.md)、[非商业许可证](LICENSE)及[商业许可条款](COMMERCIAL-LICENSE.md)；第三方内容沿用各自许可证。
+**License: free for noncommercial use; commercial use requires separate written authorization.** Personal noncommercial learning, nonprofit education, and academic research are free of charge. Internal company use, commercial SaaS, integration into commercial products, resale, and similar uses require commercial authorization. The copyright holder is Haochen Qiu. This is a source-available project. See the [licensing guide](docs/licensing.en.md), [noncommercial license](LICENSE), and [commercial terms](COMMERCIAL-LICENSE.md) for scope and exceptions. Third-party material retains its own licenses.
 
-| 文档 | 用途 |
+| Document | Purpose |
 | --- | --- |
-| [PRODUCT.md](PRODUCT.md) | 产品目标、用户流程、功能边界 |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | 模块职责、数据流、技术决策 |
-| [TODO.md](TODO.md) | 已完成基线、后续工作与验收条件 |
-| [docs/index.md](docs/index.md) | 模块文档及中英文导航 |
-| [Knowledge Navigator](docs/knowledge-navigator.md) | Agent 的增量索引、符号跳转、依赖与上下文工具 |
-| [docs/spec.md](docs/spec.md) | 开发规格与验收契约 |
-| [docs/verification.md](docs/verification.md) | 已执行的验证及已知限制 |
+| [PRODUCT.en.md](PRODUCT.en.md) | Product goals, workflows, and boundaries |
+| [ARCHITECTURE.en.md](ARCHITECTURE.en.md) | Module responsibilities, data flows, and technical decisions |
+| [TODO.en.md](TODO.en.md) | Completed baseline, future work, and acceptance criteria |
+| [docs/index.en.md](docs/index.en.md) | Module documentation and bilingual navigation |
+| [Knowledge Navigator](docs/knowledge-navigator.en.md) | Incremental indexing, symbol navigation, dependency and context tools for agents |
+| [docs/spec.en.md](docs/spec.en.md) | Development specification and acceptance contract |
+| [docs/verification.en.md](docs/verification.en.md) | Completed verification and known limitations |
 
-## 快速启动
+## Quick start
 
-首次安装：在 **Anaconda Prompt / Miniconda Prompt** 中进入 Qprint 根目录，执行：
+For first-time setup, open **Anaconda Prompt / Miniconda Prompt**, change to the Qprint root folder, and run:
 
 ```text
 conda init powershell
 conda env create -p .\.conda -f environment.yml
 ```
 
-`environment.yml` 会安装 Python 3.12+、项目和开发依赖。以后在 Qprint 根目录打开 PowerShell 或 Agent，直接运行：
+`environment.yml` installs Python 3.12+, Qprint, and its development dependencies. After setup, open PowerShell or an agent in the Qprint root folder and run:
 
 ```powershell
 .\.conda\python.exe -m qprint serve --workspace examples/demo --port 8765
 ```
 
-也可运行 `.\start.ps1`。打开 <http://127.0.0.1:8765>；默认仅监听本机。脚本使用项目内 `.conda`，缺少环境时会提示首次安装命令。
+You can also run `.\start.ps1`. Open <http://127.0.0.1:8765>; the server listens only on the local machine by default. The script uses the project's `.conda` environment and shows the first-time setup commands if it is missing.
 
-Agent 不执行 `conda activate`，也不需要 Conda 位于 PATH 或加载 PowerShell profile。若 Conda 可用，等价写法为 `conda run -p .\.conda python -m qprint agent state`。命令和路径均相对 Qprint 根目录；迁移安装位置时重新创建 `.conda`，不复制旧环境。
+On Windows, double-click `start-qprint.bat` in a workspace directory to start Qprint. `serve` adds this script to the workspace if it is missing. You can also copy `qprint/start-qprint.bat` into the workspace or generate it with `.\.conda\python.exe -m qprint launcher --workspace my-math`. The workspace must be inside the Qprint root folder. The script uses the root folder's `.conda` environment without requiring activation.
 
-依赖版本快照在 `requirements-lock.txt`，需要复现当前测试环境时，先安装该文件再安装项目：
+If the same workspace is already running through the script or `serve`, the launcher prints the existing URL without starting a second server. The first double-click launch tries port 8765 and selects an available port if it is occupied; use the URL printed in the console. Keep the first console window open to keep the server running, and press Ctrl+C to stop it. Press any key to close a window opened by a repeated launch. Existing scripts are not overwritten.
+
+Agents do not run `conda activate`, and neither Conda on PATH nor a loaded PowerShell profile is required. If Conda is available, `conda run -p .\.conda python -m qprint agent state` is an equivalent invocation. All commands and paths are relative to the Qprint root folder. When moving an installation, recreate `.conda` at the new location rather than copying the old environment.
+
+The dependency version snapshot is in `requirements-lock.txt`. To reproduce the current test environment, install it before installing the project:
 
 ```powershell
 .\.conda\python.exe -m pip install -r requirements-lock.txt
 .\.conda\python.exe -m pip install -e . --no-deps
 ```
 
-KaTeX JS、CSS、字体和许可证已保存在 `qprint/static/vendor/katex/`，阅读与图谱不依赖 CDN。重新获取固定版本资源可运行 `.\.conda\python.exe tools/vendor_assets.py`，脚本验证 npm 提供的 SHA-512 integrity。
+KaTeX JavaScript, CSS, fonts, and its license are bundled in `qprint/static/vendor/katex/`, so reading and graph views do not depend on a CDN. Run `.\.conda\python.exe tools/vendor_assets.py` to fetch the pinned assets again; the script verifies the SHA-512 integrity value provided by npm.
 
-## 使用自己的工作区
+## Use your own workspace
 
 ```text
 my-math/
@@ -63,13 +70,13 @@ my-math/
 .\.conda\python.exe -m qprint check --workspace my-math
 ```
 
-目录可为空，标准库节点不必有论文附件。文件在外部修改后点击“刷新”；应用不会后台改写文件。
+Directories may be empty, and standard library nodes do not need paper attachments. Click Refresh after modifying files externally; the application does not rewrite files in the background.
 
-已有 LaTeX Blueprint 与 Lean 工程可使用 [Formal Blueprint Project to QPrint](docs/formal-blueprint-project-to-qprint.md) 转换工具；输入源工程地址及输出文件夹名字，保留 label、依赖和已有描述，并从 `\lean` 生成源码绑定。
+For existing LaTeX Blueprint and Lean projects, use the [Formal Blueprint Project to QPrint](docs/formal-blueprint-project-to-qprint.md) converter (documentation in Chinese). Provide the source project location and an output folder name. The converter preserves labels, dependencies, and existing descriptions, and generates source bindings from `\lean` commands.
 
-## 编写节点
+## Author nodes
 
-一份 Markdown 可以包含多个节点。每个一级标题是一个节点，标题下方的 `qprint` YAML 围栏描述绑定，后续内容为 Markdown 正文。
+A Markdown file can contain multiple nodes. Each level-one heading defines a node. A `qprint` YAML fence below the heading describes its bindings, and the remaining content forms the Markdown body.
 
 ````markdown
 # My theorem
@@ -87,19 +94,19 @@ lean:
 agda: []
 coq: []
 ```
-这里写定理的描述、数学公式 $f : X \to Y$ 和 [[Topology/Basic#Continuous|连续性]] 链接。
+Write the theorem's description, mathematics such as $f : X \to Y$, and links such as [[Topology/Basic#Continuous|continuity]] here.
 ````
 
-节点地址是 `Topology/Notes#My theorem`。支持 `[[#同文件标题]]` 和唯一的 `[[文件名#标题]]`；重名文件请写完整 vault 路径。必须给 YAML 中的 wikilink 加引号。
+The node address is `Topology/Notes#My theorem`. Links support `[[#Heading in this file]]` and unambiguous `[[Filename#Heading]]` targets. For duplicate filenames, use the full vault path. Wikilinks in YAML must be quoted.
 
-* `kind`：`definition`、`lemma`、`theorem`、`conjecture`、`proof`、`other`。
-* `status`：`not_started`、`in_progress`、`complete`。这是作者记录的进度，不是编译器检查结果。
-* `uses` 是证明或定义的依赖，`inspired_by` 是思想来源。
-* 语言字段支持多个绑定；仅远程代码可以用 `declaration` + HTTPS `url`，不要求下载整个标准库。
-* `file` 相对于语言目录；`lines` 是从 1 开始的闭区间。简单声明可省略行号，复杂语法建议明确填写。
-* 二级标题不会创建新节点。不要在同一份文件内重复一级标题。
+- `kind`: `definition`, `lemma`, `theorem`, `conjecture`, `proof`, or `other`.
+- `status`: `not_started`, `in_progress`, or `complete`. This records the author's progress, not the result of a compiler check.
+- `uses` records dependencies of a proof or definition; `inspired_by` records sources of inspiration.
+- Language fields support multiple bindings. Bindings to remote code can use `declaration` with an HTTPS `url`, without downloading an entire standard library.
+- `file` is relative to the language directory; `lines` is a one-based, inclusive range. Simple declarations can omit line numbers; specifying them is recommended for complex syntax.
+- Level-two headings do not create new nodes. Do not repeat a level-one heading within the same file.
 
-论文只需添加定位标记，不需要加入形式化状态或依赖标签：
+Papers only need location markers, not formalization status or dependency tags:
 
 ```tex
 \documentclass{article}
@@ -116,41 +123,41 @@ The next mathematical object begins here.
 \end{document}
 ```
 
-`\bpnode` 放在环境外、所绑定内容之前；也能标记没有 theorem 环境的普通段落。当前节点展示到下一个标记之前的内容。`tex` 仅写标签名时，按 blueprint 的路径自动匹配 TeX 文件。
+Place `\bpnode` outside the environment, before the content it identifies. It can also mark ordinary paragraphs without a theorem environment. A node displays the content up to the next marker. When `tex` contains only a label, the TeX file is matched automatically using the blueprint path.
 
-## 导航与编辑
+## Navigation and editing
 
-左侧目录仅显示 blueprint 文件夹、文件和节点，不显示分组标题。`/` 聚焦搜索。中栏切换阅读、TeX、Markdown；右栏仅显示当前节点绑定的代码，支持切换语言和声明。两个侧栏可以收起；窄屏下代码栏位于正文下方。
+The left tree shows only blueprint folders, files, and nodes, without grouping headings. `/` focuses search. The center panel switches between reading, TeX, and Markdown modes. The right panel shows only code bound to the current node, with controls for selecting a language and declaration. Both sidebars can be collapsed; on narrow screens, the code panel appears below the main content.
 
-点击“知识图谱”聚焦当前节点。单击节点查看描述，双击或 Enter 打开正文和源码，空格预览。支持拖动、平移、缩放、力导向/分层切换、类型/进度筛选、一跳邻域；箭头从依赖指向使用者，虚线表示思想来源。
+Click Knowledge Graph to focus on the current node. Click a node to view its description, double-click or press Enter to open its content and source code, or press Space to preview it. The graph supports dragging, panning, zooming, force-directed and layered layouts, type and progress filters, and one-hop neighborhoods. Arrows point from a dependency to the node that uses it; dashed edges indicate inspiration.
 
-图谱支持三种**颗粒度**：Blueprint 节点（一级标题）、Milestone（Markdown 文件）、项目（索引文件所在目录或回退目录）。分级仅用于图谱聚合，不要求新增节点字段、搬动文件或建立额外项目配置。
+The graph supports three levels of **granularity**: Blueprint nodes (level-one headings), Milestones (Markdown files), and projects (directories containing index files, or fallback directories). These levels are used only to aggregate the graph; they require no new node fields, file moves, or additional project configuration.
 
-* 项目识别：目录内的 `<目录名>.md` 或 `index.md` 视为索引，同名文件优先。文件归属最近的有索引祖先目录，因而项目内仍可有任意子文件夹；没有这样的索引时，归属文件所在的最小目录。blueprint 根目录直接存放的文件归入“blueprint 根目录”。
-* Milestone 图谱将同一文件内所有指向另一文件的引用合并成一条边。支持正文或节点元数据中的 `[[路径#标题]]`、`[[路径]]`、带别名的 wikilink，以及 Markdown 相对链接 `[文本](../Other.md#标题)`。代码示例、行内代码、HTML 注释和外部网页链接不参与聚合。标题级 `uses` / `inspired_by` 的原有语义保持不变。
-* 项目图谱进一步合并跨项目的文件引用，包括索引 Markdown 中的项目依赖；同一项目内部的引用不产生项目自环。
-* **范围**可手动切换“全范围”（整个 `blueprint/`）、“当前项目”或“当前 Milestone”（单份 Markdown 文件）。默认当前项目，初始项目与 Milestone 来自当前阅读节点；可通过下拉框切换项目及其文件。范围与颗粒度独立，切换颗粒度保留范围，项目级也允许选择范围。Milestone 范围在节点级只显示该文件的节点和内部边，在文件级显示该文件，在项目级显示其所属项目。
-* 切入“当前 Milestone”时，自动选择图中当前 Blueprint 节点所在文件；没有图中选择时使用阅读节点。若此前是项目颗粒度，会展开为该文件的 Blueprint 节点图；旧邻域筛选随范围切换清除。进入后仍可手动选择其他文件。
-* 双击项目进入全范围 Milestone 图谱，并用金色描边高亮该项目的所有文件。双击 Milestone 进入其项目的 Blueprint 节点图谱，高亮该文件的所有一级标题；再次双击 Blueprint 节点打开正文和代码。下钻时清除旧筛选，确保所有成员可见。
+- Project detection: a directory's `<directory-name>.md` or `index.md` serves as its index, with the matching directory name taking precedence. A file belongs to its nearest ancestor directory with an index, so projects can contain arbitrary subfolders. If no such index exists, the file belongs to its immediate parent directory. Files directly under `blueprint/` belong to the blueprint root group.
+- The Milestone graph merges all references from one file to another into a single edge. It includes wikilinks in body content or node metadata, such as `[[path#heading]]`, `[[path]]`, and links with aliases, as well as relative Markdown links such as `[text](../Other.md#heading)`. Code examples, inline code, HTML comments, and external web links are excluded from aggregation. The existing heading-level semantics of `uses` / `inspired_by` remain unchanged.
+- The project graph further merges file references across projects, including project dependencies in index Markdown files. References within the same project do not create project self-loops.
+- **Scope** can be set manually to All (the entire `blueprint/`), Current Project, or Current Milestone (a single Markdown file). Current Project is the default, with the initial project and Milestone taken from the node being read. Use the dropdowns to select a project and one of its files. Scope is independent of granularity: changing granularity preserves the scope, which can also be selected at project level. Milestone scope shows only the file's nodes and internal edges at node level, the file itself at file level, and its owning project at project level.
+- Switching to Current Milestone automatically selects the file containing the graph's selected Blueprint node, or the node being read if there is no graph selection. If the graph was at project granularity, it expands to show that file's Blueprint nodes. Changing scope clears the previous neighborhood filter. You can still select another file manually afterward.
+- Double-clicking a project opens the Milestone graph with All scope and highlights every file in that project with a gold outline. Double-clicking a Milestone opens its project's Blueprint node graph and highlights every level-one heading in that file. Double-clicking a Blueprint node then opens its content and code. Drilling down clears previous filters so that all members remain visible.
 
-索引仍是普通 Markdown：即使没有一级标题，也会出现在文件图谱；若含一级标题，仍按原有规则解析节点。对于名称任意、无法从文件名识别的索引，可使用上述命名约定，无需添加元数据。
+Indexes remain ordinary Markdown files. They appear in the file graph even without level-one headings; if they contain level-one headings, nodes are parsed using the usual rules. For index files with arbitrary names that cannot be recognized from the filename, use the naming convention above. No metadata is needed.
 
-正文滚动到底后再向下滚动切换到下一节点，向上相反。同一篇论文内可用页脚按钮或 Alt+左右方向键导航。URL hash 可作为节点深链。Markdown 模式编辑整份文件，Ctrl+S 保存；外部文件变化会触发冲突提示，避免静默覆盖。
+After scrolling to the bottom of the content, scroll down again to switch to the next node; scrolling up works in reverse. Use the footer buttons or Alt+Left/Right to navigate within the same paper. URL hashes provide direct links to nodes. Markdown mode edits the entire file, and Ctrl+S saves it. External file changes trigger a conflict warning to prevent silent overwrites.
 
-## 导入资料
+## Import material
 
-界面的“导入资料”与以下 CLI 使用同一个下载器。GitHub 接受仓库根地址，branch / tag / SHA 单独传入；默认分支会自动读取。
+Import Material in the UI and the following CLI commands use the same downloader. For GitHub, provide a repository root URL and pass the branch, tag, or SHA separately. The default branch is detected automatically.
 
 ```powershell
 .\.conda\python.exe -m qprint import-code https://github.com/CMU-HoTT/serre-finiteness --language agda --dest serre-finiteness --workspace my-math
 .\.conda\python.exe -m qprint import-paper 1603.04246 --dest Geometry --name Via16SpherePacking --workspace my-math
 ```
 
-论文 PDF 保存为 `pdf/Geometry/Via16SpherePacking.pdf`，多文件源码保存在 `tex/Geometry/Via16SpherePacking/`，保持内部相对路径；下载器不会擅自给论文添加 blueprint 标记。导入后按需要创建同名 Markdown，并以实际源码路径绑定节点。
+The paper PDF is saved as `pdf/Geometry/Via16SpherePacking.pdf`, and multi-file source is stored under `tex/Geometry/Via16SpherePacking/`, preserving internal relative paths. The downloader does not add blueprint markers to papers. After importing, create a Markdown file with the same name as needed, and bind its nodes using the actual source paths.
 
-现有目标不会被覆盖。下载上限 100 MiB、解压上限 300 MiB / 10,000 个归档条目；拒绝路径穿越与链接文件。每个导入目录包含 `.qprint-source.json` 以记录来源。源码不存在、网络失败、超限会显示错误。后台任务记录只保留在当前服务进程，重启后清空。GitHub 导入默认开启“下载后验证”，会准备固定环境并执行项目检查；可取消界面复选框或传 `--no-verify-after-download`。验证失败保留源码和报告。
+Existing destinations are not overwritten. Downloads are limited to 100 MiB; extraction is limited to 300 MiB and 10,000 archive entries. Path traversal and link files are rejected. Each imported directory contains `.qprint-source.json` to record its origin. Missing source, network failures, and exceeded limits produce errors. Background job records exist only in the current server process and are cleared on restart. GitHub imports enable Verify After Download by default, preparing an environment with pinned versions and running project checks. Clear the checkbox in the UI or pass `--no-verify-after-download` to disable this step. Failed verification preserves both source files and reports.
 
-## 测试与开发
+## Tests and development
 
 ```powershell
 .\.conda\python.exe -m pytest -q
@@ -158,38 +165,38 @@ node --test tests/graph_view.test.mjs
 .\.conda\python.exe -m qprint check --workspace examples/demo
 ```
 
-受限的 Windows 运行环境若无法访问系统 pytest 临时目录，可指定项目内新建的临时目录：
+If a restricted Windows environment cannot access pytest's system temporary directory, use a new temporary directory inside the project:
 
 ```powershell
 New-Item -ItemType Directory .qprint -Force
 .\.conda\python.exe -m pytest -q --basetemp .qprint/test-local
 ```
 
-注意 pytest 会清理其 `--basetemp` 目录，务必只指定测试专用目录。
+pytest cleans its `--basetemp` directory, so always specify a directory dedicated to tests.
 
-主要代码：`blueprint.py` 解析节点，`workspace.py` 构建索引，`tex.py` 解析片段并适配 plasTeX DOM，`formal.py` 定位代码，`importers.py` 导入资源，`server.py` 提供 API，`static/` 为无构建步骤的前端。API 的 OpenAPI schema 在运行服务的 `/openapi.json`。
+Main modules: `blueprint.py` parses nodes, `workspace.py` builds indexes, `tex.py` parses fragments and adapts the plasTeX DOM, `formal.py` locates code, `importers.py` imports resources, `server.py` provides the API, and `static/` contains the frontend, which requires no build step. The API's OpenAPI schema is available at `/openapi.json` on a running server.
 
-## 形式化验证
+## Formal verification
 
-独立项目使用 `.\.conda\python.exe -m qprint formal verify --project PROJECT --language agda --timeout 600`，默认覆盖全部模块。原生配置解析、自动安装、带时间的错误报告和版本修复 skill 见[项目解析文档](docs/formal-resolution.md)。
+For a standalone project, run `.\.conda\python.exe -m qprint formal verify --project PROJECT --language agda --timeout 600`. All modules are checked by default. See [project resolution](docs/formal-resolution.en.md) for native configuration resolution, automatic installation, timestamped error reports, and the version repair skill.
 
-2026-09-21 起，编译器和库安装在 Qprint 根目录的 `toolchains/`、`packages/`（Git 忽略）。子项目优先使用原生配置，并由 `.qprint-formal.yaml` 补充 Agda 版本；管理命令及 light/full ZIP 打包见[工具链文档](docs/toolchains.md)。已提供独立的真实验证示例：
+Since 2026-09-21, compilers and libraries have been installed in `toolchains/` and `packages/` under the Qprint root folder; both directories are ignored by Git. Subprojects use their native configuration first, with `.qprint-formal.yaml` supplementing the Agda version. See [managed toolchains](docs/toolchains.en.md) for management commands and light/full ZIP packaging. A separate example for real verification is provided:
 
 ```powershell
 .\.conda\python.exe -m qprint toolchain list
 .\.conda\python.exe -m qprint verify --workspace examples/verification
 ```
 
-Full ZIP 包含指定形式化环境，但当前仍需已有 Python/Conda 环境。
+Full ZIP packages include the specified formalization environment, but still require an existing Python/Conda environment.
 
-新增[统一形式化验证适配层](docs/formal-verification.md)：Lean 构建与声明存在性检查、Agda 类型检查与声明解析，Coq 明确返回未支持。显式验证自动补齐支持的固定版本（`--offline` 禁止下载），例如：
+The [unified formal verification adapter layer](docs/formal-verification.en.md) provides Lean builds and declaration existence checks, plus Agda type checking and declaration resolution. Coq explicitly returns an unsupported result. Explicit verification automatically installs missing supported pinned versions; `--offline` disables downloads. For example:
 
 ```powershell
 .\.conda\python.exe -m qprint verify --workspace my-math --language lean
 ```
 
-可选 `--node "路径#标题"` 和 `--timeout 180`。输出独立 JSON 报告，不改写作者 `status`。HTTP 入口为 `POST /api/verify`，需以 `serve --allow-verification` 启用可信工作区的执行。阅读和保存不自动验证；GitHub 导入的“下载后验证”默认开启。Agda 默认 `safe: inherit`，尊重上游 OPTIONS；安全审计需显式 `formal audit`。自动恢复及两个受限 helper 见[解析文档](docs/formal-resolution.md)。
+Optional flags include `--node "path#heading"` and `--timeout 180`. Verification produces a separate JSON report without rewriting the author's `status`. The HTTP endpoint is `POST /api/verify`; enable execution for trusted workspaces with `serve --allow-verification`. Reading and saving do not trigger verification automatically; GitHub imports enable Verify After Download by default. Agda defaults to `safe: inherit`, respecting upstream OPTIONS; safety audits require an explicit `formal audit`. See [project resolution](docs/formal-resolution.en.md) for automatic recovery and the two helpers with restricted capabilities.
 
-## 当前边界
+## Current limits
 
-plasTeX 渲染支持常用论文结构和数学公式，但不替代完整 LaTeX 排版。片段中的跨文件 `\input`、外部图像、复杂宏包会回退到 TeX 源文并提示；多行宏定义需要后续扩展。Lean/Agda 可通过仓库内工具链管理器安装；Coq 验证、Lean 公理审计和 LSP 尚未实现，示例代码用于导航演示，未作为完整形式化项目编译。AI 双向生成与旧 leanblueprint 转换器按原需求留在后续范围。
+plasTeX rendering supports common paper structures and mathematical formulas, but does not replace full LaTeX typesetting. Cross-file `\input`, external images, and complex packages within fragments fall back to TeX source with a warning; multiline macro definitions need further support. Lean and Agda can be installed through the repository's toolchain manager. Coq verification, Lean axiom auditing, and LSP are not yet implemented. The example code demonstrates navigation and has not been compiled as complete formalization projects. Bidirectional AI generation and the legacy leanblueprint converter remain future work under the original requirements.
