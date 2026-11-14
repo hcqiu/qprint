@@ -24,6 +24,7 @@ from .knowledge.navigator import KnowledgeNavigator
 from .knowledge.index import KnowledgeIndexer
 from .knowledge.runtime import publish_runtime, query_target
 from .agent_paths import relative_output
+from .chat import ChatService, install_chat_routes
 
 
 class DocumentUpdate(BaseModel):
@@ -70,6 +71,7 @@ def create_app(root: Path, *, allow_verification: bool = False, toolchain_home: 
     verification_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="qprint-verify")
     jobs, job_lock = {}, Lock()
     static = Path(__file__).parent / "static"
+    chat = ChatService(workspace, runtime_root)
 
     def refresh_workspace():
         # Publish the browser snapshot only after navigator queries can resolve
@@ -85,11 +87,14 @@ def create_app(root: Path, *, allow_verification: bool = False, toolchain_home: 
         KnowledgeIndexer(workspace.root).update()
         publish_runtime(runtime_root, workspace.root, "host-" + uuid.uuid4().hex)
         yield
+        chat.close()
         executor.shutdown(wait=False, cancel_futures=True)
         verification_executor.shutdown(wait=False, cancel_futures=True)
 
     app = FastAPI(title="Qprint", lifespan=lifespan, docs_url=None, redoc_url=None)
     app.state.workspace = workspace
+    app.state.chat = chat
+    install_chat_routes(app, chat)
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost", "[::1]", "testserver"])
 
     @app.middleware("http")

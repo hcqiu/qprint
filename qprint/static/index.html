@@ -6,6 +6,7 @@
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='10' fill='%235049b5'/%3E%3Ctext x='8' y='29' fill='white' font-size='29'%3EQ%3C/text%3E%3C/svg%3E">
   <link rel="stylesheet" href="/static/vendor/katex/katex.min.css">
   <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/chat.css">
   <script defer src="/static/vendor/katex/katex.min.js"></script>
   <script defer src="/static/vendor/katex/auto-render.min.js"></script>
   <script type="module" src="/static/bootstrap.js"></script>
@@ -15,6 +16,7 @@
     <button id="toggle-sidebar" class="icon-button" aria-label="折叠目录" title="折叠目录">☰</button>
     <a href="/" class="brand"><span class="brand-icon">Q</span>qprint<span class="brand-divider">/</span></a>
     <span id="project-name">Workspace</span><span class="local-badge">LOCAL WORKSPACE</span>
+    <button id="agent-settings-open" class="quiet">⚙ Agent</button><button id="agent-chat-open" class="quiet" title="打开 Agent 会话">◌ 会话</button>
     <nav class="view-switch" aria-label="工作视图"><button id="reader-view" class="active">▤ 阅读</button><button id="graph-view">⌘ 知识图谱</button></nav>
     <button id="reload" class="quiet" title="重新读取磁盘文件">↻ 刷新</button><button id="import-open" class="primary">＋ 导入资料</button>
   </header>
@@ -27,6 +29,7 @@
     </aside>
     <main id="reader" class="reader">
       <div class="reading-column">
+        <div id="agent-markers" class="agent-markers"></div>
         <div class="pane-toolbar"><div id="breadcrumb" class="breadcrumb">BLUEPRINT</div><div class="segmented"><button data-mode="rendered" class="active">阅读</button><button data-mode="tex">TeX</button><button data-mode="edit">Markdown</button></div><button id="toggle-code" class="icon-button" aria-label="折叠形式化代码" title="折叠形式化代码">◫</button></div>
         <article id="content" class="content"><div class="empty-state"><span class="empty-symbol">Q</span><h1>让数学与证明相连</h1><p>正在读取你的知识库…</p></div></article>
         <footer class="node-footer"><button id="previous" class="quiet" disabled>← 上一节点</button><span id="position">PROOF NAVIGATION</span><button id="next" class="quiet" disabled>下一节点 →</button></footer>
@@ -48,6 +51,27 @@
   </div>
   <dialog id="import-dialog"><form id="import-form"><div class="dialog-heading"><div><span class="eyebrow">BUILD YOUR LIBRARY</span><h2>导入研究资料</h2></div><button type="button" class="icon-button close-dialog" aria-label="关闭">×</button></div><p class="muted">下载到当前工作区，保留原始目录与来源信息。</p><label>资料类型<select name="kind" id="import-kind"><option value="code">形式化代码 · GitHub</option><option value="paper">论文 · arXiv</option></select></label><label id="source-label">仓库 URL<input name="source" required placeholder="https://github.com/owner/repository"></label><div id="code-options" class="form-row"><label>语言<select name="language"><option value="lean">Lean</option><option value="agda">Agda</option><option value="coq">Coq</option></select></label><label>分支 / tag / SHA<input name="ref" placeholder="默认分支"></label></div><label id="import-verify-option" class="verify-download-option"><input type="checkbox" name="verify_after_download" checked>下载后验证（自动准备环境，按上游配置检查）</label><label id="paper-blueprint-option" class="verify-download-option hidden"><input type="checkbox" name="auto_blueprint" checked>自动标注 TeX 并生成 Blueprint 草稿</label><label>目标子目录<input name="dest" required placeholder="Topology/my-project"></label><label id="paper-name" class="hidden">论文文件名<input name="name" placeholder="Lin20K3"></label><p class="hint">已存在的目标不会被覆盖。论文默认自动标注并生成 Blueprint，可取消；草稿仍需数学 review。</p><button id="import-history" type="button">查看历史验证报告</button><div id="import-result" role="status"></div><button id="import-submit" type="submit" class="primary full-width">开始下载</button></form></dialog>
   <dialog id="diagnostics-dialog"><div class="dialog-heading"><h2>项目诊断</h2><button class="icon-button close-dialog" aria-label="关闭">×</button></div><div id="diagnostics-list"></div></dialog>
+  <button id="ask-agent" class="ask-agent" hidden>✦ Ask agent</button>
+  <aside id="agent-panel" class="agent-panel" aria-label="Agent 聊天" hidden>
+    <div class="agent-panel-heading"><div><span class="eyebrow">ASK YOUR AGENT</span><h2 id="agent-session-title">Agent</h2></div><button id="agent-panel-close" class="icon-button" aria-label="关闭聊天面板">×</button></div>
+    <label class="agent-history-label">会话<select id="agent-history" aria-label="已保存的会话"></select></label>
+    <button id="agent-quote" class="agent-quote" title="返回选中文字"></button>
+    <details class="agent-context-details"><summary>发送给 Agent 的上下文</summary><pre id="agent-context"></pre></details>
+    <div id="agent-messages" class="agent-messages" role="log" aria-label="聊天记录"></div>
+    <div id="agent-pending" class="agent-pending"></div>
+    <div id="agent-activity" class="agent-activity" role="status"></div>
+    <form id="agent-chat-form" class="agent-chat-form"><textarea id="agent-question" rows="3" placeholder="就这段文字提问…" aria-label="向 Agent 提问"></textarea><div><span>Enter 发送 · Shift+Enter 换行</span><button id="agent-stop" type="button" hidden>停止</button><button id="agent-send" type="submit" class="primary">发送 ↑</button></div></form>
+  </aside>
+  <dialog id="agent-dialog"><form id="agent-settings-form">
+    <div class="dialog-heading"><div><span class="eyebrow">YOUR RESEARCH COMPANION</span><h2>Agent 设置</h2></div><button type="button" class="icon-button close-dialog" aria-label="关闭">×</button></div>
+    <p class="muted">选择本机 Agent，或连接你的 API 服务。会话与选中文字保存在当前工作区。</p>
+    <div class="agent-discovery-row"><label>Agent<select id="agent-choice"></select></label><button id="agent-discover" type="button">重新查找</button></div>
+    <p id="agent-detected" class="agent-detected"></p>
+    <div id="agent-cli-fields"><label>可执行文件位置<input id="agent-command" placeholder="自动查找，或输入完整路径" autocomplete="off"></label><label id="agent-custom-args-label">ACP 启动参数（JSON 数组）<input id="agent-args" placeholder='["acp"]' autocomplete="off"></label></div>
+    <div id="agent-api-fields" hidden><label>API Base URL<input id="agent-base-url" type="url" placeholder="https://api.openai.com/v1"></label><label>API key<input id="agent-key" type="password" autocomplete="new-password"></label></div>
+    <label id="agent-model-label">模型<input id="agent-model" placeholder="CLI 留空使用已有配置；API 模式必填" autocomplete="off"></label>
+    <p id="agent-permissions" class="hint"></p><button type="submit" class="primary full-width">保存并选择</button>
+  </form></dialog>
   <div id="toast" role="status" class="toast hidden"></div>
 </body>
 </html>

@@ -7,6 +7,7 @@ import {createGraphView, syncGraphContext, changeGraphLevel, changeGraphScope, d
 import {requestJson} from './api.js';
 import {createFocusPublisher, browserSession} from './navigator-state.js';
 import {copyWithContext} from './clipboard-context.js';
+import {createChatPanel} from './chat-panel.js';
 import {createTreeExpansionStore} from './tree-state.js';
 
 const $=selector=>document.querySelector(selector);
@@ -72,6 +73,7 @@ function highlight(line){const escaped=esc(line);if(/^\s*(--|\/\/|\(\*)/.test(li
 function renderFormal(){const n=state.detail;if(!n?.formal.length){$('#formal-content').innerHTML='<div class="empty-code"><span class="empty-symbol">⌘</span><strong>还没有形式化代码</strong>在 Markdown 节点中添加 Lean、Agda 或 Coq 绑定，开始连接证明。</div>';return;}const binding=n.formal[state.binding]||n.formal[0];$('#formal-content').innerHTML=`<div class="formal-tabs">${n.formal.map((b,i)=>`<button data-binding="${i}" class="${i===state.binding?'active':''}">${esc(b.language.toUpperCase())}${n.formal.filter(x=>x.language===b.language).length>1?` · ${i+1}`:''}</button>`).join('')}</div><div class="binding-name">${esc(binding.declaration)}</div>${binding.code!==null?`<div class="code-location"><span>⌑ ${esc(binding.file)}</span><span>L${binding.lines[0]}–${binding.lines[1]}</span></div><pre class="code-block">${binding.code.split('\n').map((line,i)=>`<span class="code-line"><span class="line-number">${binding.lines[0]+i}</span><span class="code-text">${highlight(line)}</span></span>`).join('')}</pre>`:`<div class="empty-code"><strong>${esc(binding.error)}</strong>可通过「导入资料」下载仓库，或填写准确的 file / lines。</div>`}${binding.url?`<a class="source-link" target="_blank" rel="noopener noreferrer" href="${esc(binding.url)}">查看代码来源 ↗</a>`:''}`;}
 
 function setView(view){
+  queueMicrotask(()=>document.dispatchEvent(new Event('qprint-view-change')));
   const enteringGraph=view==='graph'&&state.view!=='graph';
   state.view=view;$('#reader').classList.toggle('hidden',view!=='reader');$('#graph').classList.toggle('hidden',view!=='graph');$('#reader-view').classList.toggle('active',view==='reader');$('#graph-view').classList.toggle('active',view==='graph');
   if(view==='graph'){
@@ -213,7 +215,8 @@ $('#content').addEventListener('click',guarded(e=>{
 }));
 $('#import-form').addEventListener('submit',guarded(async e=>{e.preventDefault();const values=Object.fromEntries(new FormData(e.target));values.ref=values.ref||null;values.verify_after_download=e.target.elements.verify_after_download.checked;values.auto_blueprint=e.target.elements.auto_blueprint.checked;const button=$('#import-submit');button.disabled=true;$('#import-result').textContent='正在提交下载任务…';try{const job=await api('/api/import',{method:'POST',body:JSON.stringify(values)});let finished=false;while(!finished){await new Promise(resolve=>setTimeout(resolve,1200));const current=await api(`/api/jobs/${job.id}`);renderImportJob($('#import-result'),current);finished=['succeeded','failed'].includes(current.status);if(current.status==='succeeded'){if(!state.dirty)await loadProject();else toast('资料已导入；保存当前编辑后刷新索引');}}}finally{button.disabled=false;}}));
 
-export function startApp(){return loadProject(false);}
+const chatPanel=createChatPanel({api,state,toast,renderMath:math,navigate:async(id,mode)=>{if(await selectNode(id)){state.mode=mode;setView('reader');await renderContent();}}});
+export async function startApp(){await loadProject(false);chatPanel.refresh().catch(error=>toast(`Agent 面板：${error.message}`));}
 
 $('#import-history').addEventListener('click',guarded(async()=>{const data=await api('/api/formal-reports');const target=$('#import-result');target.textContent=data.reports.length?'最近验证报告':'当前工作区暂无验证报告';renderReports(target,data.reports);}));
 

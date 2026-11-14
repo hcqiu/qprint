@@ -9,6 +9,8 @@ A mathematical knowledge graph and formalized proof navigation IDE. Blueprint no
 3. Copy text from a page, with node information and prompts automatically appended. Just paste it into an agent, then it can use skills to explore, conduct research, and answer questions.
 4. Automatically type-check formalized code imported from GitHub, with natural language and formalized code shown side by side.
 
+Select a passage and choose **Ask agent** to discuss it in the sidebar with your local agent or an OpenAI-compatible API. The **Agent** button configures discovery and connection; a bubble beside the passage reopens its saved conversation. See the [agent chat guide (中文)](docs/agent-chat.md).
+
 **License: free for noncommercial use; commercial use requires separate written authorization.** Personal noncommercial learning, nonprofit education, and academic research are free of charge. Internal company use, commercial SaaS, integration into commercial products, resale, and similar uses require commercial authorization. The copyright holder is Haochen Qiu. This is a source-available project. See the [licensing guide](docs/licensing.en.md), [noncommercial license](LICENSE), and [commercial terms](COMMERCIAL-LICENSE.md) for scope and exceptions. Third-party material retains its own licenses.
 
 | Document | Purpose |
