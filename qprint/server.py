@@ -59,7 +59,8 @@ class NavigatorFocus(BaseModel):
 
 
 def create_app(root: Path, *, allow_verification: bool = False, toolchain_home: Path | None = None,
-               allow_system_toolchains: bool = False, runtime_root: Path | None = None) -> FastAPI:
+               allow_system_toolchains: bool = False, runtime_root: Path | None = None,
+               instance_id: str | None = None) -> FastAPI:
     workspace = Workspace(root)
     runtime_root = Path(runtime_root).resolve() if runtime_root is not None else workspace.root
     if not workspace.root.is_relative_to(runtime_root):
@@ -125,6 +126,10 @@ def create_app(root: Path, *, allow_verification: bool = False, toolchain_home: 
     def project():
         return {**workspace.project(), "token": token, "verification_enabled": allow_verification,
                 "navigator_available": (workspace.root / ".qprint/index/knowledge.sqlite").is_file()}
+
+    @app.get("/api/instance")
+    def instance():
+        return {"instance": instance_id, "workspace": workspace.root.relative_to(runtime_root).as_posix()}
 
     @app.get("/api/navigator/state")
     def navigator_state(session: str | None = None, limit: int = 8):

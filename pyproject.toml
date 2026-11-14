@@ -21,7 +21,7 @@ qprint = "qprint.__main__:main"
 include = ["qprint*"]
 
 [tool.setuptools.package-data]
-qprint = ["static/**/*", "toolchain-catalog.json", "toolchain-licenses/*"]
+qprint = ["static/**/*", "toolchain-catalog.json", "toolchain-licenses/*", "start-qprint.bat"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

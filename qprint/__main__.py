@@ -30,7 +30,7 @@ def main():
     manager_command.add_argument("artifact", nargs="?")
     manager_command.add_argument("--home", type=Path)
     manager_command.add_argument("--archive", type=Path, help="使用已下载、仍需校验 SHA-256 的归档")
-    for name in ("serve", "check", "verify", "import-code", "import-paper", "link-citations"):
+    for name in ("serve", "launcher", "check", "verify", "import-code", "import-paper", "link-citations"):
         command = commands.add_parser(name)
         default_workspace = Path("examples/demo") if Path("examples/demo").is_dir() else Path("examples/verification")
         command.add_argument("--workspace", type=Path, default=default_workspace)
@@ -63,18 +63,20 @@ def main():
             command.add_argument("--name", required=True)
             command.add_argument("--auto-blueprint", action=argparse.BooleanOptionalAction, default=True)
     args = parser.parse_args()
-    if args.command == "serve":
-        import uvicorn
-        from .server import create_app
-        from .knowledge.runtime import relative_workspace
-        args.workspace = relative_workspace(Path.cwd(), args.workspace)
-        if not args.workspace.is_dir():
-            parser.error(f"工作区不存在: {args.workspace}")
-        uvicorn.run(create_app(args.workspace, runtime_root=Path.cwd(), allow_verification=args.allow_verification,
-                              toolchain_home=args.toolchain_home, allow_system_toolchains=args.allow_system_toolchains),
-                    host="127.0.0.1", port=args.port)
-        return
     try:
+        if args.command == "launcher":
+            from .launcher import install_launcher
+            from .knowledge.runtime import relative_workspace
+            workspace = relative_workspace(Path.cwd(), args.workspace)
+            if not workspace.is_dir():
+                raise ValueError("工作区不存在")
+            print(install_launcher(workspace).relative_to(Path.cwd()).as_posix())
+            return 0
+        if args.command == "serve":
+            from .launcher import serve
+            return serve(args.workspace, runtime_root=Path.cwd(), port=args.port,
+                         allow_verification=args.allow_verification, toolchain_home=args.toolchain_home,
+                         allow_system_toolchains=args.allow_system_toolchains)
         if args.command == 'link-citations':
             from .cross_references import link_workspace
             result = link_workspace(args.workspace, imported=args.imported, dry_run=args.dry_run)

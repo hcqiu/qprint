@@ -5,8 +5,8 @@
 A mathematical knowledge graph and formalized proof navigation IDE. Blueprint nodes connect TeX papers with Lean / Agda / Coq code. Node content is stored in Markdown files that you can manage directly in Obsidian or any other editor.
 
 1. Organize a visual knowledge graph at three levels—projects, milestones, and blueprint nodes (such as definitions, theorems, and conjectures)—for quick navigation by humans and AI.
-2. Automatically import LaTeX from arXiv or GitHub and build a knowledge graph that includes all dependencies across papers.
-3. Copy text from a page with node information and prompts automatically appended. Paste it into an agent so it can use skills to explore, conduct research, and answer questions.
+2. Automatically resolve LaTeX from arXiv or GitHub and build a knowledge graph that includes all dependencies across papers.
+3. Copy text from a page, with node information and prompts automatically appended. Just paste it into an agent, then it can use skills to explore, conduct research, and answer questions.
 4. Automatically type-check formalized code imported from GitHub, with natural language and formalized code shown side by side.
 
 **License: free for noncommercial use; commercial use requires separate written authorization.** Personal noncommercial learning, nonprofit education, and academic research are free of charge. Internal company use, commercial SaaS, integration into commercial products, resale, and similar uses require commercial authorization. The copyright holder is Haochen Qiu. This is a source-available project. See the [licensing guide](docs/licensing.en.md), [noncommercial license](LICENSE), and [commercial terms](COMMERCIAL-LICENSE.md) for scope and exceptions. Third-party material retains its own licenses.
