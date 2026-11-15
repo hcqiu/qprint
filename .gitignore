@@ -14,3 +14,9 @@ dist/
 .lake/
 _build/
 *.agdai
+
+# Local planning files and folders in the project root
+/产品经理prompt/
+/形式化验证模块改进建议.md
+/blueprint分级指南.md
+/Qprint功能需求.md

@@ -12,6 +12,7 @@ from fastapi import HTTPException
 from pydantic import BaseModel, Field
 
 from .chat_agents import BUILTINS, RUNNERS, discover, validate_base_url
+from .chat_models import discover_models, model as model_entry, resolve_selection
 from .paths import WorkspaceError, safe_path
 
 
@@ -42,6 +43,13 @@ class NewSession(BaseModel):
 class Message(BaseModel):
     text: str = Field(min_length=1, max_length=40000)
     request_id: str = Field(min_length=1, max_length=100)
+    model: str | None = Field(default=None, max_length=300)
+    effort: str | None = Field(default=None, max_length=100)
+
+
+class ModelQuery(BaseModel):
+    model: str = Field(default="", max_length=300)
+    refresh: bool = False
 
 
 class Answer(BaseModel):
@@ -59,6 +67,9 @@ class ChatService:
         self.runs = {}
         self.keys = {}
         self.resolved = {}
+        self.catalogs = {}
+        self.catalog_lock = threading.Lock()
+        self.settings_generation = 0
         self.closed = False
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self.db() as db:
@@ -108,7 +119,7 @@ class ChatService:
             for name in BUILTINS:
                 profile = self.profile(name)
                 if profile["kind"] == "api":
-                    available = bool(self.keys.get(name) or os.getenv("OPENAI_API_KEY")) and bool(profile.get("model"))
+                    available = bool(self.keys.get(name) or os.getenv("OPENAI_API_KEY"))
                     path = ""
                 else:
                     if refresh or name not in self.resolved:
@@ -136,7 +147,44 @@ class ChatService:
             config["profiles"][payload.selected] = values
             config["selected"] = payload.selected
             self.write("settings", "main", config)
+            self.settings_generation += 1
+            self.catalogs.clear()
             return self.settings(refresh=True)
+
+    def models(self, identifier, payload):
+        # Discovery can start a local protocol process; never hold the chat lock
+        # while waiting, otherwise stop/poll would hang behind model discovery.
+        with self.lock:
+            session = self.get(identifier)
+            name = session["agent"]
+            profile = deepcopy(self.profile(name))
+            profile["key"] = (self.keys.get(name) or os.getenv("OPENAI_API_KEY", "")) if name == "api" else ""
+            generation = self.settings_generation
+            key = (name, generation, payload.model if profile["kind"] == "acp" else "")
+        with self.catalog_lock:
+            cached = self.catalogs.get(key)
+            if cached and not payload.refresh and time.monotonic() < cached[0]:
+                result = deepcopy(cached[1])
+            else:
+                try:
+                    result = discover_models(profile, self.cwd, payload.model)
+                    result["error"] = ""
+                except Exception as exc:
+                    error = str(exc)
+                    if profile.get("key"):
+                        error = error.replace(profile["key"], "[redacted]")
+                    result = {"models": [], "default_model": profile.get("model", ""),
+                              "default_effort": "", "error": error[:1000]}
+                default = result.get("default_model", "")
+                if default and not any(m["id"] == default for m in result["models"]):
+                    result["models"].insert(0, model_entry(default, default + "（已配置）"))
+                if generation == self.settings_generation:
+                    self.catalogs[key] = (time.monotonic() + (10 if result["error"] else 300), deepcopy(result))
+            if result["error"]:
+                saved = session.get("selection", {}).get("model", "")
+                if saved and not any(m["id"] == saved for m in result["models"]):
+                    result["models"].append(model_entry(saved, saved + "（上次选择，未验证）"))
+            return {**result, "requires_model": profile["kind"] == "api"}
 
     def get(self, identifier):
         with self.lock:
@@ -166,6 +214,18 @@ class ChatService:
             return session
 
     def send(self, identifier, payload):
+        previous = self.get(identifier)
+        if any(m.get("request_id") == payload.request_id for m in previous["messages"]):
+            return previous
+        choice, resolved_choice = None, None
+        if payload.model is not None or payload.effort is not None or "selection" in previous:
+            saved = previous.get("selection", {})
+            choice = {"model": saved.get("model", "") if payload.model is None else payload.model,
+                      "effort": saved.get("effort", "") if payload.effort is None else payload.effort}
+            if payload.model is not None and payload.model != saved.get("model", "") and payload.effort is None:
+                choice["effort"] = ""
+            catalog = self.models(identifier, ModelQuery(model=choice["model"]))
+            resolved_choice = resolve_selection(catalog, choice["model"], choice["effort"])
         with self.lock:
             session = self.get(identifier)
             if any(m.get("request_id") == payload.request_id for m in session["messages"]):
@@ -178,16 +238,23 @@ class ChatService:
                 raise WorkspaceError("请输入问题")
             name = session["agent"]
             profile = deepcopy(self.profile(name))
+            if resolved_choice:
+                profile["model"], profile["effort"] = resolved_choice
             if profile["kind"] == "api":
                 profile["key"] = self.keys.get(name) or os.getenv("OPENAI_API_KEY", "")
-                if not profile["key"] or not profile.get("model"):
-                    raise WorkspaceError("请在 Agent 设置中填写 API 密钥和模型")
+                if not profile["key"]:
+                    raise WorkspaceError("请在 Agent 设置中填写 API 密钥")
+                if not profile.get("model"):
+                    raise WorkspaceError("请在对话框选择模型，或在 Agent 设置中填写模型")
             else:
                 profile["resolved"] = discover(profile)
                 if not profile["resolved"]:
                     raise WorkspaceError("未找到此会话使用的 Agent，请在设置中查找定位")
+            if choice is not None:
+                session["selection"] = choice
             session["messages"] += [{"role": "user", "text": payload.text, "request_id": payload.request_id},
-                                    {"role": "assistant", "text": ""}]
+                                    {"role": "assistant", "text": "", "model": profile.get("model", ""),
+                                     "effort": profile.get("effort", "")}]
             session.update(status="running", error="", activity="正在连接 " + profile["name"], pending=None)
             self.write("session", identifier, session)
             run = Run(self, session, profile)
@@ -382,6 +449,10 @@ def install_chat_routes(app, service):
     @app.post("/api/chat/sessions/{identifier}/messages")
     def send(identifier: str, payload: Message):
         return service.send(identifier, payload)
+
+    @app.post("/api/chat/sessions/{identifier}/models")
+    def models(identifier: str, payload: ModelQuery):
+        return service.models(identifier, payload)
 
     @app.post("/api/chat/sessions/{identifier}/stop")
     def stop(identifier: str):

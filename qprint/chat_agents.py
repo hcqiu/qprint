@@ -172,7 +172,12 @@ def run_codex(profile, session, prompt, run):
         result = proc.rpc("thread/resume" if session.get("remote_id") else "thread/start", params, run)
         thread_id = result["thread"]["id"]
         run.remote(thread_id)
-        proc.rpc("turn/start", {"threadId": thread_id, "input": [{"type": "text", "text": prompt}]}, run)
+        turn = {"threadId": thread_id, "input": [{"type": "text", "text": prompt}]}
+        if profile.get("model"):
+            turn["model"] = profile["model"]
+        if profile.get("effort"):
+            turn["effort"] = profile["effort"]
+        proc.rpc("turn/start", turn, run)
         run.context_sent()
         deadline = time.monotonic() + 1800
         while True:
@@ -207,13 +212,17 @@ def run_acp(profile, session, prompt, run):
             params["sessionId"] = session["remote_id"]
             # Loading replays old messages; do not duplicate them in the new answer.
             run.replaying = True
-            proc.rpc("session/load", params, run)
+            info = proc.rpc("session/load", params, run)
             run.replaying = False
             session_id = session["remote_id"]
         else:
-            session_id = proc.rpc("session/new", params, run)["sessionId"]
+            info = proc.rpc("session/new", params, run)
+            session_id = info["sessionId"]
             prompt = replay_prompt(session, prompt)
         run.remote(session_id)
+        if profile.get("model") or profile.get("effort"):
+            from .chat_models import acp_apply_selection
+            acp_apply_selection(proc, run, session_id, info, profile)
         result = proc.rpc("session/prompt", {"sessionId": session_id, "prompt": [{"type": "text", "text": prompt}]}, run, timeout=1800)
         run.context_sent()
         if result.get("stopReason") == "cancelled":
@@ -228,6 +237,8 @@ def run_claude(profile, session, prompt, run):
         args += ["--resume", session["remote_id"]]
     if profile.get("model"):
         args += ["--model", profile["model"]]
+    if profile.get("effort"):
+        args += ["--effort", profile["effort"]]
     proc = Process(profile["resolved"] + args, run.cwd)
     run.process = proc
     try:
@@ -266,10 +277,13 @@ def run_api(profile, session, prompt, run):
     url = validate_base_url(profile["base_url"]) + "/chat/completions"
     messages = [{"role": "user", "content": session["context"]}]
     messages += [{"role": m["role"], "content": m["text"]} for m in session["messages"][:-1] if m["text"]]
+    body = {"model": profile["model"], "messages": messages, "stream": True}
+    if profile.get("effort"):
+        body["reasoning_effort"] = profile["effort"]
     async def consume():
         async with httpx.AsyncClient(timeout=httpx.Timeout(180, connect=20), follow_redirects=False) as client:
             async with client.stream("POST", url, headers={"Authorization": "Bearer " + profile["key"]},
-                                     json={"model": profile["model"], "messages": messages, "stream": True}) as response:
+                                     json=body) as response:
                 if response.status_code >= 300:
                     raise WorkspaceError(f"API 返回 HTTP {response.status_code}，请检查地址、模型、密钥和额度")
                 async for line in response.aiter_lines():

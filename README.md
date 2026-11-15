@@ -6,7 +6,7 @@ A mathematical knowledge graph and formalized proof navigation IDE. Blueprint no
 
 1. Organize a visual knowledge graph at three levels—projects, milestones, and blueprint nodes (such as definitions, theorems, and conjectures)—for quick navigation by humans and AI.
 2. Automatically resolve LaTeX from arXiv or GitHub and build a knowledge graph that includes all dependencies across papers.
-3. Copy text from a page, with node information and prompts automatically appended. Just paste it into an agent, then it can use skills to explore, conduct research, and answer questions.
+3. Choose text to ask agent, then it can use skills to explore, conduct research, and answer questions.
 4. Automatically type-check formalized code imported from GitHub, with natural language and formalized code shown side by side.
 
 Select a passage and choose **Ask agent** to discuss it in the sidebar with your local agent or an OpenAI-compatible API. The **Agent** button configures discovery and connection; a bubble beside the passage reopens its saved conversation. See the [agent chat guide (中文)](docs/agent-chat.md).

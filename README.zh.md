@@ -6,7 +6,7 @@
 
 1. 按project、milestone、blueprint节点（如definition、theorem、conjecture）这3个层级组织可视化知识图谱，供人类和ai快速跳转；
 2. 自动从arXiv或github导入latex并自动建立知识图谱，包含全部跨论文依赖；
-3. 在页面上复制文本后，自动附上节点信息和prompts，只要粘贴给agent，它就可以通过skill来探索、研究、回答问题；
+3. 如果本地有agent，选择页面上的文本即可在侧边栏提问；或者，在页面上复制文本后，自动附上节点信息和prompts，只要粘贴给agent，它就可以通过skill来探索、研究、回答问题；
 4. 从github导入形式化代码后自动类型验证，自然语言和形式化代码互相对照；
 
 选中文字后点击 **Ask agent**，可在侧栏直接向本机 Agent 或兼容 OpenAI 的 API 提问。顶部 **Agent** 按钮用于选择和查找定位，原文旁的气泡可以重新打开已保存的会话。详见 [Agent 聊天指南](docs/agent-chat.md)。

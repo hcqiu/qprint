@@ -1,5 +1,6 @@
 import {formatContext} from './clipboard-context.js';
 import {captureAnchor, rangeForAnchor} from './chat-anchors.js';
+import {createModelPicker} from './chat-model-picker.js';
 
 const $ = selector => document.querySelector(selector);
 const element = (tag, className, text) => {
@@ -19,6 +20,7 @@ export function createChatPanel({api, state, toast, navigate, renderMath}) {
   const safe = fn => (...args) => Promise.resolve().then(() => fn(...args)).catch(error => toast(error.message));
   const post = (path, body) => api(path, {method: 'POST', body: JSON.stringify(body || {})});
   const currentProfile = () => settings?.profiles.find(p => p.id === settings.selected);
+  const modelPicker = createModelPicker({request:post, changed:() => { if (active) render(); }});
 
   function fillSettings() {
     const select = $('#agent-choice');
@@ -145,6 +147,7 @@ export function createChatPanel({api, state, toast, navigate, renderMath}) {
     panel.hidden = false;
     document.body.classList.add('agent-panel-open');
     $('#agent-question').value = drafts.get(id) || '';
+    modelPicker.open(session);
     render(); history(); draw(); poll();
   }
 
@@ -155,17 +158,20 @@ export function createChatPanel({api, state, toast, navigate, renderMath}) {
     $('#agent-quote').title = '返回这段文字';
     $('#agent-context').textContent = active.context;
     const busy = ['running', 'waiting'].includes(active.status);
-    $('#agent-send').disabled = busy || sending;
+    modelPicker.setBusy(busy || sending);
+    $('#agent-send').disabled = busy || sending || modelPicker.blocked() || !$('#agent-question').value.trim();
+    $('#agent-send').hidden = busy;
     $('#agent-stop').hidden = !busy;
-    $('#agent-activity').textContent = active.error || (busy ? active.activity : active.messages.length ? '会话已保存' : '选中文字及节点上下文已附上，输入你的问题。');
+    $('#agent-activity').textContent = active.error || (busy ? '正在思考…' : '');
     $('#agent-activity').classList.toggle('agent-error', Boolean(active.error));
     const signature = JSON.stringify([active.messages, busy]);
     if (signature !== rendered) {
       const atBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 70;
-      const nodes = active.messages.map(message => {
+      const nodes = active.messages.map((message, index) => {
         const article = element('article', `agent-message ${message.role}`);
         article.append(element('strong', '', message.role === 'user' ? '你' : $('#agent-session-title').textContent));
-        const body = element('div', 'agent-message-text', message.text || (busy ? '正在思考…' : '未返回回答'));
+        if (message.role === 'assistant' && message.model) article.append(element('small', 'agent-message-model', [message.model, message.effort].filter(Boolean).join(' · ')));
+        const body = element('div', 'agent-message-text', message.text || (busy && index === active.messages.length - 1 ? '正在思考…' : '未返回回答'));
         article.append(body);
         // Render math only after a turn, never interpret model output as HTML.
         if (!busy && message.role === 'assistant') renderMath(body);
@@ -232,6 +238,7 @@ export function createChatPanel({api, state, toast, navigate, renderMath}) {
       command: $('#agent-command').value, args, model: $('#agent-model').value, base_url: $('#agent-base-url').value,
       api_key: $('#agent-key').value || null})});
     fillSettings(); dialog.close();
+    if (active) modelPicker.reload();
     if (pendingSelection && currentProfile()?.available) { const value = pendingSelection; pendingSelection = null; await startSelection(value); }
     toast('Agent 设置已保存');
   });
@@ -246,7 +253,7 @@ export function createChatPanel({api, state, toast, navigate, renderMath}) {
     if (!settings) await refresh();
     if (active) await openSession(active.id);
     else if (sessions.length) await openSession(sessions.at(-1).id);
-    else { panel.hidden = false; document.body.classList.add('agent-panel-open'); $('#agent-activity').textContent = '在正文中选中文字，然后点击 Ask agent 开始会话。'; }
+    else { panel.hidden = false; document.body.classList.add('agent-panel-open'); }
   });
   $('#agent-panel-close').onclick = () => { rememberDraft(); panel.hidden = true; document.body.classList.remove('agent-panel-open'); clearTimeout(timer); draw(); };
   $('#agent-history').onchange = safe(event => event.target.value && openSession(event.target.value));
@@ -263,10 +270,12 @@ export function createChatPanel({api, state, toast, navigate, renderMath}) {
   $('#agent-chat-form').onsubmit = safe(async event => {
     event.preventDefault();
     const text = $('#agent-question').value.trim();
-    if (!active || !text || sending || ['running', 'waiting'].includes(active.status)) return;
+    if (!active || !text || sending || modelPicker.blocked() || ['running', 'waiting'].includes(active.status)) return;
     const id = active.id;
     const previous = requests.get(id);
-    const request = previous?.text === text ? previous : {text, request_id: crypto.randomUUID()};
+    const selected = modelPicker.selection();
+    const request = previous?.text === text && previous.model === selected.model && previous.effort === selected.effort
+      ? previous : {text, request_id: crypto.randomUUID(), ...selected};
     requests.set(id, request);
     sending = true; render();
     try {
@@ -276,6 +285,7 @@ export function createChatPanel({api, state, toast, navigate, renderMath}) {
       if (active?.id === id) { active = session; $('#agent-question').value = ''; }
     } finally { sending = false; render(); poll(); }
   });
+  $('#agent-question').oninput = () => { if (active) render(); };
   $('#agent-question').onkeydown = event => { if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) { event.preventDefault(); $('#agent-chat-form').requestSubmit(); } };
   $('#agent-stop').onclick = safe(() => active && post(`/api/chat/sessions/${active.id}/stop`));
   document.addEventListener('selectionchange', selectionChanged);

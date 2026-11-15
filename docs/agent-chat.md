@@ -7,6 +7,14 @@
 3. 保存选择，在节点的阅读或 TeX 页面选中文字，点击 **Ask agent**。
 4. 在右侧面板输入问题。选区旁的圆形气泡可以再次打开同一会话；顶部 **会话** 和面板下拉列表也能找回它。
 
+输入框底部提供模型和推理强度菜单，Agent 设置中的“刷新对话模型”可重新读取当前模型目录。模型列表按本机 Agent / API 实际返回的目录显示，不固定模型名称；切换模型会重置强度，并显示新模型支持的档位。选择“默认”沿用 Agent 配置或该模型报告的默认值。
+
+选择随发送保存在当前会话，刷新后恢复；每条新回答下方会标注本轮传入的模型与强度。续聊时可以切换，不改变先前消息。正在回答时选择器锁定，停止或完成后可调整。模型下线、登录失效或能力读取失败时会显示原因；不会静默将已选强度换成另一个档位。
+
+Codex 使用 `model/list` 获取模型与 `supportedReasoningEfforts`，每次 `turn/start` 显式传入选择。Claude Code 读取控制协议初始化返回的模型目录，并通过 `--model`、`--effort` 应用选择。ACP Agent 优先使用 `configOptions` 的 `model` / `thought_level`，切换模型后重新获取相关强度；旧版模型接口使用 `session/set_model`。读取 ACP 目录可能创建一个不含提问的临时原生会话。
+
+API 模式从 `/models` 读取目录，可只配置密钥和地址，再在聊天中选择模型。只有服务返回 `supported_reasoning_efforts` 元数据时才显示可选强度，并使用 `reasoning_effort` 传递；标准 OpenAI `/models` 通常不提供这些元数据，这时显示默认强度。列表不可用时仍可在 Agent 设置中手动填写默认模型。不会用模型名称猜测能力。
+
 新会话直接复用 `clipboard-context.js` 的 `formatContext`，内容与选中文字后复制到剪贴板的上下文一致。第一条提问附在该上下文之后；后续对话保留历史。面板中可以展开查看实际上下文。
 
 会话和选区锚点保存在各工作区 `.qprint/chat.sqlite`，刷新页面或重启服务后保留。选区用节点、视图、文字、偏移和前后文定位；原文消失或重复内容无法区分时不显示猜测位置的气泡，仍可从会话列表打开。服务重启会将未完成的回答标为中断，不自动重发。
@@ -19,7 +27,7 @@
 | Claude Code | `claude -p`，结构化输出和原生 session 恢复 | 使用 CLI 自身登录；`dontAsk` 拒绝需要人工批准的工具，不自动扩大权限 |
 | Hermes / OpenCode | `hermes acp` / `opencode acp` | 使用 Agent 自身配置；ACP 一次性权限请求显示在面板 |
 | 其他 Agent | 用户指定可执行文件及 ACP 参数数组 | 必须实现 ACP v1 stdio；不支持任意交互式终端程序 |
-| API | OpenAI-compatible `/chat/completions` 流式接口 | 设置 Base URL、模型和 API key；仅文本问答，没有本地工具 |
+| API | OpenAI-compatible `/chat/completions` 流式接口 | 设置 Base URL 和 API key，在对话框选择模型；仅文本问答，没有本地工具 |
 
 CLI 发现结果只表明文件存在，首次提问时才验证协议、登录和网络。如未登录，在终端完成对应 Agent 的正常登录或 setup，然后重试。Qprint 不复制 Agent 的凭据。Windows 和 WSL 的 Agent 是独立环境，此面板的自动发现面向运行 Qprint 的环境。
 

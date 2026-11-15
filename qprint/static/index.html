@@ -60,7 +60,17 @@
     <div id="agent-messages" class="agent-messages" role="log" aria-label="聊天记录"></div>
     <div id="agent-pending" class="agent-pending"></div>
     <div id="agent-activity" class="agent-activity" role="status"></div>
-    <form id="agent-chat-form" class="agent-chat-form"><textarea id="agent-question" rows="3" placeholder="就这段文字提问…" aria-label="向 Agent 提问"></textarea><div><span>Enter 发送 · Shift+Enter 换行</span><button id="agent-stop" type="button" hidden>停止</button><button id="agent-send" type="submit" class="primary">发送 ↑</button></div></form>
+    <form id="agent-chat-form" class="agent-chat-form">
+      <div class="agent-composer">
+        <textarea id="agent-question" rows="2" placeholder="询问任何问题" aria-label="向 Agent 提问"></textarea>
+        <div class="agent-composer-toolbar">
+          <div class="agent-model-controls"><select id="agent-model-select" aria-label="对话模型" title="模型"></select><select id="agent-effort-select" aria-label="推理强度" title="推理强度"></select></div>
+          <button id="agent-stop" class="agent-submit" type="button" title="停止" aria-label="停止" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/></svg></button>
+          <button id="agent-send" class="agent-submit" type="submit" title="发送" aria-label="发送" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        </div>
+      </div>
+      <p id="agent-model-hint" class="agent-model-hint" role="status" hidden></p>
+    </form>
   </aside>
   <dialog id="agent-dialog"><form id="agent-settings-form">
     <div class="dialog-heading"><div><span class="eyebrow">YOUR RESEARCH COMPANION</span><h2>Agent 设置</h2></div><button type="button" class="icon-button close-dialog" aria-label="关闭">×</button></div>
@@ -69,7 +79,8 @@
     <p id="agent-detected" class="agent-detected"></p>
     <div id="agent-cli-fields"><label>可执行文件位置<input id="agent-command" placeholder="自动查找，或输入完整路径" autocomplete="off"></label><label id="agent-custom-args-label">ACP 启动参数（JSON 数组）<input id="agent-args" placeholder='["acp"]' autocomplete="off"></label></div>
     <div id="agent-api-fields" hidden><label>API Base URL<input id="agent-base-url" type="url" placeholder="https://api.openai.com/v1"></label><label>API key<input id="agent-key" type="password" autocomplete="new-password"></label></div>
-    <label id="agent-model-label">模型<input id="agent-model" placeholder="CLI 留空使用已有配置；API 模式必填" autocomplete="off"></label>
+    <label id="agent-model-label">默认模型（可选）<input id="agent-model" placeholder="可留空，在对话框中选择模型" autocomplete="off"></label>
+    <button id="agent-model-refresh" type="button">刷新对话模型</button>
     <p id="agent-permissions" class="hint"></p><button type="submit" class="primary full-width">保存并选择</button>
   </form></dialog>
   <div id="toast" role="status" class="toast hidden"></div>
