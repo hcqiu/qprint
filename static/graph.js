@@ -29,7 +29,7 @@ export class KnowledgeGraph {
   }
   stop(){cancelAnimationFrame(this.frame);clearTimeout(this.clickTimer);}
   render(project,selected,options){
-    this.stop();this.lastClick=null;this.drag=null;this.selected=selected;this.layout=options.layout;
+    this.stop();this.lastClick=null;this.drag=null;this.selected=selected;this.layout=options.layout;this.overview=!!options.overview;
     this.highlightIds=new Set(options.highlightIds||[]);
     const seeds=new Set([selected,...this.highlightIds]);const neighbors=new Set(seeds);for(const e of project.edges){if(seeds.has(e.source))neighbors.add(e.target);if(seeds.has(e.target))neighbors.add(e.source);}
     const filtered=project.nodes.filter(n=>(!options.kind||n.kind===options.kind)&&(!options.status||n.status===options.status)&&(!options.local||neighbors.has(n.id)));
@@ -66,7 +66,11 @@ export class KnowledgeGraph {
     const parents=components.map(()=>new Set());for(const e of this.edges.filter(e=>e.kind!=='inspired_by')){const a=componentOf.get(e.source),b=componentOf.get(e.target);if(a!==b)parents[b].add(a);}
     const memo=new Map();const level=i=>{if(!memo.has(i))memo.set(i,parents[i].size?1+Math.max(...[...parents[i]].map(level)):0);return memo.get(i);};
     const layers=new Map();for(const p of this.points){const l=level(componentOf.get(p.id));if(!layers.has(l))layers.set(l,[]);layers.get(l).push(p);}
-    for(const [l,items] of layers)items.forEach((p,i)=>{p.x=(i-(items.length-1)/2)*215;p.y=l*130;});
+    const rowGap=this.overview?Math.max(32,Math.min(65,(this.svg.getBoundingClientRect().height-50)/Math.max(1,layers.size-1))):130;
+    for(const [l,items] of layers){
+      let offset=-items.reduce((sum,p)=>sum+p.title.length*7+40,0)/2;
+      items.forEach((p,i)=>{p.x=this.overview?offset:(i-(items.length-1)/2)*215;p.y=l*rowGap;offset+=p.title.length*7+40;});
+    }
   }
   animate(){
     const step=()=>{
@@ -87,11 +91,20 @@ export class KnowledgeGraph {
       for(const p of this.points){if(this.drag?.point===p)continue;p.vx=(p.vx-p.x*.0008)*.8;p.vy=(p.vy-p.y*.0008)*.8;p.x+=Math.max(-9,Math.min(9,p.vx));p.y+=Math.max(-9,Math.min(9,p.vy));}
   }
   select(id){this.centeredId=null;this.selected=id;const neighbors=new Set([id]);for(const e of this.edges){if(e.source===id)neighbors.add(e.target);if(e.target===id)neighbors.add(e.source);e.el.style.opacity=e.source===id||e.target===id?'.9':'.25';}
-    for(const p of this.points){const highlighted=this.highlightIds.has(p.id);p.el.classList.toggle('selected',p.id===id);p.el.classList.toggle('highlighted',highlighted);p.el.style.opacity=highlighted||neighbors.has(p.id)||(!id&&!this.highlightIds.size)?'1':'.4';p.el.querySelector('circle').setAttribute('stroke',highlighted?'#f1d591':p.id===id?'#e2d0ff':color[p.status]+'33');}
+    for(const p of this.points){const highlighted=this.highlightIds.has(p.id);p.el.classList.toggle('selected',p.id===id);p.el.classList.toggle('highlighted',highlighted);p.el.style.opacity=highlighted||neighbors.has(p.id)||(!id&&!this.highlightIds.size)?'1':this.overview?'.78':'.4';p.el.querySelector('circle').setAttribute('stroke',highlighted?'#f1d591':p.id===id?'#e2d0ff':color[p.status]+'33');}
   }
   draw(){for(const p of this.points)p.el?.setAttribute('transform',`translate(${p.x},${p.y})`);for(const e of this.edges){if(e.a===e.b){e.el.setAttribute('d',`M ${e.a.x} ${e.a.y-8} C ${e.a.x+60} ${e.a.y-80},${e.a.x-60} ${e.a.y-80},${e.a.x-7} ${e.a.y-5}`);continue;}const dx=e.b.x-e.a.x,dy=e.b.y-e.a.y,d=Math.max(1,Math.hypot(dx,dy));e.el.setAttribute('d',`M ${e.a.x+dx/d*10} ${e.a.y+dy/d*10} L ${e.b.x-dx/d*14} ${e.b.y-dy/d*14}`);}}
   focus(){
     const r=this.svg.getBoundingClientRect();if(!r.width||!this.points.length)return;
+    if(this.overview&&this.layout==='layered'){
+      this.layer();this.draw();this.centeredId=null;
+      const minX=Math.min(...this.points.map(p=>p.x)),maxX=Math.max(...this.points.map(p=>p.x));
+      const minY=Math.min(...this.points.map(p=>p.y)),maxY=Math.max(...this.points.map(p=>p.y));
+      const labelWidth=Math.max(...this.points.map(p=>p.title.length*7))+24;
+      const k=Math.max(.1,Math.min(1,(r.width-40-labelWidth)/Math.max(1,maxX-minX),(r.height-50)/Math.max(1,maxY-minY)));
+      const left=minX*k-10,right=Math.max(...this.points.map(p=>p.x*k+14+p.title.length*7));
+      this.transform={x:(r.width-left-right)/2,y:r.height/2-(minY+maxY)/2*k,k};this.applyTransform();return;
+    }
     const members=this.points.filter(p=>this.highlightIds.has(p.id));
     const selected=this.points.find(p=>p.id===this.selected);
     this.centeredId=selected?.id??null;
@@ -110,9 +123,11 @@ export class KnowledgeGraph {
     const labelScale=Math.max(1,1/k);
     for(const p of this.points){
       const label=p.el?.querySelector('text');if(!label)continue;
-      label.style.fontSize=`${11*labelScale}px`;label.setAttribute('y',27*labelScale);
+      label.style.fontSize=`${(this.overview?12:11)*labelScale}px`;label.setAttribute('y',(this.overview?4:27)*labelScale);
+      label.setAttribute('x',this.overview?14*labelScale:0);label.setAttribute('text-anchor',this.overview?'start':'middle');
+      if(this.overview)p.el.querySelector('circle').setAttribute('r',5*labelScale);
       const hit=p.el.querySelector('rect'),width=Math.max(70,Math.min(240,p.title.length*6.6))*labelScale;
-      hit.setAttribute('x',-width/2);hit.setAttribute('y',-15*labelScale);hit.setAttribute('width',width);hit.setAttribute('height',48*labelScale);
+      hit.setAttribute('x',this.overview?-10*labelScale:-width/2);hit.setAttribute('y',-15*labelScale);hit.setAttribute('width',width);hit.setAttribute('height',(this.overview?30:48)*labelScale);
     }
   }
 }

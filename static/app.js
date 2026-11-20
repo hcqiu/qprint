@@ -1,6 +1,6 @@
 import {milestoneRoute, milestoneMarkup} from './milestone.js';
 import {renderImportJob, renderReports} from './import-progress.js';
-import {KnowledgeGraph} from './graph.js';
+import {KnowledgeGraph} from './graph.js?v=20261121-graph-home';
 import {followTexReference} from './tex-references.js';
 import {referencesHash, referencesRoute, referencesMarkup, citationTarget, referenceImportDefaults, prefillReferenceImport} from './bibliography.js';
 import {createGraphView, syncGraphContext, changeGraphLevel, changeGraphScope, drillGraph, graphProjection, focusReadingNode} from './graph-view.js?v=20261015';
@@ -77,12 +77,12 @@ async function saveDocument(){if(state.project?.static_demo){toast('只读演示
 function highlight(line){const escaped=esc(line);if(/^\s*(--|\/\/|\(\*)/.test(line))return `<span class="code-comment">${escaped}</span>`;return escaped.replace(/\b(theorem|lemma|def|by|simp|exact|intro|apply|namespace|end|import|open|where|module|data|Set|Definition|Theorem|Proof|Qed|forall|fun|variable|structure|inductive|axiom)\b/g,'<span class="code-keyword">$1</span>');}
 function renderFormal(){const n=state.detail;if(!n?.formal.length){$('#formal-content').innerHTML='<div class="empty-code"><span class="empty-symbol">⌘</span><strong>还没有形式化代码</strong>在 Markdown 节点中添加 Lean、Agda 或 Coq 绑定，开始连接证明。</div>';return;}const binding=n.formal[state.binding]||n.formal[0];$('#formal-content').innerHTML=`<div class="formal-tabs">${n.formal.map((b,i)=>`<button data-binding="${i}" class="${i===state.binding?'active':''}">${esc(b.language.toUpperCase())}${n.formal.filter(x=>x.language===b.language).length>1?` · ${i+1}`:''}</button>`).join('')}</div><div class="binding-name">${esc(binding.declaration)}</div>${binding.code!==null?`<div class="code-location"><span>⌑ ${esc(binding.file)}</span><span>L${binding.lines[0]}–${binding.lines[1]}</span></div><pre class="code-block">${binding.code.split('\n').map((line,i)=>`<span class="code-line"><span class="line-number">${binding.lines[0]+i}</span><span class="code-text">${highlight(line)}</span></span>`).join('')}</pre>`:`<div class="empty-code"><strong>${esc(binding.error)}</strong>可通过「导入资料」下载仓库，或填写准确的 file / lines。</div>`}${binding.url?`<a class="source-link" target="_blank" rel="noopener noreferrer" href="${esc(binding.url)}">查看代码来源 ↗</a>`:''}`;}
 
-function setView(view){
+function setView(view,{preserveGraph=false}={}){
   queueMicrotask(()=>document.dispatchEvent(new Event('qprint-view-change')));
   const enteringGraph=view==='graph'&&state.view!=='graph';
   state.view=view;$('#reader').classList.toggle('hidden',view!=='reader');$('#graph').classList.toggle('hidden',view!=='graph');$('#reader-view').classList.toggle('active',view==='reader');$('#graph-view').classList.toggle('active',view==='graph');
   if(view==='graph'){
-    const previewSelected=enteringGraph&&state.project&&focusReadingNode(graphView,state.project,state.selected);
+    const previewSelected=preserveGraph||enteringGraph&&state.project&&focusReadingNode(graphView,state.project,state.selected);
     if(previewSelected){$('#graph-kind').value='';$('#graph-status').value='';$('#graph-local').checked=false;}
     renderGraph({previewSelected});
   }else graph.stop();
@@ -128,7 +128,9 @@ function renderGraph({previewSelected=false}={}){
   const scopeLabel=graphView.scope==='all'?'全范围':graphView.scope==='milestone'?`当前 Milestone：${graphView.milestoneId??'无文件'}`:`当前项目：${graphView.projectId??'无项目'}`;
   $('#graph-context').textContent=`${scopeLabel} · ${graphView.highlightLabel?`${graphView.highlightLabel}：高亮 ${data.highlightIds.length} 个${unit}`:'单击预览，双击'+(graphView.level==='node'?'打开节点':'下钻')}`;
   $('#graph-preview').classList.add('hidden');
-  graph.render(data,data.selected,{layout:$('#graph-layout').value,kind:graphView.level==='node'?$('#graph-kind').value:'',status:$('#graph-status').value,local:$('#graph-local').checked,highlightIds:data.highlightIds,unit,previewSelected});
+  const overview=state.project.static_demo&&graphView.level==='file'&&$('#graph-layout').value==='layered';
+  $('#graph').classList.toggle('overview',overview);
+  graph.render(data,data.selected,{layout:$('#graph-layout').value,kind:graphView.level==='node'?$('#graph-kind').value:'',status:$('#graph-status').value,local:$('#graph-local').checked,highlightIds:data.highlightIds,unit,previewSelected,overview});
 }
 async function openPaper(path,line=1){if(!canLeave())return;const data=await api(`/api/tex?path=${encodeURIComponent(path)}`);state.dirty=false;state.detail=null;navigatorDocument='tex/'+path;state.mode='tex';setView('reader');$('#breadcrumb').textContent=`tex / ${path}`;$('#content').innerHTML=`<span class="eyebrow">PAPER SOURCE</span><h2>${esc(path)}</h2><p class="hint">此位置尚无绑定节点。可以在 Markdown 中用 tex 字段关联 bpnode 标签。</p><pre class="tex-source">${data.source.split('\n').map((s,i)=>`<span id="tex-line-${i+1}">${esc(s)}\n</span>`).join('')}</pre>`;$('#formal-content').innerHTML='<div class="empty-code">选择 Blueprint 节点以定位代码</div>';$('#previous').disabled=true;$('#next').disabled=true;$(`#tex-line-${line}`)?.scrollIntoView({block:'start'});syncNavigator('paper');}
 
@@ -221,7 +223,27 @@ $('#content').addEventListener('click',guarded(e=>{
 $('#import-form').addEventListener('submit',guarded(async e=>{e.preventDefault();const values=Object.fromEntries(new FormData(e.target));values.ref=values.ref||null;values.verify_after_download=e.target.elements.verify_after_download.checked;values.auto_blueprint=e.target.elements.auto_blueprint.checked;const button=$('#import-submit');button.disabled=true;$('#import-result').textContent='正在提交下载任务…';try{const job=await api('/api/import',{method:'POST',body:JSON.stringify(values)});let finished=false;while(!finished){await new Promise(resolve=>setTimeout(resolve,1200));const current=await api(`/api/jobs/${job.id}`);renderImportJob($('#import-result'),current);finished=['succeeded','failed'].includes(current.status);if(current.status==='succeeded'){if(!state.dirty)await loadProject();else toast('资料已导入；保存当前编辑后刷新索引');}}}finally{button.disabled=false;}}));
 
 const chatPanel=createChatPanel({api,state,toast,renderMath:math,navigate:async(id,mode)=>{if(await selectNode(id)){state.mode=mode;setView('reader');await renderContent();}}});
-export async function startApp(){await loadProject(false);if(!state.project?.static_demo)chatPanel.refresh().catch(error=>toast(`Agent 面板：${error.message}`));}
+export async function startApp(){
+  const landing=!location.hash||location.hash==='#graph';
+  await loadProject(false);
+  if(state.project?.static_demo&&landing){
+    const file=state.project.graph.files.find(f=>f.project_id==='PoincareConjecture'&&f.path.endsWith('/chapters/ricci-flow.md'));
+    if(file){
+      const node=state.project.nodes.find(n=>n.path===file.id);
+      if(node)await selectNode(node.id,false);
+      for(const key of ['folder:PoincareConjecture','folder:PoincareConjecture/blueprint/chapters']){
+        const el=[...$('#tree').querySelectorAll('details[data-tree-key]')].find(el=>el.dataset.treeKey===key);
+        if(el)el.open=true;
+      }
+      treeExpansion.capture($('#tree'));
+      Object.assign(graphView,{level:'file',scope:'project',projectId:file.project_id,milestoneId:file.id,focusId:file.id,highlightIds:[],highlightLabel:null});
+      $('#graph-layout').value='layered';
+      setView('graph',{preserveGraph:true});
+      history.replaceState(null,'','#graph');
+    }
+  }
+  if(!state.project?.static_demo)chatPanel.refresh().catch(error=>toast(`Agent 面板：${error.message}`));
+}
 
 $('#import-history').addEventListener('click',guarded(async()=>{const data=await api('/api/formal-reports');const target=$('#import-result');target.textContent=data.reports.length?'最近验证报告':'当前工作区暂无验证报告';renderReports(target,data.reports);}));
 

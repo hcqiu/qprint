@@ -1,6 +1,6 @@
 // Catch module loading errors as well as API/rendering failures during startup.
 try {
-  const {startApp}=await import('./app.js?v=20261015');
+  const {startApp}=await import('./app.js?v=20261121-graph-home');
   await startApp();
 } catch(error) {
   console.error('Qprint startup failed',error);
