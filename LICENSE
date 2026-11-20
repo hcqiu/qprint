@@ -1,0 +1,111 @@
+Qprint Noncommercial License 1.0
+
+Copyright (c) 2026 Haochen Qiu. All rights reserved.
+Other contributions remain copyright their respective owners.
+
+1. Scope and definitions
+
+"Software" means the original Qprint code, documentation, and other material
+distributed with this license, including modifications to that material. It
+excludes third-party material identified by a separate license or provenance.
+"Licensor" means each copyright holder, solely to the extent of rights that
+holder is entitled to license. "You" means the person or entity exercising
+rights under this license.
+
+"Noncommercial Use" means use solely for personal learning, personal projects,
+teaching, or academic research, without commercial purpose or commercial
+advantage, subject to the following boundaries:
+
+(a) An individual may use the Software for private, unpaid, noncommercial work.
+    Being an individual does not exempt consulting, paid work, or business use.
+(b) Nonprofit educational and research institutions may use the Software for
+    ordinary teaching and academic research. Ordinary tuition, academic
+    salaries, scholarships, and public or charitable research grants alone do
+    not make that use commercial. Selling access to the Software or providing
+    commercial services with it is not covered by this exception.
+(c) Internal use by or on behalf of a for-profit business requires a separate
+    commercial license, including research, evaluation, and employee use,
+    whether or not the Software is distributed or directly generates revenue.
+(d) Research commissioned by a business, performed on its behalf, or directed
+    toward commercial products or services requires a commercial license.
+    An unrestricted donation to an independent nonprofit research institution,
+    without commercial deliverables or preferential commercialization rights,
+    does not by itself make its independent academic research commercial.
+(e) Commercial SaaS, hosted services, paid access, advertising-supported or
+    business-promotional services, commercial product integration, resale,
+    sublicensing for payment, and bundled commercial distribution require a
+    commercial license, including when the Software is only one component.
+    A private service limited to an institution's eligible teaching or research
+    participants is allowed; a public hosted Qprint service or API offered to
+    third parties requires a commercial license even if access is free.
+
+2. Noncommercial grant
+
+Subject to these terms, Licensor grants You a worldwide, royalty-free,
+nonexclusive license to use, reproduce, study, modify, and distribute the
+Software solely for Noncommercial Use. No commercial rights are granted here.
+Rights not expressly granted are reserved. Licensor may separately license
+their own material commercially or under other terms.
+
+3. Redistribution and modifications
+
+You may share original or modified copies without charge solely for
+Noncommercial Use. Include this license, the copyright notices, and applicable
+third-party notices with all copies or substantial portions. Clearly identify
+material changes and their dates. Do not remove or obscure attribution.
+Redistribution must retain these conditions for the Software and must not
+purport to grant commercial rights in it. Recipients receive rights directly
+from the relevant Licensor under this license. This license does not require
+You to publish private modifications or transfer ownership of contributions.
+
+4. Commercial authorization
+
+Any use outside section 1 requires prior, separate written authorization from
+the holder(s) of the necessary rights. COMMERCIAL-LICENSE.md describes the
+commercial terms and the signed order required to activate them. Merely
+receiving that file, downloading the Software, making an inquiry, or making an
+unsolicited payment does not grant commercial rights. Silence is not consent.
+
+5. Third-party material and user content
+
+Third-party dependencies, vendored assets, compilers, libraries, and imported
+repositories retain their own licenses. This license neither replaces those
+licenses nor restricts rights granted independently by their owners. See
+THIRD-PARTY-NOTICES.md. Separate licenses expressly attached to material take
+precedence for that material. Previously granted rights under other licenses
+are not revoked by this license.
+
+You retain rights in Your own papers, notes, proofs, data, and other original
+content processed with the Software. Such content and outputs are not covered
+by this license merely because the Software processed or generated them;
+outputs containing portions of the Software or third-party material remain
+subject to the applicable terms for those portions. This does not authorize
+commercial use of the Software to create those outputs.
+
+6. Termination
+
+Your rights terminate automatically upon breach. For a first breach, rights
+are reinstated if You fully cure it within 30 days after becoming aware of it;
+otherwise reinstatement requires written permission from the relevant
+Licensor. Termination requires You to stop exercising the terminated rights.
+It does not terminate compliant recipients' independent licenses, erase
+liability for past breaches, or authorize continuing commercial use. Sections
+5, 7, and 8 survive termination.
+
+7. Warranty and liability
+
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THE SOFTWARE IS PROVIDED
+"AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING WARRANTIES
+OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE, AND
+NONINFRINGEMENT. THE LICENSORS ARE NOT LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER
+LIABILITY ARISING FROM THE SOFTWARE OR ITS USE, WHETHER IN CONTRACT, TORT, OR
+OTHERWISE. NOTHING HERE EXCLUDES LIABILITY THAT CANNOT LAWFULLY BE EXCLUDED.
+
+8. General
+
+No trademark rights, endorsement, support commitment, or separate patent
+license is granted. Statutory rights that cannot be restricted by agreement
+are unaffected. If a provision is unenforceable, the remaining provisions
+remain effective to the extent permitted by law. This English text controls;
+translations and usage guides are explanatory. This is a source-available
+license with commercial restrictions, not an OSI-approved open-source license.
