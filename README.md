@@ -2,6 +2,8 @@
 
 [English](README.md) | [中文](README.zh.md)
 
+[demo](https://hcqiu.github.io/qprint/#graph)
+
 A mathematical knowledge graph and formalized proof navigation IDE. Blueprint nodes connect TeX papers with Lean / Agda / Coq code. Node content is stored in Markdown files that you can manage directly in Obsidian or any other editor.
 
 1. Organize a visual knowledge graph at three levels—projects, milestones, and blueprint nodes (such as definitions, theorems, and conjectures)—for quick navigation by humans and AI.
